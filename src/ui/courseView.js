@@ -1,6 +1,8 @@
 import { storageGet, storageSet } from '../core/storage.js';
 import { getTopicStudySignal, recordReview, recordTest, topicHealth, predictRetention } from '../trackers/courseTracker.js';
-import { showToast } from './main.js';
+import { showToast, renderActiveView } from './main.js';
+import { openImportModal } from './importModal.js';
+import { archiveTracker, deleteTracker, renameTracker } from '../core/trackerRegistry.js';
 
 // Track which sections are collapsed: default all expanded
 const collapsedSections = new Set();
@@ -347,11 +349,9 @@ function renderDrawerBody(topic) {
  */
 function bindHeaderActions(tracker) {
   document.getElementById('importSyllabusBtn')?.addEventListener('click', () => {
-    import { openImportModal } from './importModal.js';
     openImportModal(tracker);
   });
   document.getElementById('importSyllabusBtn2')?.addEventListener('click', () => {
-    import { openImportModal } from './importModal.js';
     openImportModal(tracker);
   });
 
@@ -359,21 +359,18 @@ function bindHeaderActions(tracker) {
   document.getElementById('renameTrackerBtn')?.addEventListener('click', () => {
     const newName = prompt('Enter new name for this tracker:', tracker.name);
     if (newName && newName.trim() !== '') {
-      import('../core/trackerRegistry.js').then(m => {
-        m.renameTracker(tracker.id, newName.trim());
-        showToast(`Renamed tracker to "${newName.trim()}".`);
-        // Refresh view
-        tracker.name = newName.trim();
-        renderCourseView(tracker);
-        // Refresh sidebar
-        renderActiveView();
-      });
+      renameTracker(tracker.id, newName.trim());
+      showToast(`Renamed tracker to "${newName.trim()}".`);
+      // Refresh view
+      tracker.name = newName.trim();
+      renderCourseView(tracker);
+      // Refresh sidebar
+      renderActiveView();
     }
   });
 
   // Archive
   document.getElementById('archiveTrackerBtn')?.addEventListener('click', () => {
-    import { archiveTracker } from '../core/trackerRegistry.js';
     const nextArchived = !tracker.archived;
     archiveTracker(tracker.id, nextArchived);
     showToast(`Tracker "${tracker.name}" ${nextArchived ? 'archived' : 'unarchived'}.`);
@@ -383,7 +380,6 @@ function bindHeaderActions(tracker) {
 
   // Delete
   document.getElementById('deleteTrackerBtn')?.addEventListener('click', () => {
-    import { deleteTracker } from '../core/trackerRegistry.js';
     if (confirm(`Are you absolutely sure you want to permanently delete the tracker "${tracker.name}"?\nAll study metrics, logs, and stored progress will be lost forever.`)) {
       deleteTracker(tracker.id);
       showToast(`Tracker "${tracker.name}" has been permanently deleted.`, true);

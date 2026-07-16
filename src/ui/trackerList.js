@@ -207,7 +207,7 @@ function renderDetailsPane(tracker) {
                   <tr>
                     <td><strong>${escapeHtml(topic.section)}</strong></td>
                     <td>${escapeHtml(topic.name)}</td>
-                    <td style="color: var(--muted); font-size: 0.85rem;">${escapeHtml(topic.reference || '—')}</td>
+                    <td style="color: var(--muted); font-size: 0.85rem;">${escapeHtml(topic.reference || '\u2014')}</td>
                     <td>
                       <span class="badge" style="background-color: var(--paper-warm); color: var(--ink); text-transform: none; font-size: 0.75rem;">
                         ${topic.status || 'Not Started'}
@@ -246,7 +246,7 @@ function renderDetailsPane(tracker) {
                   <tr>
                     ${tracker.schema.map(f => {
                       const val = entry[f.key];
-                      let display = '—';
+                      let display = '\u2014';
                       if (val !== undefined && val !== null && val !== '') {
                         display = escapeHtml(String(val));
                         if (f.unit) display += ` ${escapeHtml(f.unit)}`;

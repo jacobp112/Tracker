@@ -2,6 +2,8 @@ import { storageGet, storageSet } from '../core/storage.js';
 import { calculateAggregates } from '../trackers/logTracker.js';
 import { renderChartView } from './chartsView.js';
 import { showToast, renderActiveView } from './main.js';
+import { openImportModal } from './importModal.js';
+import { archiveTracker, deleteTracker, renameTracker } from '../core/trackerRegistry.js';
 
 let activeTab = 'table'; // 'table' or 'charts'
 
@@ -92,7 +94,6 @@ function renderActiveTabContent(tracker, pane, entries) {
         </div>
       `;
       document.getElementById('importLogsBtn2')?.addEventListener('click', () => {
-        import { openImportModal } from './importModal.js';
         openImportModal(tracker);
       });
       return;
@@ -152,7 +153,7 @@ function renderActiveTabContent(tracker, pane, entries) {
                 <tr>
                   ${tracker.schema.map(f => {
                     const val = entry[f.key];
-                    let display = '—';
+                    let display = '\u2014';
                     if (val !== undefined && val !== null && val !== '') {
                       display = escapeHtml(String(val));
                       if (f.unit) display += ` ${escapeHtml(f.unit)}`;
@@ -197,7 +198,6 @@ function renderActiveTabContent(tracker, pane, entries) {
 
 function bindHeaderActions(tracker) {
   document.getElementById('importLogsBtn')?.addEventListener('click', () => {
-    import { openImportModal } from './importModal.js';
     openImportModal(tracker);
   });
 
@@ -205,21 +205,18 @@ function bindHeaderActions(tracker) {
   document.getElementById('renameTrackerBtn')?.addEventListener('click', () => {
     const newName = prompt('Enter new name for this tracker:', tracker.name);
     if (newName && newName.trim() !== '') {
-      import('../core/trackerRegistry.js').then(m => {
-        m.renameTracker(tracker.id, newName.trim());
-        showToast(`Renamed tracker to "${newName.trim()}".`);
-        // Refresh detail view
-        tracker.name = newName.trim();
-        renderLogView(tracker);
-        // Refresh sidebar
-        renderActiveView();
-      });
+      renameTracker(tracker.id, newName.trim());
+      showToast(`Renamed tracker to "${newName.trim()}".`);
+      // Refresh detail view
+      tracker.name = newName.trim();
+      renderLogView(tracker);
+      // Refresh sidebar
+      renderActiveView();
     }
   });
 
   // Archive
   document.getElementById('archiveTrackerBtn')?.addEventListener('click', () => {
-    import { archiveTracker } from '../core/trackerRegistry.js';
     const nextArchived = !tracker.archived;
     archiveTracker(tracker.id, nextArchived);
     showToast(`Tracker "${tracker.name}" ${nextArchived ? 'archived' : 'unarchived'}.`);
@@ -228,7 +225,6 @@ function bindHeaderActions(tracker) {
 
   // Delete
   document.getElementById('deleteTrackerBtn')?.addEventListener('click', () => {
-    import { deleteTracker } from '../core/trackerRegistry.js';
     if (confirm(`Are you absolutely sure you want to permanently delete the tracker "${tracker.name}"?\nAll study metrics, logs, and stored progress will be lost forever.`)) {
       deleteTracker(tracker.id);
       showToast(`Tracker "${tracker.name}" has been permanently deleted.`, true);

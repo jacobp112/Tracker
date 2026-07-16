@@ -6,7 +6,7 @@ import { validateEntry } from './schema.js';
  * Matches legacy slug function.
  */
 export function generateSlug(section, name) {
-  return (section.split('—')[0].trim() + '-' + name)
+  return (section.split('\u2014')[0].trim() + '-' + name)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
@@ -22,12 +22,12 @@ export function generateTemplate(type, schema = []) {
   if (type === 'course') {
     return JSON.stringify([
       {
-        section: "Section 1 — Algebra Basics",
+        section: "Section 1 \u2014 Algebra Basics",
         name: "Solving Simple Equations",
         reference: "Page 24"
       },
       {
-        section: "Section 1 — Algebra Basics",
+        section: "Section 1 \u2014 Algebra Basics",
         name: "Rearranging Formulas",
         reference: "Page 28"
       }

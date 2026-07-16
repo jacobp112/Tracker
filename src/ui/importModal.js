@@ -176,7 +176,7 @@ function renderPreview(trackerMeta, data, warnings = []) {
               <tr>
                 <td><strong>${escapeHtml(t.section)}</strong></td>
                 <td>${escapeHtml(t.name)}</td>
-                <td style="color: var(--muted); font-size: 0.85rem;">${escapeHtml(t.reference || '—')}</td>
+                <td style="color: var(--muted); font-size: 0.85rem;">${escapeHtml(t.reference || '\u2014')}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -200,7 +200,7 @@ function renderPreview(trackerMeta, data, warnings = []) {
               <tr>
                 ${schema.map(f => {
                   const val = entry[f.key];
-                  let display = '—';
+                  let display = '\u2014';
                   if (val !== undefined && val !== null && val !== '') {
                     display = escapeHtml(String(val));
                     if (f.unit) display += ` ${escapeHtml(f.unit)}`;
