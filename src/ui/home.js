@@ -1,5 +1,7 @@
 import { listTrackers } from '../core/trackerRegistry.js';
 import { storageGet } from '../core/storage.js';
+import { getTopicStudySignal } from '../trackers/courseTracker.js';
+import { getStartOfWeek, getEndOfWeek } from '../trackers/logTracker.js';
 
 /**
  * Renders the Home View panel.
@@ -45,13 +47,32 @@ export function renderHome() {
     if (t.type === 'course') {
       const total = entries.length;
       const mastered = entries.filter(topic => topic.status === 'Mastered').length;
-      const practicing = entries.filter(topic => topic.status === 'Practising').length;
-      const learning = entries.filter(topic => topic.status === 'Learning').length;
 
       if (total === 0) {
         snapshotText = 'Syllabus not imported yet.';
       } else {
-        snapshotText = `${mastered}/${total} mastered · ${practicing} practising · ${learning} learning`;
+        let retrievalCount = 0;
+        let frictionCount = 0;
+        let readyCount = 0;
+
+        entries.forEach(topic => {
+          const sig = getTopicStudySignal(topic);
+          if (sig) {
+            if (sig.cls === 'needs-retrieval') retrievalCount++;
+            else if (sig.cls === 'friction-zone') frictionCount++;
+            else if (sig.cls === 'ready-test') readyCount++;
+          }
+        });
+
+        if (retrievalCount > 0) {
+          snapshotText = `${retrievalCount} topic${retrievalCount === 1 ? '' : 's'} need retrieval`;
+        } else if (frictionCount > 0) {
+          snapshotText = `${frictionCount} topic${frictionCount === 1 ? '' : 's'} stuck in Friction`;
+        } else if (readyCount > 0) {
+          snapshotText = `${readyCount} topic${readyCount === 1 ? '' : 's'} ready for test`;
+        } else {
+          snapshotText = `${mastered}/${total} topics mastered`;
+        }
       }
     } else {
       // Log tracker summary
@@ -59,15 +80,27 @@ export function renderHome() {
       if (count === 0) {
         snapshotText = 'No entries logged yet.';
       } else {
-        snapshotText = `${count} entries recorded.`;
-        // Check if there are numeric fields in schema to summarize
-        const numFields = t.schema?.filter(f => f.kind === 'number') || [];
-        if (numFields.length > 0 && count > 0) {
-          const firstNum = numFields[0];
-          const sum = entries.reduce((s, entry) => s + (Number(entry[firstNum.key]) || 0), 0);
-          const avg = sum / count;
-          snapshotText += ` Total ${firstNum.label}: ${sum.toFixed(1)}${firstNum.unit ? ' ' + firstNum.unit : ''} (Avg: ${avg.toFixed(1)})`;
+        const startOfWeek = getStartOfWeek();
+        const endOfWeek = getEndOfWeek();
+        const dateField = t.schema.find(f => f.kind === 'date');
+
+        let weeklyCount = 0;
+        if (dateField) {
+          entries.forEach(entry => {
+            if (entry[dateField.key]) {
+              const entryDate = new Date(entry[dateField.key]);
+              if (!isNaN(entryDate.getTime()) && entryDate >= startOfWeek && entryDate <= endOfWeek) {
+                weeklyCount++;
+              }
+            }
+          });
         }
+
+        const activityLabel = t.name.toLowerCase().includes('run') ? 'run' : 'entry';
+        const plural = weeklyCount === 1 ? '' : 's';
+        const activityPlural = weeklyCount === 1 ? activityLabel : `${activityLabel}s`;
+
+        snapshotText = `${weeklyCount} ${activityPlural} logged this week (${count} lifetime)`;
       }
     }
 

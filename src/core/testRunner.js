@@ -20,7 +20,7 @@ globalThis.localStorage = {
 
 // Import modules to test
 import { storageGet, storageSet, storageDelete } from './storage.js';
-import { listTrackers, createTracker, archiveTracker, deleteTracker } from './trackerRegistry.js';
+import { listTrackers, createTracker, archiveTracker, deleteTracker, renameTracker } from './trackerRegistry.js';
 import { validateSchema, validateEntry } from './schema.js';
 import { generateSlug, generateTemplate, generateAIPrompt, validateImport, applyImport } from './importPipeline.js';
 import { getTopicStudySignal, recordReview, recordTest, topicHealth, predictRetention, strengthIncrement } from '../trackers/courseTracker.js';
@@ -106,6 +106,11 @@ assert.strictEqual(index.length, 1);
 assert.strictEqual(index[0].id, created.id);
 assert.strictEqual(index[0].name, 'Running Log');
 assert.strictEqual(index[0].archived, false);
+
+// Rename tracker
+renameTracker(created.id, 'Running Log Revised');
+assert.strictEqual(storageGet(`tracker:${created.id}:meta`, null).name, 'Running Log Revised');
+assert.strictEqual(listTrackers()[0].name, 'Running Log Revised');
 
 // Archive tracker
 archiveTracker(created.id, true);

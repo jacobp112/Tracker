@@ -88,3 +88,27 @@ export function deleteTracker(id) {
 
   return true;
 }
+
+/**
+ * Renames an existing tracker.
+ * @param {string} id
+ * @param {string} newName
+ * @returns {boolean} True if successful
+ */
+export function renameTracker(id, newName) {
+  const metaKey = `tracker:${id}:meta`;
+  const meta = storageGet(metaKey, null);
+  if (!meta) return false;
+
+  meta.name = newName;
+  storageSet(metaKey, meta);
+
+  const index = listTrackers();
+  const indexItem = index.find(item => item.id === id);
+  if (indexItem) {
+    indexItem.name = newName;
+    storageSet(REGISTRY_INDEX_KEY, index);
+  }
+
+  return true;
+}

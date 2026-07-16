@@ -22,6 +22,17 @@ To run the application, open the root `index.html` file directly in any modern w
 npx serve .
 ```
 
+## GitHub Pages Deployment
+
+Since this dashboard is built with vanilla HTML, CSS, and JS (zero build steps required), it is fully compatible with GitHub Pages:
+1. Push your repository to GitHub.
+2. In your repository on GitHub, navigate to **Settings** -> **Pages**.
+3. Under **Build and deployment**, select **Deploy from a branch** and choose the `main` branch.
+4. Click **Save**. Your site will be live at `https://<username>.github.io/<repository-name>/` in a few minutes.
+
+> [!WARNING]
+> **Data Synchronization Notice**: All data is stored in your browser's local sandbox (`localStorage`). There is no cloud backend, which means your data **will not sync** between different devices (e.g. from your laptop to your mobile phone). To transfer data, you can copy the JSON payloads and import them on the target device.
+
 ## Storage Recovery Pattern
 
 The application handles data updates by creating backup versions of keys during saving:

@@ -42,6 +42,7 @@ export function renderCourseView(tracker) {
       </div>
       <div style="display: flex; gap: 8px;">
         <button id="importSyllabusBtn" class="btn primary" style="font-size: 0.85rem;">📥 Import Syllabus</button>
+        <button id="renameTrackerBtn" class="btn secondary" style="font-size: 0.85rem;">Rename</button>
         <button id="archiveTrackerBtn" class="btn secondary" style="font-size: 0.85rem;">
           ${tracker.archived ? 'Unarchive' : 'Archive'}
         </button>
@@ -352,6 +353,22 @@ function bindHeaderActions(tracker) {
   document.getElementById('importSyllabusBtn2')?.addEventListener('click', () => {
     import { openImportModal } from './importModal.js';
     openImportModal(tracker);
+  });
+
+  // Rename
+  document.getElementById('renameTrackerBtn')?.addEventListener('click', () => {
+    const newName = prompt('Enter new name for this tracker:', tracker.name);
+    if (newName && newName.trim() !== '') {
+      import('../core/trackerRegistry.js').then(m => {
+        m.renameTracker(tracker.id, newName.trim());
+        showToast(`Renamed tracker to "${newName.trim()}".`);
+        // Refresh view
+        tracker.name = newName.trim();
+        renderCourseView(tracker);
+        // Refresh sidebar
+        renderActiveView();
+      });
+    }
   });
 
   // Archive
