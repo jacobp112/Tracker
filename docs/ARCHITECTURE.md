@@ -58,6 +58,44 @@ interface FieldSchema {
 
 ---
 
+## 2.5 Course Tracker Data Model & Study Signals
+
+Syllabus/Course trackers use a structured topic format that records historical progress directly on the topic objects.
+
+### Topic Data Structure
+```typescript
+interface CourseTopic {
+  id: string;              // Unique section + name slug
+  section: string;         // Parent section header
+  name: string;            // Name of the specific skill/topic
+  reference: string;       // Chapter or page number reference
+  status: "Not Started" | "Learning" | "Practising" | "Mastered";
+  conf: string;            // Current confidence score ("1" to "5" or "")
+  reviewed: string;        // Date of last logged review (YYYY-MM-DD)
+  note: string;            // Study note or concept cheat sheet
+  strength: number;        // Bjork spacing strength multiplier
+  reviewHistory: Array<{ date: string, confidence: number, source: string }>;
+  studySeconds: number;    // Accumulated study seconds
+  lastStudySeconds: number;// Duration of the last study session
+  tests: Array<{ date: string, score: number, outOf: number, confidence: number, note: string }>;
+  errors: Array<{ date: string, type: string, note: string, status: "active" | "resolved" }>;
+}
+```
+
+### Study Signals Heuristics
+Syllabus topics evaluate duration, reviews count, and test failures to generate flags:
+1. **Friction**: time &ge; 45m and conf &le; 2 (stuck on the topic).
+2. **Needs Retrieval**: time &ge; 25m and 0 reviews (needs review active recall).
+3. **Brittle**: time &le; 12m, conf &ge; 4, and last test failed (false confidence).
+4. **Ready Test**: time &ge; 20m, conf &ge; 4, last test passed, and status is not "Not Started" (validation due).
+5. **Efficient**: time &gt; 0 and &le; 10m, conf &ge; 4, and last test passed.
+
+### Study Timer Architecture
+- Timer state is stored in `localStorage` under `tracker:activeTimer` containing `{ trackerId, topicId, startedAt }`.
+- A single background interval in `main.js` ticks duration every second, rendering updates to DOM displays and displaying a global app-level banner.
+
+---
+
 ## 3. UI Design System
 
 Aesthetics are handled via a layered design system of CSS custom properties defined in `theme.css`.

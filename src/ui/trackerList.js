@@ -2,6 +2,7 @@ import { listTrackers, archiveTracker, deleteTracker } from '../core/trackerRegi
 import { storageGet } from '../core/storage.js';
 import { openImportModal } from './importModal.js';
 import { renderActiveView, showToast } from './main.js';
+import { renderCourseView } from './courseView.js';
 
 let selectedTrackerId = null;
 let showArchived = false;
@@ -143,6 +144,11 @@ export function renderTrackerList() {
 }
 
 function renderDetailsPane(tracker) {
+  if (tracker.type === 'course') {
+    renderCourseView(tracker);
+    return;
+  }
+
   const pane = document.getElementById('trackerDetailsPane');
   if (!pane) return;
 

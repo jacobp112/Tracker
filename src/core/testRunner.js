@@ -23,6 +23,7 @@ import { storageGet, storageSet, storageDelete } from './storage.js';
 import { listTrackers, createTracker, archiveTracker, deleteTracker } from './trackerRegistry.js';
 import { validateSchema, validateEntry } from './schema.js';
 import { generateSlug, generateTemplate, generateAIPrompt, validateImport, applyImport } from './importPipeline.js';
+import { getTopicStudySignal, recordReview, recordTest, topicHealth, predictRetention, strengthIncrement } from '../trackers/courseTracker.js';
 
 console.log('Running Multi-Tracker Dashboard unit tests...');
 
@@ -235,4 +236,109 @@ assert.strictEqual(storedTopics2[2].name, 'Topic 3');
 assert.strictEqual(storedTopics2[2].status, 'Not Started');
 
 console.log('✔ Import Pipeline tests passed!');
+
+// -------------------------------------------------------------
+// 5. Course Tracker Heuristics Tests
+// -------------------------------------------------------------
+console.log('\n--- Running Course Tracker Heuristics Tests ---');
+
+// Test strength increments
+assert.strictEqual(strengthIncrement(3, 'study'), 0.6);
+assert.strictEqual(strengthIncrement(5, 'study'), 1.0);
+assert.strictEqual(strengthIncrement(2, 'test-pass'), 1.5);
+assert.strictEqual(strengthIncrement(5, 'test-fail'), 0.15);
+
+// Test reviews and tests logging
+const mockTopic = {
+  id: 'test-topic',
+  name: 'Test Topic',
+  section: 'Test Section',
+  status: 'Learning',
+  conf: '2',
+  studySeconds: 0,
+  reviewHistory: [],
+  tests: [],
+  strength: 0,
+  reviewed: ''
+};
+
+// Log a review
+recordReview(mockTopic, 3, 'study');
+assert.strictEqual(mockTopic.conf, '3');
+assert.strictEqual(mockTopic.strength, 0.6);
+assert.ok(mockTopic.reviewed.match(/^\d{4}-\d{2}-\d{2}$/));
+assert.strictEqual(mockTopic.reviewHistory.length, 1);
+
+// Log a test (pass)
+recordTest(mockTopic, 9, 10, 5); // 90% (pass)
+assert.strictEqual(mockTopic.conf, '5');
+assert.strictEqual(mockTopic.strength, 0.6 + 1.5); // 0.6 + test-pass
+assert.strictEqual(mockTopic.tests.length, 1);
+assert.strictEqual(mockTopic.tests[0].score, 9);
+assert.strictEqual(mockTopic.tests[0].outOf, 10);
+
+// Log a test (fail)
+recordTest(mockTopic, 5, 10, 2); // 50% (fail)
+assert.strictEqual(mockTopic.conf, '2');
+assert.strictEqual(mockTopic.strength, 0.6 + 1.5 + 0.15); // 2.25
+assert.strictEqual(mockTopic.tests.length, 2);
+assert.strictEqual(mockTopic.errors.length, 1); // Fail spawns internal active error log
+
+// Test predictRetention
+const reviewedTopic = {
+  status: 'Learning',
+  reviewed: new Date().toISOString().split('T')[0], // today
+  strength: 2,
+  kFactor: 8.4
+};
+assert.strictEqual(predictRetention(reviewedTopic), 1.0); // 0 elapsed days
+
+// Test study signals
+const frictionTopic = {
+  conf: '2',
+  studySeconds: 45 * 60, // 45 min
+  reviewHistory: [{ date: '2026-07-16', confidence: 2 }],
+  tests: []
+};
+const signal1 = getTopicStudySignal(frictionTopic);
+assert.strictEqual(signal1.cls, 'friction-zone');
+
+const retrievalTopic = {
+  conf: '3',
+  studySeconds: 25 * 60, // 25 min
+  reviewHistory: [], // 0 reviews
+  tests: []
+};
+const signal2 = getTopicStudySignal(retrievalTopic);
+assert.strictEqual(signal2.cls, 'needs-retrieval');
+
+const brittleTopic = {
+  conf: '4',
+  studySeconds: 10 * 60, // 10 min
+  reviewHistory: [{ date: '2026-07-16', confidence: 4 }],
+  tests: [{ date: '2026-07-16', score: 6, outOf: 10 }] // last test failed (60% < 80%)
+};
+const signal3 = getTopicStudySignal(brittleTopic);
+assert.strictEqual(signal3.cls, 'brittle-fluency');
+
+const readyTopic = {
+  status: 'Learning',
+  conf: '4',
+  studySeconds: 22 * 60, // 22 min
+  reviewHistory: [{ date: '2026-07-16', confidence: 4 }],
+  tests: [{ date: '2026-07-16', score: 9, outOf: 10 }] // last test passed
+};
+const signal4 = getTopicStudySignal(readyTopic);
+assert.strictEqual(signal4.cls, 'ready-test');
+
+const efficientTopic = {
+  conf: '4',
+  studySeconds: 5 * 60, // 5 min
+  reviewHistory: [{ date: '2026-07-16', confidence: 4 }],
+  tests: [{ date: '2026-07-16', score: 9, outOf: 10 }] // last test passed
+};
+const signal5 = getTopicStudySignal(efficientTopic);
+assert.strictEqual(signal5.cls, 'efficient');
+
+console.log('✔ Course Tracker Heuristics tests passed!');
 console.log('\nALL TESTS PASSED SUCCESSFULLY! 🎉\n');
