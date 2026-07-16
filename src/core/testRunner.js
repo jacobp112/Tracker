@@ -24,6 +24,7 @@ import { listTrackers, createTracker, archiveTracker, deleteTracker } from './tr
 import { validateSchema, validateEntry } from './schema.js';
 import { generateSlug, generateTemplate, generateAIPrompt, validateImport, applyImport } from './importPipeline.js';
 import { getTopicStudySignal, recordReview, recordTest, topicHealth, predictRetention, strengthIncrement } from '../trackers/courseTracker.js';
+import { calculateAggregates } from '../trackers/logTracker.js';
 
 console.log('Running Multi-Tracker Dashboard unit tests...');
 
@@ -341,4 +342,34 @@ const signal5 = getTopicStudySignal(efficientTopic);
 assert.strictEqual(signal5.cls, 'efficient');
 
 console.log('✔ Course Tracker Heuristics tests passed!');
+
+// -------------------------------------------------------------
+// 6. Log Tracker Calculations Tests
+// -------------------------------------------------------------
+console.log('\n--- Running Log Tracker Calculations Tests ---');
+
+const mockLogSchema = [
+  { key: 'dist', label: 'Distance', kind: 'number' },
+  { key: 'date', label: 'Date', kind: 'date' }
+];
+
+const mockLogEntries = [
+  { dist: 5, date: '2026-07-10' },
+  { dist: 10, date: new Date().toISOString().split('T')[0] }, // today (always this week)
+  { dist: 15, date: new Date().toISOString().split('T')[0] }  // today (always this week)
+];
+
+const aggs = calculateAggregates(mockLogEntries, mockLogSchema);
+const distStats = aggs['dist'];
+
+assert.ok(distStats);
+assert.strictEqual(distStats.countLifetime, 3);
+assert.strictEqual(distStats.sumLifetime, 30);
+assert.strictEqual(distStats.avgLifetime, 10);
+assert.strictEqual(distStats.minLifetime, 5);
+assert.strictEqual(distStats.maxLifetime, 15);
+assert.strictEqual(distStats.sumThisWeek, 25);
+assert.strictEqual(distStats.countThisWeek, 2);
+
+console.log('✔ Log Tracker Calculations tests passed!');
 console.log('\nALL TESTS PASSED SUCCESSFULLY! 🎉\n');

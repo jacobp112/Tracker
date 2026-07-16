@@ -3,6 +3,7 @@ import { storageGet } from '../core/storage.js';
 import { openImportModal } from './importModal.js';
 import { renderActiveView, showToast } from './main.js';
 import { renderCourseView } from './courseView.js';
+import { renderLogView } from './logView.js';
 
 let selectedTrackerId = null;
 let showArchived = false;
@@ -146,6 +147,10 @@ export function renderTrackerList() {
 function renderDetailsPane(tracker) {
   if (tracker.type === 'course') {
     renderCourseView(tracker);
+    return;
+  }
+  if (tracker.type === 'log') {
+    renderLogView(tracker);
     return;
   }
 

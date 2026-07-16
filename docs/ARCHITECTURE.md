@@ -94,6 +94,13 @@ Syllabus topics evaluate duration, reviews count, and test failures to generate 
 - Timer state is stored in `localStorage` under `tracker:activeTimer` containing `{ trackerId, topicId, startedAt }`.
 - A single background interval in `main.js` ticks duration every second, rendering updates to DOM displays and displaying a global app-level banner.
 
+### Lightweight SVG Charting Architecture
+- **Dependency-Free Implementation**: Built-in SVG chart rendering inside `/src/ui/chartsView.js` ensures offline compliance, fast page load speeds, and zero third-party dependencies.
+- **Dynamic Dimension Scaling**:
+  - Grid size: 600px width by 300px height.
+  - Data bounds are scaled proportionally into the plotting viewport (with `minVal` and `maxVal` calculation overrides to handle flat profiles).
+- **Tactile Hover Tooltips**: Double-layered hover triggers handle point expansions, highlight transformations, and coordinate labels dynamically in plain CSS+SVG coordinates.
+
 ---
 
 ## 3. UI Design System
