@@ -14,6 +14,10 @@
   --line: #d8cfb8;
   --muted: #6f6650;         /* darkened for AA contrast */
   --shadow: rgba(17, 32, 58, 0.08);
+  --shadow-inset: rgba(17, 32, 58, 0.03);
+  --rose-soft: rgba(158, 92, 79, 0.15);
+  --gold-soft-bg: rgba(144, 102, 25, 0.15);
+  --sage-soft: rgba(77, 96, 67, 0.15);
 
   /* Fonts */
   --font-serif: "Newsreader", Georgia, serif;
@@ -42,6 +46,10 @@ body.dark-theme {
   --sage: #8ea382;
   --rose: #c78d82;
   --shadow: rgba(0, 0, 0, 0.35);
+  --shadow-inset: rgba(0, 0, 0, 0.15);
+  --rose-soft: rgba(199, 141, 130, 0.2);
+  --gold-soft-bg: rgba(216, 185, 105, 0.15);
+  --sage-soft: rgba(142, 163, 130, 0.2);
 }
 
 /* Global Reset */

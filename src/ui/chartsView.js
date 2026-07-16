@@ -180,7 +180,7 @@ export function renderChartView(tracker, container) {
       </svg>
     `;
 
-    innerHtml += `<div style="background-color: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.03);">${svgHtml}</div>`;
+    innerHtml += `<div style="background-color: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: inset 0 2px 8px var(--shadow-inset);">${svgHtml}</div>`;
     container.innerHTML = innerHtml;
 
     bindDropdown();

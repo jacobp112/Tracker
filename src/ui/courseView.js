@@ -210,7 +210,7 @@ function renderTopicRow(tracker, topic) {
         <div style="display: flex; align-items: center; gap: 8px; min-width: 140px; justify-content: flex-end;">
           ${signal ? `<span class="badge-tag ${signal.cls}" title="${escapeHtml(signal.detail)}">${escapeHtml(signal.label)}</span>` : ''}
           ${topic.status !== 'Not Started' ? `
-            <span class="badge" style="background-color: ${health < 40 ? 'rgba(158,92,79,0.15)' : (health <= 70 ? 'rgba(144,102,25,0.15)' : 'rgba(77,96,67,0.15)')}; color: ${health < 40 ? 'var(--rose)' : (health <= 70 ? 'var(--gold)' : 'var(--sage)')};" title="Bjork Health Score: ${health}%">
+            <span class="badge" style="background-color: ${health < 40 ? 'var(--rose-soft)' : (health <= 70 ? 'var(--gold-soft-bg)' : 'var(--sage-soft)')}; color: ${health < 40 ? 'var(--rose)' : (health <= 70 ? 'var(--gold)' : 'var(--sage)')};" title="Bjork Health Score: ${health}%">
               ${health}%
             </span>
           ` : ''}

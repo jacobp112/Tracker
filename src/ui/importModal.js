@@ -150,7 +150,7 @@ function renderPreview(trackerMeta, data, warnings = []) {
   // Render warnings if any
   if (warnings.length > 0) {
     html += `
-      <div style="background-color: rgba(144, 102, 25, 0.1); border-left: 4px solid var(--gold); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--gold); margin-bottom: 12px;">
+      <div style="background-color: var(--gold-soft-bg); border-left: 4px solid var(--gold); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--gold); margin-bottom: 12px;">
         <strong>Warnings:</strong>
         <ul style="margin-left: 16px; margin-top: 4px;">
           ${warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}
