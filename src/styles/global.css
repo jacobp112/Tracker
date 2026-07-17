@@ -87,6 +87,24 @@ ol {
     transform var(--dur-standard) var(--ease),
     background-color var(--dur-standard) var(--ease);
 }
+/*
+ * Hover raises the card to the deeper shadow (Doc 3 §3: "Hover raises to
+ * --shadow-card-hover"). The transition already lives on .card, so this is one
+ * rule for every content card. Reduced motion is covered by the global
+ * transition:none block below — the shadow simply snaps instead of easing.
+ *
+ * Excludes .hero-stat: it carries the heavier --shadow-hero, so the generic
+ * hover shadow would *lower* its elevation rather than raise it.
+ */
+.card:not(.hero-stat):hover {
+  box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--edge);
+  /* The transition rides on :hover, not only on .card, because most cards also
+   * carry .reveal, whose `transition` shorthand replaces .card's and drops
+   * box-shadow — without this the raise would snap. This selector outranks
+   * `body.loaded .reveal`, so the raise eases (and with delay 0, no reveal
+   * stagger). Reduced motion still zeroes it via the global block. */
+  transition: box-shadow var(--dur-standard) var(--ease);
+}
 
 /* ── Orchestrated entrance (Doc 3 §2.6) ────────────────────────── */
 .reveal {
@@ -114,6 +132,16 @@ body.loaded .reveal {
 }
 .live-pulse {
   animation: pulseRing 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+/*
+ * One-shot variant of the same ring — for a moment that happens once (a
+ * level-up, a mastery crossing) rather than the ambient "live" loop. Defined
+ * here; triggers are wired in a later phase. Reduced motion disables it via the
+ * global animation:none block, which is correct: the pulse is celebration, not
+ * content.
+ */
+.pulse-once {
+  animation: pulseRing var(--dur-reveal) cubic-bezier(0.4, 0, 0.6, 1) 1;
 }
 
 @keyframes svgPulse {

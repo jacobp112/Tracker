@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { healthStop } from '@/design/scale';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { stopClass } from './primitives';
 
 /* ── Segmented control (Document 3 §3) ───────────────────────────
@@ -67,6 +68,25 @@ export function ProgressRing({
   const circumference = 2 * Math.PI * r;
   const offset = circumference * (1 - clamped / 100);
 
+  /*
+   * Draw-in: the arc sweeps from empty to its value on mount over --dur-draw.
+   *
+   * Reduced-motion guard is in JS, not CSS, and by design: the global
+   * transition:none block already neutralises the CSS transition, so the guard
+   * exists specifically to prevent the one-frame *empty* ring before the sweep
+   * would start. `drawn` is seeded to `reduced`, so a reduced-motion viewer
+   * renders at the target offset from the very first paint — no empty→full
+   * frame at all, rather than an animation that is merely skipped.
+   */
+  const reduced = useReducedMotion();
+  const [drawn, setDrawn] = useState(reduced);
+  useEffect(() => {
+    if (reduced) return;
+    const id = requestAnimationFrame(() => setDrawn(true));
+    return () => cancelAnimationFrame(id);
+  }, [reduced]);
+  const shownOffset = drawn ? offset : circumference;
+
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
@@ -87,8 +107,8 @@ export function ProgressRing({
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset var(--dur-data) var(--ease)' }}
+          strokeDashoffset={shownOffset}
+          style={{ transition: 'stroke-dashoffset var(--dur-draw) var(--ease)' }}
         />
       </svg>
       <div
