@@ -1,0 +1,123 @@
+/*
+ * Overview (Document 3 v0.4 §5.1). Reuses the dashboard's .hero-row / .card /
+ * .props-card language rather than inventing a parallel one — these classes
+ * replace ~15 inline style objects that had drifted into per-screen variants
+ * (Document 3 §3 forbids those; Document 4 §2 DoD item 4 restates it).
+ */
+
+/* ── Hero: the course-health ring ──────────────────────────────── */
+.hero-ring {
+  align-items: center;
+  text-align: center;
+}
+.hero-ring-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: var(--space-10) 0 var(--space-8);
+  position: relative;
+}
+
+/*
+ * The empty hero — stacked, not side-by-side.
+ *
+ * Keeps the ring's 168px footprint so the card holds its hero proportions
+ * whether or not there's a number to show; without it the tallest card on the
+ * screen collapses to a sliver and the layout jumps once data arrives.
+ */
+.hero-ring-empty {
+  flex-direction: column;
+  gap: var(--space-9);
+  min-height: 168px;
+  padding: 0 var(--space-6);
+}
+.hero-empty-copy {
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  line-height: 1.55;
+  max-width: 30ch;
+}
+/* The label is a sentence, not a word — it must never wrap into a blob. */
+.hero-ring-empty .btn-primary {
+  white-space: nowrap;
+}
+/* The figure inside the ring is the hero number, so it takes hero tracking —
+ * but not the full 76px, which would crowd the arc. */
+.hero-ring-num {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink);
+}
+.hero-ring-num.is-empty {
+  color: var(--ink-muted);
+}
+.hero-ring .hero-sub {
+  justify-content: center;
+}
+
+/* ── Due for review ────────────────────────────────────────────── */
+.due-card {
+  padding: var(--space-11) var(--space-12) var(--space-10);
+  display: flex;
+  flex-direction: column;
+}
+.due-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-6);
+}
+.due-count {
+  font-size: var(--fs-prop);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.due-sub,
+.due-clear {
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  margin: var(--space-4) 0 var(--space-8);
+}
+.due-clear {
+  margin-bottom: 0;
+}
+/* The list is nested inside a card, so its radius steps down — outer always
+ * larger than inner (Doc 3 §2.5). */
+.due-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: auto;
+}
+
+/* ── Recent activity feed ──────────────────────────────────────── */
+.feed-icon {
+  display: flex;
+  width: 18px;
+  flex-shrink: 0;
+  color: var(--ink-secondary);
+}
+.feed-icon svg {
+  width: 100%;
+  height: auto;
+}
+.feed-detail {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+}
+.feed-date {
+  font-size: var(--fs-caption);
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  /* The feed's secondary detail is the first thing to go when the row can no
+   * longer hold title + detail + date without wrapping. */
+  .feed-detail {
+    display: none;
+  }
+}

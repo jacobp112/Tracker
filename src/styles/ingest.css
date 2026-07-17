@@ -1,0 +1,124 @@
+/* Paste-and-validate input — Document 3 §3, §5.6. */
+
+.paste-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.prompt-block {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.prompt-block .prompt-text {
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+  line-height: 1.6;
+  color: var(--ink-secondary);
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.prompt-block .prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.paste-area {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sub);
+  line-height: 1.6;
+  color: var(--ink);
+  transition: border-color var(--dur-micro), box-shadow var(--dur-micro);
+}
+.paste-area::placeholder {
+  color: var(--ink-muted);
+}
+.paste-area:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.paste-area[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.paste-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+/* ── Structured error list (Doc 3 §5.6) ────────────────────────── */
+.error-list {
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.error-list h3 {
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+  color: var(--danger);
+}
+.error-item {
+  display: flex;
+  gap: var(--space-5);
+  font-size: var(--fs-secondary);
+  line-height: 1.5;
+  color: var(--ink);
+}
+.error-item .error-path {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--ink-secondary);
+  flex-shrink: 0;
+  padding-top: 2px;
+  min-width: 0;
+  word-break: break-all;
+  max-width: 40%;
+}
+
+/* ── Preview (Doc 3 §5.6 step 5) ───────────────────────────────── */
+.preview-card {
+  border: 1px solid var(--success);
+  background: var(--success-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.preview-card .preview-summary {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink);
+}
+.preview-card .preview-detail {
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 160px;
+  overflow-y: auto;
+}

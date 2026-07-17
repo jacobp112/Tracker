@@ -1,0 +1,275 @@
+import { useMemo, useState } from 'react';
+import { EmptyState } from '@/components/feedback';
+import { HeroRing } from '@/components/HeroRing';
+import { Button, Card, Eyebrow } from '@/components/primitives';
+import { Prop, PropsRow } from '@/components/PropsRow';
+import { RetentionRow } from '@/components/RetentionRow';
+import { CONFIG } from '@/config/constants';
+import type { Store } from '@/domain/types';
+import {
+  activityFeed,
+  globalDueQueue,
+  globalHealth,
+  overallMastery,
+  studyStreak,
+  weeklyVolume,
+  type FeedKind,
+} from '@/engine/overview';
+import { retentionPct } from '@/engine/retention';
+import { navigate } from '@/router';
+import { ExamsIcon, FitnessIcon, OverviewIcon, StudyIcon } from '@/shell/icons';
+
+function greeting(now: Date): string {
+  const h = now.getHours();
+  if (h < 12) return 'Good morning.';
+  if (h < 18) return 'Good afternoon.';
+  return 'Good evening.';
+}
+
+interface NextAction {
+  label: string;
+  onClick: () => void;
+}
+
+/**
+ * The one thing to do next — Overview's whole reason for existing (§5.1).
+ *
+ * This screen answers "what now?", so the answer is a control in the header,
+ * not a conclusion the user assembles by scrolling to the bottom of the page.
+ * The slot always resolves to exactly one action; there is no state in which
+ * Overview has nothing to suggest.
+ *
+ * Note the first branch: a session has to attach to a course, so a tracker with
+ * no courses cannot offer "log a session" — the first action there is
+ * necessarily to add the course.
+ */
+function nextAction(
+  store: Store,
+  due: ReturnType<typeof globalDueQueue>,
+  hasLogged: boolean,
+  now: Date,
+): NextAction {
+  if (store.courses.length === 0) {
+    return { label: 'Add your first course', onClick: () => navigate('/study/add') };
+  }
+
+  // The most-decayed topic is the highest-value thing the app knows. Naming it
+  // (and its number) makes the button an answer rather than a menu.
+  const top = due[0];
+  if (top) {
+    return {
+      label: `Review ${top.topic.title} — ${retentionPct(top.topic, now)}%`,
+      onClick: () => navigate(`/course/${courseIdOf(store, top.topic.topic_id)}`),
+    };
+  }
+
+  const first = store.courses[0]!;
+  return {
+    label: hasLogged ? 'Log a session' : 'Log your first session',
+    onClick: () => navigate(`/course/${first.course_id}`),
+  };
+}
+
+const FEED_ICON: Record<FeedKind, () => JSX.Element> = {
+  session: StudyIcon,
+  exam: ExamsIcon,
+  run: FitnessIcon,
+  lift: FitnessIcon,
+};
+
+function relDate(iso: string, now: Date): string {
+  const days = Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/**
+ * Overview — Document 3 v0.4 §5.1, Document 4 E7-S1. The only cross-domain
+ * screen; answers "what should I do today?" at a glance. Everything derived
+ * live.
+ *
+ * Hierarchy (tightened in Document 3 v0.4 §0.0 item 2): the course-health ring
+ * is *the* hero stat and takes the bloom + `--shadow-hero` treatment. "Due for
+ * review" is the densest block but a plain Card — exactly one hero per screen
+ * (§3).
+ */
+export function Overview({ store }: { store: Store }) {
+  const [now] = useState(() => new Date());
+
+  const due = useMemo(() => globalDueQueue(store, 5, now), [store, now]);
+  const feed = useMemo(() => activityFeed(store, 15), [store]);
+  const health = globalHealth(store, now);
+  const mastery = overallMastery(store);
+  const streak = studyStreak(store, now);
+  const volume = weeklyVolume(store, now);
+
+  const nothingYet = mastery.total === 0 && store.runs.length === 0 && store.lifts.length === 0;
+  const action = nextAction(store, due, feed.length > 0, now);
+
+  if (nothingYet) {
+    return (
+      <div className="content">
+        {/* The action sits in the header here too, so its position is learned
+          * once and never moves as the tracker fills up. */}
+        <div className="page-head split">
+          <div>
+            <h1>{greeting(now)}</h1>
+            <p>Nothing tracked yet.</p>
+          </div>
+          <Button onClick={action.onClick}>{action.label}</Button>
+        </div>
+        <div className="section">
+          <Card>
+            {/* No button: the header above already owns the one action, and
+              * offering it twice on one screen makes neither read as primary. */}
+            <EmptyState
+              icon={<OverviewIcon />}
+              title="Nothing to review yet. Add a course to start tracking retention."
+            />
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const duePct = Math.round(CONFIG.DUE_THRESHOLD * 100);
+
+  return (
+    <div className="content">
+      <div className="page-head split reveal" style={{ ['--i' as string]: 0 }}>
+        <div>
+          <h1>{greeting(now)}</h1>
+          <p>Here's what needs your attention.</p>
+        </div>
+        <Button className="page-action" onClick={action.onClick}>
+          {action.label}
+        </Button>
+      </div>
+
+      <div className="hero-row">
+        {/* The hero: the single most prominent number on the screen (§5.1). */}
+        {health === null ? (
+          /* An em-dash is not an answer. When there's no health to show, the
+           * hero says why there isn't and offers the action that would produce
+           * one — the most prominent card on the screen shouldn't be the least
+           * useful. */
+          <Card className="hero-stat hero-ring reveal" style={{ ['--i' as string]: 1 }}>
+            <Eyebrow>Course health</Eyebrow>
+            <div className="hero-ring-body hero-ring-empty">
+              <p className="hero-empty-copy">
+                Health is measured across the topics you're actively learning. You don't have one in
+                progress yet.
+              </p>
+              <Button onClick={action.onClick}>{action.label}</Button>
+            </div>
+          </Card>
+        ) : (
+          <HeroRing
+            className="reveal"
+            style={{ ['--i' as string]: 1 }}
+            eyebrow="Course health"
+            value={health}
+            caption="Across all active topics"
+          />
+        )}
+
+        {/* Dense, but deliberately not the loudest surface (§5.1). */}
+        <Card className="due-card reveal" style={{ ['--i' as string]: 2 }}>
+          <div className="due-head">
+            <Eyebrow>Due for review</Eyebrow>
+            {due.length > 0 && (
+              <span className="due-count mono-num">
+                {due.length}
+                <span className="sr-only"> topics due</span>
+              </span>
+            )}
+          </div>
+          {due.length === 0 ? (
+            <p className="due-clear">
+              Nothing is below {duePct}% retention. You're on top of it.
+            </p>
+          ) : (
+            <>
+              <p className="due-sub">
+                {due.length === 1 ? '1 topic has' : `${due.length} topics have`} decayed below{' '}
+                {duePct}%. Most-decayed first.
+              </p>
+              <div className="list-card due-list">
+                {due.map(({ topic, courseTitle }) => (
+                  <RetentionRow
+                    key={topic.topic_id}
+                    title={topic.title}
+                    retention={retentionPct(topic, now)}
+                    badges={[{ label: courseTitle, tone: 'neutral' }]}
+                    onSelect={() => navigate(`/course/${courseIdOf(store, topic.topic_id)}`)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
+
+      <PropsRow className="reveal" style={{ ['--i' as string]: 3 }}>
+        <Prop
+          label="Study streak"
+          value={streak}
+          caption={streak === 1 ? 'consecutive day' : 'consecutive days'}
+        />
+        <Prop
+          label="This week"
+          value={volume.sessions}
+          caption={`${volume.sessions === 1 ? 'session' : 'sessions'} · ~${volume.hours} hrs`}
+        />
+        <Prop
+          label="Mastery"
+          value={`${mastery.pct}%`}
+          caption={`${mastery.mastered}/${mastery.total} topics mastered`}
+        />
+      </PropsRow>
+
+      <div className="section reveal" style={{ ['--i' as string]: 4 }}>
+        <div className="section-title">Recent activity</div>
+        <div className="section-sub">Everything you've logged, newest first.</div>
+        <Card className="list-card">
+          {feed.length === 0 ? (
+            <EmptyState
+              icon={<OverviewIcon />}
+              title="Nothing logged yet. Log a session to start the feed."
+              action={<Button onClick={() => navigate('/study')}>Open your course</Button>}
+            />
+          ) : (
+            feed.map((item) => {
+              const Icon = FEED_ICON[item.kind];
+              return (
+                <div className="row feed-row" key={`${item.kind}-${item.id}`}>
+                  <div className="row-left">
+                    <span className="feed-icon">
+                      <Icon />
+                    </span>
+                    <span className="topic">{item.title}</span>
+                    <span className="feed-detail">{item.detail}</span>
+                  </div>
+                  <div className="row-right">
+                    <span className="feed-date">{relDate(item.date, now)}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function courseIdOf(store: Store, topicId: string): string {
+  for (const c of store.courses) {
+    for (const s of c.sections) {
+      if (s.topics.some((t) => t.topic_id === topicId)) return c.course_id;
+    }
+  }
+  return '';
+}

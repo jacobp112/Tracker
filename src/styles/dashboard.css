@@ -1,0 +1,535 @@
+/*
+ * Course dashboard layout + the two signature data components
+ * (Document 3 v0.3 §5.2). Class names mirror the approved mockup.
+ */
+
+/* ── Content column ────────────────────────────────────────────── */
+.content {
+  padding: var(--space-13) var(--space-14) 60px;
+  max-width: var(--content-max);
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  margin-bottom: var(--space-6);
+  font-weight: 500;
+}
+.breadcrumb svg {
+  width: 10px;
+  height: 10px;
+  opacity: 0.6;
+}
+.breadcrumb .current {
+  color: var(--ink-secondary);
+}
+/* The clickable ancestor crumb — inherits the breadcrumb's muted look, gains
+ * the accent on hover to read as navigable. */
+.crumb-link {
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  padding: 0;
+  border-radius: var(--radius-chip);
+  transition: color var(--dur-micro);
+}
+.crumb-link:hover {
+  color: var(--accent);
+}
+.page-head h1 {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+.page-head p {
+  font-size: var(--fs-body);
+  color: var(--ink-secondary);
+  margin: var(--space-3) 0 0;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * The page's single primary action, sat in the header row beside the title.
+ * Its label can carry a topic title ("Review Eigenvalues — 41%"), so it
+ * truncates rather than pushing the greeting around or wrapping into a blob.
+ */
+.page-action {
+  flex-shrink: 0;
+  max-width: 340px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Stacked on narrow screens — a truncated action beside a truncated title
+ * would leave neither readable. */
+@media (max-width: 720px) {
+  .page-head.split {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+  }
+  .page-action {
+    max-width: none;
+  }
+}
+
+/* ── Hero row ──────────────────────────────────────────────────── */
+.hero-row {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: var(--space-10);
+  margin-top: var(--space-12);
+  align-items: stretch;
+}
+.hero-stat {
+  padding: var(--space-12) var(--space-13) var(--space-11);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-hero), inset 0 1px 0 var(--edge);
+  display: flex;
+  flex-direction: column;
+}
+/* the corner bloom — what makes the hero read as the hero */
+.hero-stat::before {
+  content: '';
+  position: absolute;
+  top: -90px;
+  right: -70px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(94, 92, 230, 0.11),
+    rgba(0, 113, 227, 0.05) 45%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+.hero-number {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: var(--space-5) 0 var(--space-3);
+  position: relative;
+  font-variant-numeric: tabular-nums;
+}
+.hero-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  position: relative;
+}
+
+/* ── Sparkline ─────────────────────────────────────────────────── */
+.hero-chart {
+  margin-top: auto;
+  padding-top: var(--space-9);
+  position: relative;
+}
+.hero-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+/* Stands in for the sparkline when the course has no retention history — same
+ * footprint, so the hero card keeps its height. */
+.hero-chart-empty {
+  margin-top: auto;
+  padding-top: var(--space-9);
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  line-height: 1.5;
+}
+.goal-label {
+  position: absolute;
+  top: var(--space-3);
+  right: 2px;
+  font-size: var(--fs-nano);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.spark-readout {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  background: var(--ink);
+  color: var(--surface);
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  transition: opacity 0.12s var(--ease);
+  z-index: 4;
+}
+.spark-readout .ro-val {
+  font-family: var(--font-mono);
+}
+.spark-readout .ro-date {
+  color: var(--ink-muted);
+  font-weight: 500;
+  margin-left: 2px;
+}
+/* draw-on: 1.1s (Doc 3 §2.6). Neutralised by the reduced-motion block. */
+@keyframes sparkDraw {
+  from {
+    stroke-dashoffset: var(--len, 1000);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.spark-draw {
+  stroke-dasharray: 1000;
+  animation: sparkDraw var(--dur-draw) var(--ease) forwards;
+}
+
+/* ── Activity calendar ─────────────────────────────────────────── */
+.activity-card {
+  padding: var(--space-11) var(--space-12) var(--space-10);
+  display: flex;
+  flex-direction: column;
+}
+.activity-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-8);
+}
+.activity-head .eyebrow {
+  text-transform: none;
+  font-weight: 600;
+  font-size: var(--fs-secondary);
+  color: var(--ink);
+  letter-spacing: 0;
+}
+.activity-head .range {
+  font-size: var(--fs-eyebrow);
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+}
+.heatmap-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 3px;
+  flex: 1;
+  min-height: 96px;
+}
+/* Empty window: drop the grid to scenery so it can't be mistaken for a failed
+ * load, and let the caption below carry the meaning. */
+.heatmap.is-empty {
+  opacity: 0.4;
+}
+.heatmap-empty-note {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 var(--space-8);
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  pointer-events: none;
+}
+.cell {
+  border-radius: 3px;
+  background: var(--accent-soft);
+  transition: outline-color 0.1s, transform 0.1s var(--spring);
+  outline: 1.5px solid transparent;
+  outline-offset: 1px;
+  cursor: default;
+}
+.cell:hover,
+.cell:focus-visible {
+  outline-color: var(--border-strong);
+  transform: scale(1.18);
+  z-index: 2;
+}
+.cell.l0 { background: var(--cell-0); }
+.cell.l1 { background: var(--cell-1); }
+.cell.l2 { background: var(--cell-2); }
+.cell.l3 { background: var(--cell-3); }
+.cell.l4 { background: var(--cell-4); }
+.activity-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: var(--space-6);
+  font-size: 11.5px;
+  color: var(--ink-secondary);
+}
+.months {
+  display: flex;
+  gap: var(--space-12);
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.legend .cell {
+  width: 10px;
+  height: 10px;
+  cursor: default;
+}
+.legend .cell:hover {
+  transform: none;
+}
+
+/* ── Props row ─────────────────────────────────────────────────── */
+/*
+ * Column count comes from `--cols`, set by <PropsRow> from its child count —
+ * a props row can't be wrong about its own arity (Doc 3 v0.4 §0.0 item 2).
+ *
+ * The internal dividers are 1px grid *gaps* letting the card's background show
+ * through, not per-child borders. This is what stays correct at any column
+ * count and across the 920px wrap: no child needs to know whether it is last in
+ * its row, because no child draws a divider.
+ */
+.props-card {
+  margin-top: var(--space-10);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), 1fr);
+  gap: 1px;
+  background: var(--border);
+  overflow: hidden;
+}
+.prop {
+  padding: var(--space-9) var(--space-11);
+  background: var(--surface);
+  position: relative;
+  transition: background 0.18s var(--ease);
+}
+.prop:hover {
+  background: var(--surface-sunken);
+}
+.prop-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-secondary);
+  margin-bottom: var(--space-4);
+}
+.prop-top svg {
+  width: 15px;
+  height: 15px;
+}
+.prop-top span {
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+/* The info marker — a small circled "i" carrying the metric's plain-language
+ * explanation. Overrides the uppercase label styling above (it's a glyph, not
+ * a label) and reads on hover/focus via its title + aria-label. */
+.prop-top .prop-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  color: var(--ink-muted);
+  font-size: 9px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: help;
+  transition: color var(--dur-micro), border-color var(--dur-micro);
+}
+.prop-top .prop-hint:hover,
+.prop-top .prop-hint:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.prop-value {
+  font-size: var(--fs-prop);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.prop-caption {
+  font-size: var(--fs-caption);
+  color: var(--ink-secondary);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.prop-due .prop-value {
+  color: var(--accent);
+}
+.prop-due .prop-top span {
+  color: var(--ink);
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.prop-action {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: var(--fs-caption);
+}
+.prop-action:hover {
+  text-decoration: underline;
+}
+.prop-sep {
+  color: var(--border-strong);
+}
+
+/* ── Sections ──────────────────────────────────────────────────── */
+.section {
+  margin-top: var(--space-14);
+}
+.section-title {
+  font-size: var(--fs-section);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 var(--space-2);
+}
+.section-sub {
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  margin: 0 0 var(--space-8);
+}
+
+/* ── Review plan timeline ──────────────────────────────────────── */
+.plan-card {
+  padding: var(--space-11) var(--space-12) var(--space-12);
+}
+.plan-item {
+  display: flex;
+  gap: var(--space-8);
+  position: relative;
+  padding-bottom: var(--space-11);
+}
+.plan-item:last-child {
+  padding-bottom: 0;
+}
+.plan-item::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: var(--space-9);
+  bottom: 0;
+  width: 1px;
+  background: var(--border-strong);
+}
+.plan-item:last-child::before {
+  display: none;
+}
+.marker {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  flex-shrink: 0;
+  margin-top: 3px;
+  background: var(--surface);
+}
+.marker.active {
+  border-color: var(--accent);
+}
+.marker.active::after {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin: 2px auto;
+}
+.plan-body {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+.plan-title {
+  font-size: var(--fs-row);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.plan-badge {
+  font-size: var(--fs-nano);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+.plan-desc {
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+  margin-top: 3px;
+}
+.plan-date {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sub);
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive (Doc 3 §2.5 / §6) ──────────────────────────────── */
+@media (max-width: 920px) {
+  .hero-row {
+    grid-template-columns: 1fr;
+  }
+  /* 4→2 columns (Doc 3 §3). The gap-divider model needs no border fixups here —
+   * but an odd child count would leave the final cell empty, showing the card's
+   * divider background as a dead block. Stretching a lone last child across the
+   * row keeps the surface whole at any arity. */
+  .props-card {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .prop:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 720px) {
+  .content {
+    padding: var(--space-10) var(--space-9) 48px;
+  }
+  .hero-number {
+    font-size: 64px;
+  }
+}

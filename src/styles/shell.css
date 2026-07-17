@@ -1,0 +1,389 @@
+/*
+ * App shell & navigation — Document 3 §4 + the approved mockup.
+ * Desktop: persistent translucent sidebar. Below 768px it becomes a bottom
+ * tab bar (§4). The mockup omits mobile nav; Document 3 governs that case.
+ */
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-9) var(--space-7);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.course-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-4) var(--space-8);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  border-radius: var(--space-4);
+  transition: background var(--dur-micro);
+  width: 100%;
+  text-align: left;
+}
+.course-switch:hover {
+  background: rgba(128, 128, 128, 0.08);
+}
+.course-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(160deg, #4b8bf5, #0071e3);
+  box-shadow: 0 2px 6px rgba(0, 113, 227, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: var(--fs-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.course-meta {
+  flex: 1;
+  min-width: 0;
+}
+.course-name {
+  font-size: var(--fs-nav);
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.course-name svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0.45;
+  flex-shrink: 0;
+}
+.course-mastery {
+  font-size: var(--fs-eyebrow);
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.cmdk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: 7px 9px;
+  margin: 0 0 var(--space-7);
+  background: rgba(128, 128, 128, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--ink-muted);
+  font-size: var(--fs-sub);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background var(--dur-micro), border-color var(--dur-micro);
+}
+.cmdk:hover {
+  background: rgba(128, 128, 128, 0.14);
+  border-color: var(--border-strong);
+}
+.cmdk svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+.cmdk-label {
+  flex: 1;
+  text-align: left;
+}
+.cmdk-key {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 5px;
+  /* 10% tint, not 16%: at 16% the pill darkens the surface enough to drop the
+   * secondary-ink legend to 4.25:1 in light theme. §6 floor. */
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--ink-secondary);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-4) var(--space-5);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--space-4);
+  position: relative;
+  font-size: var(--fs-nav);
+  color: var(--ink-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-micro), color var(--dur-micro);
+  width: 100%;
+  text-align: left;
+}
+.nav-item:not(.active):not(.nav-action):hover {
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--ink);
+}
+.nav-item svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+.nav-item.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-soft);
+}
+.nav-item.active svg {
+  opacity: 1;
+  color: var(--accent);
+}
+/* active rail marker */
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-7) * -1);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+.nav-action {
+  border: 1.5px dashed var(--border-strong);
+  background: transparent;
+  color: var(--ink-muted);
+  font-weight: 500;
+  border-radius: var(--space-4);
+  transition: border-color var(--dur-micro), color var(--dur-micro);
+}
+.nav-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Split nav item — the label half navigates, the chevron half discloses. The
+ * padding moves onto the halves so each is a full-height hit target. */
+.nav-item-split {
+  padding: 0;
+  gap: 0;
+}
+.nav-item-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: inherit;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  text-align: left;
+}
+.nav-disclosure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) var(--space-5) var(--space-4) var(--space-3);
+  border-radius: inherit;
+  color: inherit;
+}
+
+.nav-chevron {
+  width: 14px !important;
+  height: 14px !important;
+  opacity: 0.5;
+  transition: transform 0.2s var(--ease);
+}
+.nav-group.collapsed .nav-chevron {
+  transform: rotate(-90deg);
+}
+
+.sub-nav {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.22s var(--ease), opacity 0.22s var(--ease),
+    visibility 0.22s var(--ease);
+  opacity: 1;
+  visibility: visible;
+  margin-left: 23px;
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--border);
+}
+.nav-group.collapsed .sub-nav {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  /* Collapsing to 0fr with overflow:hidden only *visually* hides the course
+   * links — they keep their place in the tab order, so a keyboard user lands
+   * on invisible controls. visibility removes them from it, and transitions
+   * discretely so it flips only once the row has finished closing. */
+  visibility: hidden;
+}
+.sub-nav-inner {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2) 0 var(--space-3);
+}
+.sub-item {
+  font-size: var(--fs-sub);
+  color: var(--ink-secondary);
+  font-weight: 500;
+  padding: var(--space-3) var(--space-5);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background var(--dur-micro), color var(--dur-micro);
+  width: 100%;
+  text-align: left;
+}
+.sub-item:hover {
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--ink);
+}
+.sub-item.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: var(--space-7);
+  border-top: 1px solid var(--border);
+}
+
+/* ── Main / topbar ─────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  min-width: 0;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-7) var(--space-14);
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-size: var(--fs-brand);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+}
+/* theme toggle icon crossfade */
+.theme-toggle {
+  position: relative;
+}
+.theme-toggle .sun,
+.theme-toggle .moon {
+  transition: opacity var(--dur-standard) var(--ease), transform 0.35s var(--spring);
+}
+[data-theme='light'] .theme-toggle .moon {
+  opacity: 0;
+  transform: scale(0.4) rotate(-90deg);
+  position: absolute;
+}
+[data-theme='dark'] .theme-toggle .sun {
+  opacity: 0;
+  transform: scale(0.4) rotate(90deg);
+  position: absolute;
+}
+
+/* ── Bottom tab bar — Document 3 §4, below 768px ───────────────── */
+.tabbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    background: var(--bg-sidebar);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    /* iOS touch target minimum (Doc 3 §6) */
+    min-height: var(--bottom-tab-height);
+    min-width: 44px;
+    font-size: var(--fs-nano);
+    font-weight: 500;
+    color: var(--ink-secondary);
+    transition: color var(--dur-micro);
+  }
+  .tab svg {
+    width: 20px;
+    height: 20px;
+  }
+  .tab.active {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  /* keep the last rows clear of the fixed bar */
+  .content {
+    padding-bottom: calc(var(--bottom-tab-height) + env(safe-area-inset-bottom, 0px) + 32px);
+  }
+  .topbar {
+    padding: var(--space-6) var(--space-9);
+  }
+}

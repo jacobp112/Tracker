@@ -1,0 +1,105 @@
+/* Exams screen — Document 3 §5.4. */
+
+.exam-card {
+  padding: var(--space-11) var(--space-12);
+}
+.exam-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-6);
+}
+.exam-title {
+  font-size: var(--fs-section);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.exam-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-6);
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+}
+.exam-score {
+  font-weight: 600;
+  color: var(--ink);
+}
+.exam-pct {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.exam-group + .exam-group {
+  margin-top: var(--space-6);
+}
+.exam-covers {
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-secondary);
+  margin-bottom: var(--space-4);
+}
+.exam-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.exam-row:last-child {
+  border-bottom: none;
+}
+.exam-topic {
+  font-size: var(--fs-row);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exam-row-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.exam-marks {
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+.exam-uniform {
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-weight: 500;
+  font-size: var(--fs-caption);
+}
+.exam-errchips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.exam-effect {
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-chip);
+  white-space: nowrap;
+}
+.exam-effect.boosted {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.exam-effect.flagged {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
