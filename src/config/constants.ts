@@ -83,6 +83,28 @@ export const CONFIG = {
 
   /** Default number of topics in the review queue (§11). */
   REVIEW_QUEUE_SIZE: 5,
+
+  /**
+   * Per-topic leveling (engine/leveling.ts). Levels are a live view of genuine
+   * progress, never stored. This is the one tunable table the banding reads;
+   * `topicLevel` inlines no thresholds of its own.
+   */
+  LEVEL: {
+    /**
+     * A topic earns at least level `i + 1` once its health() reaches
+     * `HEALTH_BANDS[i]`; below the first band it is level 0. The array length
+     * defines the maximum level (here, 5), so there is no separate MAX_LEVEL to
+     * drift out of sync.
+     */
+    HEALTH_BANDS: [25, 45, 62, 78, 90],
+    /**
+     * Cap while the topic has no *passed* test. Health leans partly on
+     * self-reported confidence and on calibration that defaults to full without
+     * tests, so unvalidated topics must not climb past here — the top bands are
+     * earned by validation, not asserted.
+     */
+    UNVALIDATED_CAP: 3,
+  },
 } as const;
 
 /** Health weights must sum to 1, or `health` is no longer a 0–100 score. */
