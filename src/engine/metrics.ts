@@ -101,7 +101,7 @@ export interface Badge {
   meaning: string;
 }
 
-const BADGE_META: Record<BadgeId, Omit<Badge, 'id'>> = {
+export const BADGE_META: Record<BadgeId, Omit<Badge, 'id'>> = {
   slow_growth: {
     label: 'Slow growth',
     tone: 'warn',

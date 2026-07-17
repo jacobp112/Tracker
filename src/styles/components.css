@@ -191,6 +191,41 @@
   color: var(--accent);
 }
 
+/* ── Diagnostic badge pill (Document 2 §8) ─────────────────────────
+ * Soft-fill + matching ink per tone; glyph inherits the ink via currentColor.
+ * All values are tokens — the pill radius is the full --radius-pill (distinct
+ * from .tag's chip radius). */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.badge-glyph {
+  display: inline-flex;
+}
+.badge-glyph svg {
+  width: var(--space-6);
+  height: var(--space-6);
+}
+.badge.ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.badge.warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.badge.bad {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 /* ── Status pill (Doc 2 §7 ladder) ─────────────────────────────── */
 .status-pill {
   font-size: var(--fs-micro);

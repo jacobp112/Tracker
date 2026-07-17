@@ -112,3 +112,31 @@ export const CalendarIcon = () => (
     <path d="M3 9h18M8 2v4M16 2v4" />
   </svg>
 );
+
+/* ── Badge tone glyphs (Document 2 §8 diagnostic badges) ───────────
+ * currentColor throughout, so each inherits its badge's tone ink. Shape carries
+ * the meaning alongside colour (Doc 3 §6): check = good, triangle = caution,
+ * circle = problem. Rounded caps/joins so they read cleanly at ~12px. */
+const G = { ...S, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+
+export const BadgeOkIcon = () => (
+  <svg viewBox="0 0 24 24" {...G}>
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
+export const BadgeWarnIcon = () => (
+  <svg viewBox="0 0 24 24" {...G}>
+    <path d="M12 4 3 19h18L12 4Z" />
+    <path d="M12 10v4" />
+    <path d="M12 17h.01" />
+  </svg>
+);
+
+export const BadgeBadIcon = () => (
+  <svg viewBox="0 0 24 24" {...G}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v4" />
+    <path d="M12 16h.01" />
+  </svg>
+);

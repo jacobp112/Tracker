@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActivityCalendar, toLocalDateKey, type ActivityDay } from '@/components/ActivityCalendar';
+import { Badge } from '@/components/Badge';
 import { CalibrationIndicator, DataTable, ProgressRing, SegmentedControl } from '@/components/controls';
 import { EmptyState, useToast } from '@/components/feedback';
 import { HeroRing } from '@/components/HeroRing';
@@ -19,6 +20,7 @@ import {
   Tag,
   type Status,
 } from '@/components/primitives';
+import { BADGE_META, type BadgeId } from '@/engine/metrics';
 import { RetentionRow } from '@/components/RetentionRow';
 import { Sheet } from '@/components/Sheet';
 import { Sparkline, type SparkPoint } from '@/components/Sparkline';
@@ -127,6 +129,12 @@ export function ComponentShowcase() {
         <Tag tone="neutral">Boredom zone</Tag>
         <Tag tone="ok">Ready to test</Tag>
         <Tag tone="accent">Next</Tag>
+      </Demo>
+
+      <Demo title="Diagnostic badge pills — Doc 2 §8">
+        {Object.entries(BADGE_META).map(([id, meta]) => (
+          <Badge key={id} badge={{ id: id as BadgeId, ...meta }} />
+        ))}
       </Demo>
 
       <Demo title="Delta chip">
