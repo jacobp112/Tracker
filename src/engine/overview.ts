@@ -1,5 +1,5 @@
 import { toLocalDateKey } from '@/components/ActivityCalendar';
-import type { Store } from '@/domain/types';
+import type { JobStage, Store } from '@/domain/types';
 import { allTopics } from '@/domain/types';
 import { courseHealth, dueQueue, type TopicRef } from './course';
 import { formatPace } from './fitness';
@@ -88,7 +88,18 @@ export function weeklyVolume(store: Store, now = new Date()): { sessions: number
 
 /* ── Unified activity feed (the visible event-sourcing model) ────── */
 
-export type FeedKind = 'session' | 'exam' | 'run' | 'lift';
+export type FeedKind = 'session' | 'exam' | 'run' | 'lift' | 'job';
+
+/** Feed voice per stage — a verb phrase, not a status dump (Document 3 §7). */
+const JOB_FEED_TITLE: Record<JobStage, (company: string) => string> = {
+  saved: (c) => `Saved ${c}`,
+  applied: (c) => `Applied to ${c}`,
+  screen: (c) => `Screen scheduled — ${c}`,
+  interview: (c) => `Interview — ${c}`,
+  offer: (c) => `Offer from ${c}`,
+  rejected: (c) => `Rejected by ${c}`,
+  accepted: (c) => `Accepted offer — ${c}`,
+};
 
 export interface FeedItem {
   id: string;
@@ -158,6 +169,20 @@ export function activityFeed(store: Store, limit = 20): FeedItem[] {
       title: 'Lifting session',
       detail: `${exercises} ${exercises === 1 ? 'exercise' : 'exercises'}`,
     });
+  }
+
+  // Every stage move is an activity — the append-only stage_history IS the
+  // job domain's event log, so the feed reads straight from it.
+  for (const app of store.applications) {
+    for (const e of app.stage_history) {
+      items.push({
+        id: e.event_id,
+        kind: 'job',
+        date: e.date,
+        title: JOB_FEED_TITLE[e.stage](app.company),
+        detail: app.role,
+      });
+    }
   }
 
   return items

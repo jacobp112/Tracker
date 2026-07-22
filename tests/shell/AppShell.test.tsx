@@ -33,9 +33,9 @@ describe('AppShell — Document 3 §4 / E1-S3', () => {
     expect(navs).toHaveLength(2);
   });
 
-  it('reaches Add tracker and Settings from the shell', () => {
+  it('reaches Quick add and Settings from the shell', () => {
     renderShell();
-    expect(screen.getByRole('button', { name: /add tracker/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quick add/i })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /settings/i }).length).toBeGreaterThan(0);
   });
 

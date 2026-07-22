@@ -43,10 +43,11 @@ function renderDash(c: Course) {
 }
 
 describe('E4-S1 — dashboard shell', () => {
-  it('renders the breadcrumb and course name', () => {
+  it('renders the breadcrumb and the course name as the headline', () => {
     renderDash(course([topic()]));
-    expect(screen.getByText('Advanced Theory')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /course dashboard/i })).toBeInTheDocument();
+    // The course's own name is the page h1; the breadcrumb carries it too.
+    expect(screen.getByRole('heading', { name: 'Advanced Theory' })).toBeInTheDocument();
+    expect(screen.getAllByText('Advanced Theory').length).toBeGreaterThanOrEqual(1);
   });
 });
 

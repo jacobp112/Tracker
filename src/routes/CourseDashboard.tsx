@@ -103,8 +103,11 @@ export function CourseDashboard({
       </div>
 
       <div className="page-head reveal" style={{ ['--i' as string]: 1 }}>
-        <h1>Course dashboard</h1>
-        <p>Overview of your progress and retention in {course.title}.</p>
+        {/* The course's own name — the page's one headline shouldn't be spent
+          * on the words "Course dashboard" when the breadcrumb already says
+          * where you are structurally. */}
+        <h1>{course.title}</h1>
+        <p>Your progress and retention at a glance.</p>
       </div>
 
       <div className="hero-row">

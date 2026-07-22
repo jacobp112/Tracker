@@ -14,9 +14,11 @@ import { navigate } from '@/router';
 export function AddCourse({
   store,
   commitValue,
+  undoLast,
 }: {
   store: Store;
   commitValue: (schemaName: 'course', value: unknown) => string | null;
+  undoLast: () => string | null;
 }) {
   const { toast } = useToast();
 
@@ -50,7 +52,15 @@ export function AddCourse({
                 toast(error, 'error');
                 return;
               }
-              toast(COMMIT_VERB.course);
+              toast(COMMIT_VERB.course, 'success', {
+                label: 'Undo',
+                onClick: () => {
+                  const err = undoLast();
+                  toast(err ?? 'Undone.', err ? 'error' : 'info');
+                  // The course this page navigated into no longer exists.
+                  if (!err) navigate('/study');
+                },
+              });
               navigate(`/course/${(value as Course).course_id}`);
             }}
           />

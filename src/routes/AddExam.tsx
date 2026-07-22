@@ -16,9 +16,11 @@ import { navigate } from '@/router';
 export function AddExam({
   store,
   commitValue,
+  undoLast,
 }: {
   store: Store;
   commitValue: (schemaName: 'exam', value: unknown) => string | null;
+  undoLast: () => string | null;
 }) {
   const { toast } = useToast();
 
@@ -52,7 +54,13 @@ export function AddExam({
                 toast(error, 'error');
                 return;
               }
-              toast(COMMIT_VERB.exam);
+              toast(COMMIT_VERB.exam, 'success', {
+                label: 'Undo',
+                onClick: () => {
+                  const err = undoLast();
+                  toast(err ?? 'Undone.', err ? 'error' : 'info');
+                },
+              });
               navigate('/exams');
             }}
           />

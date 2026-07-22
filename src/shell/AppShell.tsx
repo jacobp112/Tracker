@@ -185,9 +185,13 @@ export function AppShell({
 
           <div className="nav-divider" />
 
-          <button type="button" className="nav-item nav-action" onClick={() => navigate('/study/add')}>
+          <button
+            type="button"
+            className={`nav-item nav-action ${active === 'quick-add' ? 'active' : ''}`}
+            onClick={() => navigate('/add')}
+          >
             <AddIcon />
-            Add tracker
+            Quick add
           </button>
         </nav>
 

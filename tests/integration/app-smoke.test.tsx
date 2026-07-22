@@ -158,7 +158,8 @@ describe('App smoke — every route renders with real data', () => {
 
   it('Course dashboard', () => {
     mountAt('#/course/course_smoke0001');
-    expect(screen.getByRole('heading', { name: /course dashboard/i })).toBeInTheDocument();
+    // The page h1 is the course's own name.
+    expect(screen.getByRole('heading', { name: 'Advanced Theory' })).toBeInTheDocument();
     expect(screen.getByText('Retention matrix')).toBeInTheDocument();
     // A real topic row from the seeded course.
     expect(screen.getByRole('button', { name: 'Closures' })).toBeInTheDocument();

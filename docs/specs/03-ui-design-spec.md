@@ -375,3 +375,38 @@ Follows the writing principles: plain, active, sentence case, user-side language
 - Exact end-of-session and auto-repair prompt templates → **Document 4 (Product Spec)**
 - Full user stories mapping each screen to acceptance criteria, with DoR/DoD → **Document 4**
 - The Topic schema in Document 1 must be synced to the real model (Document 2 v0.2): carry `strength`, `kFactor`, `driftHistory[]`, `reviewHistory[]`, `conf`, `cards`, and error linkage; **drop** the withdrawn `ease_factor` / `memory_strength` fields. Restated here as a cross-doc dependency to resolve before build.
+
+---
+
+## 9. Addendum v0.5 (2026-07-22) — post-v1 UI amendments
+
+Amendments adopted after the v1 build, recorded here per the DoD rule that the
+source doc is updated before implementation deviates from it.
+
+1. **Topic status control (Document 2 §7 surfaced).** The topic-detail sheet
+   gains a segmented status control (Not started / Learning / Practising /
+   Mastered). Status was always learner-set; v0.4 rendered it as a read-only
+   pill, leaving mastery, velocity, and the finish projection unreachable.
+   The engine's `promote` rules (strength seeding, `mastered_at` stamping) are
+   unchanged.
+2. **Quick review (one-tap manual review).** The topic-detail sheet gains a
+   five-button confidence row that logs a `manual_review` ReviewEvent through
+   the standard recalculation path. Document 1 §2.4 always modeled the source;
+   this gives it a surface. No AI or network involvement — §13.6 stands.
+3. **Quick add (universal paste inbox).** A single `#/add` screen accepts any
+   pasted ingestion JSON; the schema is detected from its structural
+   discriminators and the standard parse → validate → integrity → preview →
+   commit pipeline runs. The per-domain Add screens remain the home of their
+   copy-prompts. The shell's "Add tracker" slot is relabelled **Quick add**.
+4. **Paste-to-validate.** In every paste-and-validate input, a paste gesture
+   triggers validation immediately; the explicit confirm before commit is
+   unchanged (§5.6 step 5 intact).
+5. **Undo on commit toasts.** Success toasts for paste commits carry a
+   single-level Undo action (8s lifetime). Undo restores the exact pre-commit
+   store — possible because commits are atomic clone-swaps (E2-S4).
+6. **Course dashboard headline.** The page h1 is the course's own title, not
+   the words "Course dashboard" (E4-S1 amended).
+7. **Jobs domain (post-v1 extension).** Pipeline board, application detail
+   sheet, and funnel props-row join §5 as a new screen family; the Overview
+   gains a "Coming up" agenda (job next-action dates) and job stage events in
+   the activity feed.

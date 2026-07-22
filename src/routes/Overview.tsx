@@ -15,9 +15,11 @@ import {
   weeklyVolume,
   type FeedKind,
 } from '@/engine/overview';
+import { STAGE_LABEL, upcomingActions } from '@/engine/jobs';
 import { retentionPct } from '@/engine/retention';
+import { currentStage } from '@/domain/types';
 import { navigate } from '@/router';
-import { ExamsIcon, FitnessIcon, OverviewIcon, StudyIcon } from '@/shell/icons';
+import { ExamsIcon, FitnessIcon, JobsIcon, OverviewIcon, StudyIcon } from '@/shell/icons';
 
 function greeting(now: Date): string {
   const h = now.getHours();
@@ -75,7 +77,19 @@ const FEED_ICON: Record<FeedKind, () => JSX.Element> = {
   exam: ExamsIcon,
   run: FitnessIcon,
   lift: FitnessIcon,
+  job: JobsIcon,
 };
+
+/** "in 3 days" / "today" / "2 days overdue" — deadlines are relative things. */
+function relDeadline(dateKey: string, now: Date): { label: string; overdue: boolean } {
+  const target = new Date(`${dateKey}T00:00:00`);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  if (days === 0) return { label: 'today', overdue: false };
+  if (days === 1) return { label: 'tomorrow', overdue: false };
+  if (days > 1) return { label: `in ${days} days`, overdue: false };
+  return { label: days === -1 ? '1 day overdue' : `${-days} days overdue`, overdue: true };
+}
 
 function relDate(iso: string, now: Date): string {
   const days = Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000);
@@ -100,6 +114,7 @@ export function Overview({ store }: { store: Store }) {
 
   const due = useMemo(() => globalDueQueue(store, 5, now), [store, now]);
   const feed = useMemo(() => activityFeed(store, 15), [store]);
+  const actions = useMemo(() => upcomingActions(store).slice(0, 5), [store]);
   const health = globalHealth(store, now);
   const mastery = overallMastery(store);
   const streak = studyStreak(store, now);
@@ -230,7 +245,37 @@ export function Overview({ store }: { store: Store }) {
         />
       </PropsRow>
 
-      <div className="section reveal" style={{ ['--i' as string]: 4 }}>
+      {actions.length > 0 && (
+        <div className="section reveal" style={{ ['--i' as string]: 4 }}>
+          <div className="section-title">Coming up</div>
+          <div className="section-sub">Job deadlines and interviews, soonest first.</div>
+          <Card className="list-card">
+            {actions.map((app) => {
+              const when = relDeadline(app.next_action_date!, now);
+              return (
+                <div className="row" key={app.application_id}>
+                  <div className="row-left">
+                    <span className="feed-icon">
+                      <JobsIcon />
+                    </span>
+                    <button type="button" className="topic topic-btn" onClick={() => navigate('/jobs')}>
+                      {app.company} — {app.role}
+                    </button>
+                    <span className="feed-detail">{STAGE_LABEL[currentStage(app)]}</span>
+                  </div>
+                  <div className="row-right">
+                    <span className={`feed-date ${when.overdue ? 'deadline-overdue' : ''}`}>
+                      {when.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        </div>
+      )}
+
+      <div className="section reveal" style={{ ['--i' as string]: 5 }}>
         <div className="section-title">Recent activity</div>
         <div className="section-sub">Everything you've logged, newest first.</div>
         <Card className="list-card">

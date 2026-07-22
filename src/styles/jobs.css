@@ -52,6 +52,12 @@
   min-height: var(--space-10);
 }
 
+.job-column-empty {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  padding: var(--space-4) var(--space-2);
+}
+
 .job-card {
   display: flex;
   flex-direction: column;
@@ -66,11 +72,18 @@
   border-radius: var(--radius-sm);
   padding: var(--space-4) var(--space-5);
   cursor: pointer;
-  transition: border-color 120ms ease, transform 120ms ease;
+  transition: border-color 120ms ease;
 }
 .job-card:hover {
   border-color: var(--accent);
-  transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .job-card {
+    transition: border-color 120ms ease, transform 120ms ease;
+  }
+  .job-card:hover {
+    transform: translateY(-1px);
+  }
 }
 .job-card:focus-visible {
   outline: 2px solid var(--accent);
@@ -119,8 +132,25 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-chip);
   padding: var(--space-3) var(--space-5);
+  /* Without this the native calendar chrome stays light in dark mode. */
+  color-scheme: light;
+}
+:root[data-theme='dark'] .job-date-input {
+  color-scheme: dark;
 }
 .job-date-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* Stage-move actions in the detail sheet — an even grid, not a ragged wrap. */
+.job-stage-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+@media (max-width: 480px) {
+  .job-stage-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

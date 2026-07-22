@@ -25,32 +25,44 @@ export function EmptyState({
  * The verb matches the action: "Session logged," never "Success."
  */
 export type ToastTone = 'success' | 'error' | 'info';
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface Toast {
   id: number;
   message: string;
   tone: ToastTone;
+  action?: ToastAction;
 }
 
 interface ToastApi {
-  toast: (message: string, tone?: ToastTone) => void;
+  toast: (message: string, tone?: ToastTone, action?: ToastAction) => void;
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
 
 const TOAST_MS = 4000;
+/** A toast carrying an action stays longer — the user needs time to decide,
+ *  not just to read. */
+const TOAST_ACTION_MS = 8000;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toast = useCallback((message: string, tone: ToastTone = 'success') => {
+  const toast = useCallback((message: string, tone: ToastTone = 'success', action?: ToastAction) => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, message, tone }]);
+    setToasts((t) => [...t, { id, message, tone, action }]);
     window.setTimeout(() => {
       setToasts((t) => t.filter((x) => x.id !== id));
-    }, TOAST_MS);
+    }, action ? TOAST_ACTION_MS : TOAST_MS);
   }, []);
 
   const api = useMemo(() => ({ toast }), [toast]);
+
+  const dismiss = (id: number) => setToasts((t) => t.filter((x) => x.id !== id));
 
   return (
     <ToastContext.Provider value={api}>
@@ -60,6 +72,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div key={t.id} className={`toast ${t.tone}`}>
             <span className="toast-dot" aria-hidden="true" />
             {t.message}
+            {t.action && (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  // Acting dismisses — a consumed Undo hanging around invites
+                  // a second click that can only fail.
+                  dismiss(t.id);
+                  t.action!.onClick();
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
           </div>
         ))}
       </div>

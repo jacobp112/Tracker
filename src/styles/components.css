@@ -651,6 +651,82 @@ body.loaded .bar-fill {
 .toast.info .toast-dot {
   background: var(--accent);
 }
+/* Inline toast action (e.g. Undo) — inverted context, so it borrows the
+ * toast's own ink rather than the page palette. */
+.toast .toast-action {
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  margin-left: var(--space-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  border-radius: var(--radius-chip);
+}
+.toast .toast-action:focus-visible {
+  outline: 2px solid var(--bg-page);
+  outline-offset: 1px;
+}
+
+/* ── Quick review (topic detail) ─────────────────────────────────
+ * Five confidence taps, each a statement not a score: number + wording.
+ */
+.quick-review {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+.quick-review-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font: inherit;
+  color: var(--ink-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-2);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.quick-review-btn:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.quick-review-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.quick-review-num {
+  font-size: var(--fs-row);
+  font-weight: 700;
+  color: var(--ink);
+}
+.quick-review-hint {
+  font-size: var(--fs-micro);
+  text-align: center;
+  line-height: 1.3;
+}
+@media (max-width: 480px) {
+  .quick-review {
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-3);
+  }
+  .quick-review-hint {
+    display: none; /* numbers alone at phone width; hints don't fit legibly */
+  }
+}
+
+/* Overdue deadline — the one place the feed date carries a warning. */
+.deadline-overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
 
 /* ── Settings rows ─────────────────────────────────────────────── */
 .settings-row {

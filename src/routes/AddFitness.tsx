@@ -15,10 +15,12 @@ export function AddFitness({
   kind,
   store,
   commitValue,
+  undoLast,
 }: {
   kind: 'running' | 'lifting';
   store: Store;
   commitValue: (schemaName: 'running' | 'lifting', value: unknown) => string | null;
+  undoLast: () => string | null;
 }) {
   const { toast } = useToast();
   const isRun = kind === 'running';
@@ -50,7 +52,13 @@ export function AddFitness({
                 toast(error, 'error');
                 return;
               }
-              toast(COMMIT_VERB[kind]);
+              toast(COMMIT_VERB[kind], 'success', {
+                label: 'Undo',
+                onClick: () => {
+                  const err = undoLast();
+                  toast(err ?? 'Undone.', err ? 'error' : 'info');
+                },
+              });
               navigate('/fitness');
             }}
           />

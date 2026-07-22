@@ -1,16 +1,27 @@
-import { DataTable } from '@/components/controls';
+import { DataTable, SegmentedControl } from '@/components/controls';
 import { RetentionCurve } from '@/components/RetentionCurve';
 import { Sheet } from '@/components/Sheet';
-import { StatusPill, Tag, type Status } from '@/components/primitives';
-import type { Topic, TopicStatus } from '@/domain/types';
+import { Tag } from '@/components/primitives';
+import type { Confidence, Topic, TopicStatus } from '@/domain/types';
 import { badges, health, overconfidenceIndex, shouldShowHealth } from '@/engine/metrics';
 import { retentionPct } from '@/engine/retention';
 
-const STATUS_LABEL: Record<TopicStatus, Status> = {
-  not_started: 'Not Started',
-  learning: 'Learning',
-  practising: 'Practising',
-  mastered: 'Mastered',
+const STATUS_OPTIONS: ReadonlyArray<{ value: TopicStatus; label: string }> = [
+  { value: 'not_started', label: 'Not started' },
+  { value: 'learning', label: 'Learning' },
+  { value: 'practising', label: 'Practising' },
+  { value: 'mastered', label: 'Mastered' },
+];
+
+const CONFIDENCES: Confidence[] = [1, 2, 3, 4, 5];
+
+/** Word the number, so a 1–5 tap is a statement, not a score guess. */
+const CONFIDENCE_HINT: Record<Confidence, string> = {
+  1: "Couldn't recall it",
+  2: 'Big gaps',
+  3: 'Shaky but there',
+  4: 'Mostly solid',
+  5: 'Fluent',
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -51,12 +62,18 @@ export function TopicDetail({
   sectionTitle,
   onClose,
   onResolveError,
+  onPromote,
+  onQuickReview,
   now = new Date(),
 }: {
   topic: Topic | null;
   sectionTitle: string;
   onClose: () => void;
   onResolveError: (topicId: string, errorId: string) => void;
+  /** Learner-set status ladder (Document 2 §7). */
+  onPromote: (topicId: string, status: TopicStatus) => void;
+  /** One-tap manual review — logs a `manual_review` event at this confidence. */
+  onQuickReview: (topicId: string, confidence: Confidence) => void;
   now?: Date;
 }) {
   if (!topic) return null;
@@ -70,10 +87,22 @@ export function TopicDetail({
       <div className="stack">
         <div className="cluster topic-meta">
           <span>{sectionTitle}</span>
-          <StatusPill status={STATUS_LABEL[topic.status]} />
           <span>
             {topic.last_reviewed ? `reviewed ${daysAgo(topic.last_reviewed, now)}` : 'not yet reviewed'}
           </span>
+        </div>
+
+        {/* The status pill, made interactive — the learner owns this ladder
+          * (Document 2 §7); the math never moves it. Mastery %, velocity and
+          * the finish projection all read from what is set here. */}
+        <div>
+          <div className="eyebrow block-label">Status</div>
+          <SegmentedControl<TopicStatus>
+            label="Topic status"
+            value={topic.status}
+            onChange={(status) => onPromote(topic.topic_id, status)}
+            options={STATUS_OPTIONS}
+          />
         </div>
 
         <div className="cluster roomy">
@@ -88,6 +117,27 @@ export function TopicDetail({
         <div>
           <div className="eyebrow block-label">Retention curve</div>
           <RetentionCurve topic={topic} now={now} />
+        </div>
+
+        {/* One tap closes the review loop in-app — no AI round-trip for "I
+          * just re-read my notes". Same recalculation path as a session; only
+          * the provenance (`manual_review`) differs. */}
+        <div>
+          <div className="eyebrow block-label">Log a quick review</div>
+          <p className="muted-note">How well could you recall this just now?</p>
+          <div className="quick-review" role="group" aria-label="Log a quick review by confidence">
+            {CONFIDENCES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className="quick-review-btn"
+                onClick={() => onQuickReview(topic.topic_id, c)}
+              >
+                <span className="quick-review-num mono-num">{c}</span>
+                <span className="quick-review-hint">{CONFIDENCE_HINT[c]}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {badges(topic).length > 0 && (

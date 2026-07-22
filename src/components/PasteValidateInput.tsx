@@ -37,14 +37,16 @@ export function PasteValidateInput({
   const [phase, setPhase] = useState<Phase>({ name: 'editing' });
   const [copied, setCopied] = useState(false);
 
-  const validate = () => {
-    const result = ingest(text, schemaName, store);
+  const validateText = (raw: string) => {
+    const result = ingest(raw, schemaName, store);
     setPhase(
       result.ok
         ? { name: 'previewing', value: result.value, preview: result.preview }
         : { name: 'invalid', errors: result.errors },
     );
   };
+
+  const validate = () => validateText(text);
 
   const copyPrompt = async () => {
     try {
@@ -87,6 +89,16 @@ export function PasteValidateInput({
             // Editing after a verdict invalidates it — never leave a stale
             // preview attached to changed text.
             if (phase.name !== 'editing') setPhase({ name: 'editing' });
+          }}
+          onPaste={(e) => {
+            // Validate immediately on paste — the paste IS the submit gesture
+            // in this flow, so don't make the user click Preview to learn what
+            // they just did. The DOM value isn't updated until after the paste
+            // event, hence the microtask hop.
+            const target = e.currentTarget;
+            window.setTimeout(() => {
+              if (target.value.trim().length > 0) validateText(target.value);
+            }, 0);
           }}
         />
       </div>

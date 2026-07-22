@@ -60,6 +60,7 @@ Last updated: 2026-07-22.
 
 ## Post-v1 extensions (beyond the Document 4 backlog)
 
+- [x] **UI loop-closing pass** (2026-07-22, Doc 3 §9 addendum v0.5) — topic status control (mastery/velocity/projection now reachable), one-tap quick review via the dormant `manual_review` source, Quick-add universal paste inbox with schema auto-detection, paste-to-validate, Undo on commit toasts, Overview "Coming up" agenda + job feed events, course-title headline
 - [x] **Job-application tracker** (2026-07-22) — new `job` domain on the same ingestion spine: pipeline board, append-only stage history, funnel analytics, next-action dates. Hybrid record model (editable descriptive fields + derived current stage). `src/engine/jobs.ts`, `src/routes/Jobs.tsx`, `tests/{core/jobs-ingest,engine/jobs}.test.ts`. Consistent with Doc 4 §13.6 — still zero network calls.
 - [x] **Live leveling** — per-topic and overall leveling (`src/engine/leveling.ts`)
 - [ ] **Tracker gallery** — curated enable/disable of built-in trackers from the "Add tracker" surface (planned; Study/Fitness/Exams/Jobs become opt-in modules)

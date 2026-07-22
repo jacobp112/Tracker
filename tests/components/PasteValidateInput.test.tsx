@@ -62,11 +62,11 @@ describe('PasteValidateInput — Document 3 §5.6 / E2-S4', () => {
 
   it('previews before committing — never commits silently (§5.6 step 5)', async () => {
     const { onCommit, user } = setup();
+    // Pasting IS the submit gesture: validation runs immediately, no extra
+    // click. Committing still requires the explicit confirm below.
     await paste(user, VALID_COURSE);
-    await user.click(screen.getByRole('button', { name: /preview/i }));
 
-    // Preview appears, and nothing has been committed yet.
-    expect(screen.getByText('Calculus I — 1 section, 1 topic')).toBeInTheDocument();
+    expect(await screen.findByText('Calculus I — 1 section, 1 topic')).toBeInTheDocument();
     expect(onCommit).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: /add course/i }));
@@ -106,8 +106,7 @@ describe('PasteValidateInput — Document 3 §5.6 / E2-S4', () => {
   it('discards a stale preview when the text is edited', async () => {
     const { user } = setup();
     await paste(user, VALID_COURSE);
-    await user.click(screen.getByRole('button', { name: /preview/i }));
-    expect(screen.getByText('Calculus I — 1 section, 1 topic')).toBeInTheDocument();
+    expect(await screen.findByText('Calculus I — 1 section, 1 topic')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/paste the json/i), ' ');
 
@@ -118,7 +117,7 @@ describe('PasteValidateInput — Document 3 §5.6 / E2-S4', () => {
   it('lets the user step back from a preview without committing', async () => {
     const { onCommit, user } = setup();
     await paste(user, VALID_COURSE);
-    await user.click(screen.getByRole('button', { name: /preview/i }));
+    await screen.findByText('Calculus I — 1 section, 1 topic');
     await user.click(screen.getByRole('button', { name: /back/i }));
 
     expect(screen.queryByText('Calculus I — 1 section, 1 topic')).not.toBeInTheDocument();

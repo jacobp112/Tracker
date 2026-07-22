@@ -17,12 +17,14 @@ export function LogSession({
   open,
   onClose,
   commitValue,
+  undoLast,
 }: {
   course: Course;
   store: Store;
   open: boolean;
   onClose: () => void;
   commitValue: (schemaName: 'session', value: unknown) => string | null;
+  undoLast: () => string | null;
 }) {
   const { toast } = useToast();
 
@@ -46,7 +48,13 @@ export function LogSession({
             return;
           }
           // The verb matches the action (Document 3 §7).
-          toast(COMMIT_VERB.session);
+          toast(COMMIT_VERB.session, 'success', {
+            label: 'Undo',
+            onClick: () => {
+              const err = undoLast();
+              toast(err ?? 'Undone.', err ? 'error' : 'info');
+            },
+          });
           onClose();
         }}
       />

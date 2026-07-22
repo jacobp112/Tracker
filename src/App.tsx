@@ -20,6 +20,7 @@ import { Exams } from '@/routes/Exams';
 import { Fitness } from '@/routes/Fitness';
 import { LogSession } from '@/routes/LogSession';
 import { Overview } from '@/routes/Overview';
+import { QuickAdd } from '@/routes/QuickAdd';
 import { Settings } from '@/routes/Settings';
 import { TokenSheet } from '@/routes/TokenSheet';
 import { TopicDetail } from '@/routes/TopicDetail';
@@ -71,12 +72,18 @@ function CourseScreen({
   course,
   store,
   commitValue,
+  undoLast,
   toggleError,
+  promoteTopic,
+  logManualReview,
 }: {
   course: Course;
   store: Store;
   commitValue: ReturnType<typeof useStore>['commitValue'];
+  undoLast: ReturnType<typeof useStore>['undoLast'];
   toggleError: ReturnType<typeof useStore>['toggleError'];
+  promoteTopic: ReturnType<typeof useStore>['promoteTopic'];
+  logManualReview: ReturnType<typeof useStore>['logManualReview'];
 }) {
   const [logging, setLogging] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -101,6 +108,7 @@ function CourseScreen({
         open={logging}
         onClose={() => setLogging(false)}
         commitValue={commitValue}
+        undoLast={undoLast}
       />
       <TopicDetail
         topic={selected?.topic ?? null}
@@ -109,6 +117,14 @@ function CourseScreen({
         onResolveError={(topicId, errorId) => {
           const error = toggleError(topicId, errorId);
           if (error) toast(error, 'error');
+        }}
+        onPromote={(topicId, status) => {
+          const error = promoteTopic(topicId, status);
+          if (error) toast(error, 'error');
+        }}
+        onQuickReview={(topicId, confidence) => {
+          const error = logManualReview(topicId, confidence);
+          toast(error ?? `Review logged — confidence ${confidence}/5`, error ? 'error' : 'success');
         }}
       />
     </>
@@ -162,7 +178,10 @@ function AppInner() {
   const {
     store,
     commitValue,
+    undoLast,
     toggleError,
+    promoteTopic,
+    logManualReview,
     moveStage,
     editApplication,
     archiveApplication,
@@ -200,7 +219,7 @@ function AppInner() {
       case 'dev-components':
         return <ComponentShowcase />;
       case 'add-course':
-        return <AddCourse store={store} commitValue={commitValue} />;
+        return <AddCourse store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'overview':
         return <Overview store={store} />;
       case 'study':
@@ -215,20 +234,23 @@ function AppInner() {
             course={course}
             store={store}
             commitValue={commitValue}
+            undoLast={undoLast}
             toggleError={toggleError}
+            promoteTopic={promoteTopic}
+            logManualReview={logManualReview}
           />
         );
       }
       case 'fitness':
         return <Fitness store={store} />;
       case 'add-run':
-        return <AddFitness kind="running" store={store} commitValue={commitValue} />;
+        return <AddFitness kind="running" store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'add-lift':
-        return <AddFitness kind="lifting" store={store} commitValue={commitValue} />;
+        return <AddFitness kind="lifting" store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'exams':
         return <Exams store={store} />;
       case 'add-exam':
-        return <AddExam store={store} commitValue={commitValue} />;
+        return <AddExam store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'jobs':
         return (
           <Jobs
@@ -239,7 +261,9 @@ function AppInner() {
           />
         );
       case 'add-job':
-        return <AddJob store={store} commitValue={commitValue} />;
+        return <AddJob store={store} commitValue={commitValue} undoLast={undoLast} />;
+      case 'quick-add':
+        return <QuickAdd store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'settings':
         return <Settings store={store} replaceStore={replaceStore} clearStore={clearStore} />;
     }

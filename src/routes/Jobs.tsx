@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DataTable } from '@/components/controls';
 import { EmptyState, useToast } from '@/components/feedback';
 import { Button, Card, SecondaryButton, Tag, type TagTone } from '@/components/primitives';
+import { Prop, PropsRow } from '@/components/PropsRow';
 import { Sheet } from '@/components/Sheet';
 import type { JobApplication, JobStage, Store } from '@/domain/types';
 import { currentStage } from '@/domain/types';
@@ -29,15 +30,6 @@ const STAGE_TONE: Record<JobStage, TagTone> = {
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function FunnelStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="stat-mini stack micro">
-      <span className="stat-mini-value mono-num">{value}</span>
-      <span className="stat-mini-label">{label}</span>
-    </div>
-  );
 }
 
 function AppCard({ app, now, onOpen }: { app: JobApplication; now: Date; onOpen: () => void }) {
@@ -106,7 +98,7 @@ function ApplicationDetail({
 
         <div>
           <div className="eyebrow block-label">Move to</div>
-          <div className="cluster">
+          <div className="job-stage-actions">
             {nextStages(stage).map((s) => (
               <SecondaryButton key={s} onClick={() => onMoveStage(app.application_id, s)}>
                 {STAGE_LABEL[s]}
@@ -229,23 +221,25 @@ export function Jobs({
         </div>
       ) : (
         <>
-          <div className="section">
-            <Card>
-              <div className="cluster roomy">
-                <FunnelStat value={String(stats.active)} label="active" />
-                <FunnelStat value={String(stats.applied)} label="applied" />
-                <FunnelStat
-                  value={stats.responseRate === null ? '—' : `${stats.responseRate}%`}
-                  label="response rate"
-                />
-                <FunnelStat
-                  value={stats.interviewRate === null ? '—' : `${stats.interviewRate}%`}
-                  label="interview rate"
-                />
-                <FunnelStat value={String(stats.offers)} label="offers" />
-              </div>
-            </Card>
-          </div>
+          {/* The shared props-row (Document 3 §3) — one card, internal dividers,
+            * responsive collapse. Not a one-off stat cluster. */}
+          <PropsRow>
+            <Prop label="Active" value={stats.active} caption="in the pipeline" />
+            <Prop label="Applied" value={stats.applied} caption="applications sent" />
+            <Prop
+              label="Response rate"
+              hint="Share of applications that reached a screen or beyond. Uses the furthest stage each application ever reached, so later rejections still count."
+              value={stats.responseRate === null ? '—' : `${stats.responseRate}%`}
+              caption={stats.responseRate === null ? 'Nothing applied yet' : 'reached screen+'}
+            />
+            <Prop
+              label="Interview rate"
+              hint="Share of applications that reached an interview or beyond."
+              value={stats.interviewRate === null ? '—' : `${stats.interviewRate}%`}
+              caption={stats.interviewRate === null ? 'Nothing applied yet' : 'reached interview+'}
+            />
+            <Prop label="Offers" value={stats.offers} caption={stats.offers === 1 ? 'offer' : 'offers'} />
+          </PropsRow>
 
           <div className="section">
             <div className="job-board" role="list" aria-label="Application pipeline">
@@ -256,14 +250,20 @@ export function Jobs({
                     <span className="job-column-count mono-num">{col.applications.length}</span>
                   </div>
                   <div className="job-column-cards">
-                    {col.applications.map((app) => (
-                      <AppCard
-                        key={app.application_id}
-                        app={app}
-                        now={now}
-                        onOpen={() => setSelectedId(app.application_id)}
-                      />
-                    ))}
+                    {col.applications.length === 0 ? (
+                      /* An empty column still explains itself — a bare gap
+                       * reads as a rendering failure, not an empty stage. */
+                      <div className="job-column-empty">None yet</div>
+                    ) : (
+                      col.applications.map((app) => (
+                        <AppCard
+                          key={app.application_id}
+                          app={app}
+                          now={now}
+                          onOpen={() => setSelectedId(app.application_id)}
+                        />
+                      ))
+                    )}
                   </div>
                 </div>
               ))}

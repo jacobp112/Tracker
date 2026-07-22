@@ -14,9 +14,11 @@ import { navigate } from '@/router';
 export function AddJob({
   store,
   commitValue,
+  undoLast,
 }: {
   store: Store;
   commitValue: (schemaName: 'job', value: unknown) => string | null;
+  undoLast: () => string | null;
 }) {
   const { toast } = useToast();
 
@@ -47,7 +49,13 @@ export function AddJob({
                 toast(error, 'error');
                 return;
               }
-              toast(COMMIT_VERB.job);
+              toast(COMMIT_VERB.job, 'success', {
+                label: 'Undo',
+                onClick: () => {
+                  const err = undoLast();
+                  toast(err ?? 'Undone.', err ? 'error' : 'info');
+                },
+              });
               navigate('/jobs');
             }}
           />

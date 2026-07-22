@@ -50,6 +50,12 @@ const SCREENS: ReadonlyArray<{ label: string; hash: string }> = [
  * lead to.
  */
 const ACTIONS: readonly PaletteItem[] = [
+  {
+    id: 'action:quick-add',
+    label: 'Quick add — paste any JSON',
+    group: 'Actions',
+    target: { type: 'route', hash: '#/add' },
+  },
   { id: 'action:add-course', label: 'Add a course', group: 'Actions', target: { type: 'route', hash: '#/study/add' } },
   { id: 'action:add-exam', label: 'Add an exam result', group: 'Actions', target: { type: 'route', hash: '#/exams/add' } },
   { id: 'action:add-run', label: 'Log a run', group: 'Actions', target: { type: 'route', hash: '#/fitness/add-run' } },
