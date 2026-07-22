@@ -157,10 +157,11 @@ describe('empty states are honest, not broken-looking', () => {
     renderDash(fresh());
     const calibration = propOf('Calibration');
     // The Hint primitive: a focusable "?" button wired to its tooltip text
-    // via aria-describedby, so the explanation reads on focus and hover alike.
+    // via aria-describedby. The tooltip itself portals to <body> (so overflow
+    // containers can't clip it), so it's asserted through the accessible
+    // description rather than by DOM proximity.
     const btn = within(calibration).getByRole('button', { name: /about calibration/i });
     expect(btn).toHaveAccessibleDescription(/confidence/i);
-    expect(within(calibration).getByRole('tooltip')).toBeInTheDocument();
   });
 });
 

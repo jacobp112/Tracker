@@ -1,4 +1,13 @@
-import { useId, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { healthStop, retentionStop, type Stop } from '@/design/scale';
 
 /** Map a §2.2(a) stop to the class suffix the stylesheet uses. */
@@ -44,16 +53,66 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
  * The trigger is a button wired to the tip via aria-describedby; screen
  * readers announce the text on focus without needing the visual popup.
  */
+/** Half the tip's max-width plus a viewport margin — the horizontal clamp. */
+const TIP_CLAMP = 132;
+
 export function Hint({ text, label }: { text: string; label?: string }) {
   const id = useId();
+  const btnRef = useRef<HTMLButtonElement>(null);
+  // The tip renders in a portal at <body> with fixed coordinates — cards and
+  // the sheet body are overflow containers, so an in-place absolute tooltip
+  // gets clipped at the box edge (the bug this replaced).
+  const [pos, setPos] = useState<{ x: number; y: number; below: boolean } | null>(null);
+
+  const show = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    // Flip below the trigger when there's no headroom above it.
+    const below = r.top < 96;
+    setPos({
+      x: Math.min(Math.max(r.left + r.width / 2, TIP_CLAMP), window.innerWidth - TIP_CLAMP),
+      y: below ? r.bottom + 8 : r.top - 8,
+      below,
+    });
+  };
+  const hide = () => setPos(null);
+
+  // Scrolling or resizing while open would leave the tip floating at stale
+  // coordinates — hide instead of chasing the anchor.
+  useEffect(() => {
+    if (!pos) return;
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => {
+      window.removeEventListener('scroll', hide, true);
+      window.removeEventListener('resize', hide);
+    };
+  }, [pos]);
+
   return (
-    <span className="hint">
-      <button type="button" className="hint-btn" aria-label={label ?? 'What is this?'} aria-describedby={id}>
+    <span className="hint" onMouseEnter={show} onMouseLeave={hide}>
+      <button
+        ref={btnRef}
+        type="button"
+        className="hint-btn"
+        aria-label={label ?? 'What is this?'}
+        aria-describedby={id}
+        onFocus={show}
+        onBlur={hide}
+      >
         ?
       </button>
-      <span role="tooltip" id={id} className="hint-tip">
-        {text}
-      </span>
+      {createPortal(
+        <span
+          role="tooltip"
+          id={id}
+          className={`hint-tip ${pos ? 'open' : ''} ${pos?.below ? 'below' : ''}`}
+          style={pos ? { left: pos.x, top: pos.y } : undefined}
+        >
+          {text}
+        </span>,
+        document.body,
+      )}
     </span>
   );
 }

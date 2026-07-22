@@ -778,11 +778,17 @@ body.loaded .bar-fill {
   outline: 2px solid var(--accent-ring);
   outline-offset: 1px;
 }
-.hint .hint-tip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
+/* The tip lives in a portal at <body> with fixed coordinates set inline by
+ * the component — cards and the sheet body are overflow containers, so an
+ * in-place tooltip would be clipped at the box edge. `left`/`top` anchor the
+ * trigger's centre; the transform shifts the tip above (default) or below
+ * (.below) that anchor. Closed, it parks off-screen (opacity alone would
+ * still let an invisible box stretch the page). */
+.hint-tip {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  transform: translateX(-50%) translateY(-100%);
   width: max-content;
   max-width: 240px;
   padding: var(--space-4) var(--space-6);
@@ -799,17 +805,18 @@ body.loaded .bar-fill {
   box-shadow: var(--shadow-card-hover);
   opacity: 0;
   pointer-events: none;
-  z-index: 60;
-  transition: opacity var(--dur-micro) var(--ease), transform var(--dur-micro) var(--ease);
+  z-index: 200; /* above the sheet backdrop and the command palette */
+  transition: opacity var(--dur-micro) var(--ease);
 }
-.hint:hover .hint-tip,
-.hint:focus-within .hint-tip {
-  opacity: 1;
+.hint-tip.below {
   transform: translateX(-50%) translateY(0);
 }
-/* Reduced motion: the global kill switch flattens the transition; the tip
- * still appears/disappears instantly, and .hint-tip stays reachable via
- * aria-describedby regardless. */
+.hint-tip.open {
+  opacity: 1;
+}
+/* Reduced motion: the global kill switch flattens the fade; the tip still
+ * appears/disappears instantly, and it stays reachable via aria-describedby
+ * regardless. */
 
 /* Eyebrow + hint on one line (hero cards, card heads). */
 .eyebrow-row {
