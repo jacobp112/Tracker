@@ -1,5 +1,5 @@
 import { SCHEMA_LABEL, type SchemaName } from '@/domain/schemas';
-import type { Course, Exam, LiftingSession, RunningActivity, Store, StudySession } from '@/domain/types';
+import type { Course, Exam, JobApplication, LiftingSession, RunningActivity, Store, StudySession } from '@/domain/types';
 import type { FriendlyError } from './errorTranslation';
 import { checkIntegrity } from './integrity';
 import { cloneStore } from './storage';
@@ -101,6 +101,20 @@ function buildPreview(schemaName: SchemaName, value: unknown): Preview {
         detail: l.exercises.map((e) => `${e.exercise_name} · ${plural(e.sets.length, 'set')}`),
       };
     }
+    case 'job': {
+      // Ingestion shape: initial_stage rides alongside the descriptive fields.
+      const j = value as JobApplication & { initial_stage?: string };
+      const detail = [
+        j.location && `Location · ${j.location}`,
+        j.salary_range && `Salary · ${j.salary_range}`,
+        j.source && `Found via · ${j.source}`,
+        j.next_action_date && `Next action · ${j.next_action_date}`,
+      ].filter((d): d is string => Boolean(d));
+      return {
+        summary: `${j.company} — ${j.role} (${j.initial_stage ?? 'saved'})`,
+        detail,
+      };
+    }
   }
 }
 
@@ -129,6 +143,7 @@ export const COMMIT_VERB: Record<SchemaName, string> = {
   exam: 'Exam result added',
   running: 'Run logged',
   lifting: 'Lifting session logged',
+  job: 'Application added',
 };
 
 export { SCHEMA_LABEL };

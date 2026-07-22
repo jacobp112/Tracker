@@ -263,7 +263,65 @@ export const LIFTING_SCHEMA: SchemaObject = {
   },
 };
 
-export type SchemaName = 'course' | 'session' | 'exam' | 'running' | 'lifting';
+const JOB_STAGE = {
+  type: 'string',
+  enum: ['saved', 'applied', 'screen', 'interview', 'offer', 'rejected', 'accepted'],
+};
+
+const STAGE_EVENT: SchemaObject = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['event_id', 'date', 'stage'],
+  properties: {
+    event_id: ID_PATTERN('event'),
+    date: ISO_DATETIME,
+    stage: JOB_STAGE,
+    notes: { type: 'string', maxLength: 500 },
+  },
+};
+
+export const JOB_SCHEMA: SchemaObject = {
+  $id: 'job',
+  type: 'object',
+  additionalProperties: false,
+  // stage_history / created_at / archived are engine-managed and synthesized on
+  // ingestion (like running's pace_sec_per_km) — NOT required on input, but
+  // permitted so a stored application re-validates on import.
+  required: ['schema_version', 'application_id', 'company', 'role'],
+  properties: {
+    schema_version: { type: 'string' },
+    application_id: ID_PATTERN('application'),
+    company: { type: 'string', minLength: 1, maxLength: 120 },
+    role: { type: 'string', minLength: 1, maxLength: 120 },
+    location: { type: 'string', maxLength: 120 },
+    url: { type: 'string', maxLength: 500 },
+    salary_range: { type: 'string', maxLength: 80 },
+    source: { type: 'string', maxLength: 120 },
+    description: { type: 'string', maxLength: 2000 },
+    contacts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name'],
+        properties: {
+          name: { type: 'string', minLength: 1 },
+          role: { type: 'string' },
+          email: { type: 'string' },
+        },
+      },
+    },
+    next_action_date: ISO_DATE,
+    // Where the application starts on ingestion; consumed into the first
+    // StageEvent by merge, never stored.
+    initial_stage: JOB_STAGE,
+    stage_history: { type: 'array', items: STAGE_EVENT },
+    created_at: ISO_DATETIME,
+    archived: { type: 'boolean' },
+  },
+};
+
+export type SchemaName = 'course' | 'session' | 'exam' | 'running' | 'lifting' | 'job';
 
 export const SCHEMAS: Record<SchemaName, SchemaObject> = {
   course: COURSE_SCHEMA,
@@ -271,6 +329,7 @@ export const SCHEMAS: Record<SchemaName, SchemaObject> = {
   exam: EXAM_SCHEMA,
   running: RUNNING_SCHEMA,
   lifting: LIFTING_SCHEMA,
+  job: JOB_SCHEMA,
 };
 
 /** User-facing name for each schema, for error messages and previews. */
@@ -280,4 +339,5 @@ export const SCHEMA_LABEL: Record<SchemaName, string> = {
   exam: 'exam result',
   running: 'run',
   lifting: 'lifting session',
+  job: 'job application',
 };

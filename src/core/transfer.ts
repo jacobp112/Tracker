@@ -1,5 +1,5 @@
 import { type SchemaName } from '@/domain/schemas';
-import { type Course, type Exam, emptyStore, type LiftingSession, type RunningActivity, SCHEMA_VERSION, type Store } from '@/domain/types';
+import { type Course, type Exam, emptyStore, type JobApplication, type LiftingSession, type RunningActivity, SCHEMA_VERSION, type Store } from '@/domain/types';
 import type { FriendlyError } from './errorTranslation';
 import { checkIntegrity } from './integrity';
 import { validateAgainst } from './validate';
@@ -120,6 +120,11 @@ export function importBundle(input: string): ImportResult {
     if (errs.length === 0) draft.lifts.push(lift as LiftingSession);
     else errors.push(...prefix('Lift', errs));
   }
+  for (const app of src.applications ?? []) {
+    const errs = check(draft, 'job', app);
+    if (errs.length === 0) draft.applications.push(app as JobApplication);
+    else errors.push(...prefix(`Application "${app.company ?? app.application_id}"`, errs));
+  }
 
   if (errors.length > 0) return { ok: false, errors };
 
@@ -131,6 +136,7 @@ export function importBundle(input: string): ImportResult {
       exams: draft.exams.length,
       runs: draft.runs.length,
       lifts: draft.lifts.length,
+      applications: draft.applications.length,
     },
   };
 }

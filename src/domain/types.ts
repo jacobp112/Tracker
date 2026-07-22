@@ -158,6 +158,66 @@ export interface LiftingSession {
   exercises: Array<{ exercise_name: string; sets: LiftSet[] }>;
 }
 
+/* ── Job applications ──────────────────────────────────────────── */
+
+/**
+ * Pipeline stages an application moves through, plus the two terminal states.
+ * Current stage is always `stage_history.at(-1)` — never stored separately,
+ * so it can't drift from the history that explains it.
+ */
+export type JobStage =
+  | 'saved'
+  | 'applied'
+  | 'screen'
+  | 'interview'
+  | 'offer'
+  | 'rejected'
+  | 'accepted';
+
+export interface StageEvent {
+  event_id: string;
+  date: string;
+  stage: JobStage;
+  notes?: string;
+}
+
+export interface JobContact {
+  name: string;
+  role?: string;
+  email?: string;
+}
+
+/**
+ * Hybrid record: descriptive fields (company, role, url, …) are freely
+ * editable in-app; `stage_history` is append-only, the same split Topic makes
+ * between editable metadata and its append-only `review_history`.
+ */
+export interface JobApplication {
+  schema_version: string;
+  application_id: string;
+  company: string;
+  role: string;
+  location?: string;
+  url?: string;
+  salary_range?: string;
+  /** Where the posting was found. */
+  source?: string;
+  description?: string;
+  contacts?: JobContact[];
+  /** Upcoming interview / follow-up date (YYYY-MM-DD). */
+  next_action_date?: string;
+  /** Append-only; the last entry is the current stage. Never empty once stored. */
+  stage_history: StageEvent[];
+  created_at: string;
+  /** Archived applications leave the board but keep funnel math honest. */
+  archived: boolean;
+}
+
+/** Current stage = last stage event. Falls back to 'saved' defensively. */
+export function currentStage(app: JobApplication): JobStage {
+  return app.stage_history[app.stage_history.length - 1]?.stage ?? 'saved';
+}
+
 /* ── Store ─────────────────────────────────────────────────────── */
 
 export interface Store {
@@ -166,10 +226,18 @@ export interface Store {
   exams: Exam[];
   runs: RunningActivity[];
   lifts: LiftingSession[];
+  applications: JobApplication[];
 }
 
 export function emptyStore(): Store {
-  return { schema_version: SCHEMA_VERSION, courses: [], exams: [], runs: [], lifts: [] };
+  return {
+    schema_version: SCHEMA_VERSION,
+    courses: [],
+    exams: [],
+    runs: [],
+    lifts: [],
+    applications: [],
+  };
 }
 
 /** All topics across all courses, with their parent course/section resolved. */

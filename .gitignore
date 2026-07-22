@@ -13,3 +13,6 @@ coverage/
 # Editor / OS cruft
 .idea/
 Thumbs.db
+
+# Local mock-data seeder (regenerable, dev-only)
+seed.html

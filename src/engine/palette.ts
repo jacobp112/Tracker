@@ -39,6 +39,7 @@ const SCREENS: ReadonlyArray<{ label: string; hash: string }> = [
   { label: 'Study', hash: '#/study' },
   { label: 'Fitness', hash: '#/fitness' },
   { label: 'Exams', hash: '#/exams' },
+  { label: 'Jobs', hash: '#/jobs' },
   { label: 'Settings', hash: '#/settings' },
 ];
 
@@ -53,6 +54,7 @@ const ACTIONS: readonly PaletteItem[] = [
   { id: 'action:add-exam', label: 'Add an exam result', group: 'Actions', target: { type: 'route', hash: '#/exams/add' } },
   { id: 'action:add-run', label: 'Log a run', group: 'Actions', target: { type: 'route', hash: '#/fitness/add-run' } },
   { id: 'action:add-lift', label: 'Log a lift', group: 'Actions', target: { type: 'route', hash: '#/fitness/add-lift' } },
+  { id: 'action:add-job', label: 'Add a job application', group: 'Actions', target: { type: 'route', hash: '#/jobs/add' } },
   {
     id: 'action:toggle-theme',
     label: 'Toggle light / dark theme',
@@ -94,6 +96,16 @@ export function paletteItems(store: Store, _now: Date = new Date()): PaletteItem
       hint: 'Course',
       group: 'Jump to',
       target: { type: 'route', hash: `#/course/${course.course_id}` },
+    });
+  }
+
+  for (const app of store.applications) {
+    items.push({
+      id: `application:${app.application_id}`,
+      label: `${app.company} — ${app.role}`,
+      hint: 'Application',
+      group: 'Jump to',
+      target: { type: 'route', hash: '#/jobs' },
     });
   }
 

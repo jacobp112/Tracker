@@ -5,6 +5,8 @@ import type {
   Course,
   ErrorLogEntry,
   Exam,
+  JobApplication,
+  JobStage,
   LiftingSession,
   ReviewEvent,
   RunningActivity,
@@ -169,6 +171,27 @@ function mergeExam(draft: Store, exam: Exam): void {
   }
 }
 
+/**
+ * A pasted application carries only descriptive fields plus an optional
+ * `initial_stage`. The app synthesizes the engine-managed half here — the
+ * first StageEvent, `created_at`, `archived` — the same way running's pace is
+ * computed on ingestion rather than trusted from input. `initial_stage` is
+ * consumed, never stored: current stage lives only in `stage_history`.
+ */
+function mergeJob(draft: Store, value: JobApplication & { initial_stage?: JobStage }): void {
+  const { initial_stage, ...app } = value;
+  const created = app.created_at ?? new Date().toISOString();
+  draft.applications.push({
+    ...app,
+    created_at: created,
+    archived: app.archived ?? false,
+    stage_history:
+      app.stage_history && app.stage_history.length > 0
+        ? app.stage_history
+        : [{ event_id: makeId('event'), date: created, stage: initial_stage ?? 'saved' }],
+  });
+}
+
 /** Document 1 §6.3 — fitness objects append directly; no recalculation. */
 function mergeRunning(draft: Store, run: RunningActivity): void {
   draft.runs.push({
@@ -194,5 +217,7 @@ export function mergeInto(draft: Store, schemaName: SchemaName, value: unknown):
       return mergeRunning(draft, value as RunningActivity);
     case 'lifting':
       return mergeLifting(draft, value as LiftingSession);
+    case 'job':
+      return mergeJob(draft, value as JobApplication & { initial_stage?: JobStage });
   }
 }

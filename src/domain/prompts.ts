@@ -96,6 +96,17 @@ Weights are in kg. rpe (1-10) is optional. Keep each set as its own entry — do
 
 Session details: [PASTE YOUR WORKOUT HERE]`;
 
+/** Job application — paste a posting, get a structured application back.
+ *  `stage_history`, `created_at` and `archived` are intentionally omitted; the
+ *  app synthesizes them on ingestion (same rule as running's pace). */
+export const JOB_PROMPT = `You are converting a job posting into JSON for an application tracker. Output only valid JSON matching this schema — no fences, no commentary, no extra fields.
+
+{schema_version: "2.0.0", application_id: "application_" + 10 random alphanumeric characters, company: string, role: string, location: optional string, url: optional string (the posting link), salary_range: optional string (as written in the posting, e.g. "$120k-140k"), source: optional string (where it was found, e.g. "LinkedIn"), description: optional string (<= 2000 chars, a short summary of the role), contacts: optional array of {name, role, email}, next_action_date: optional "YYYY-MM-DD" (only if a deadline or interview date is known), initial_stage: optional, one of "saved" | "applied" (use "applied" only if the user says they already applied; default "saved")}
+
+Do NOT include stage_history, created_at, or archived — the tracker manages those.
+
+Job posting / details: [PASTE THE JOB POSTING HERE]`;
+
 /*
  * The auto-repair prompt (Document 4 §3.3) is deliberately NOT here. Auto-repair
  * is deferred (Document 4 E2-S5) and the app makes no AI calls, so a repair

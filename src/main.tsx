@@ -10,6 +10,7 @@ import './styles/dashboard.css';
 import './styles/overview.css';
 import './styles/ingest.css';
 import './styles/exams.css';
+import './styles/jobs.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element #root not found');

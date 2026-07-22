@@ -1,5 +1,5 @@
 import type { SchemaName } from '@/domain/schemas';
-import { allTopics, type Course, type Exam, type Store, type StudySession } from '@/domain/types';
+import { allTopics, type Course, type Exam, type JobApplication, type Store, type StudySession } from '@/domain/types';
 import type { FriendlyError } from './errorTranslation';
 
 /**
@@ -31,11 +31,31 @@ export function checkIntegrity(
       return checkSession(value as StudySession, store);
     case 'exam':
       return checkExam(value as Exam, store);
+    case 'job':
+      return checkJob(value as JobApplication, store);
     // Fitness objects carry no cross-object references (Document 1 §6.3).
     case 'running':
     case 'lifting':
       return [];
   }
+}
+
+/**
+ * An application is self-contained — the only failure mode is an id collision,
+ * mirroring the course rule: re-pasting the same JSON must not duplicate.
+ */
+function checkJob(app: JobApplication, store: Store): FriendlyError[] {
+  if (store.applications.some((a) => a.application_id === app.application_id)) {
+    return [
+      {
+        path: '/application_id',
+        message: `An application with the ID '${app.application_id}' already exists (${
+          store.applications.find((a) => a.application_id === app.application_id)!.company
+        }). Re-generate the JSON with a new application ID if this is a different application.`,
+      },
+    ];
+  }
+  return [];
 }
 
 /**
