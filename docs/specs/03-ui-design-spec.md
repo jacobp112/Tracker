@@ -422,3 +422,16 @@ source doc is updated before implementation deviates from it.
    gain `--shadow-card` hover elevation and a press-scale acknowledgment, all
    inside `prefers-reduced-motion: no-preference` in addition to the global
    reduce kill switch.
+10. **Liquid Glass material system (v0.6).** Surfaces move to alpha channels
+    (`--surface`, `--surface-sunken`, `--bg-sidebar`) with backdrop refraction
+    on elevated containers: cards `blur(28px) saturate(180%)`, sheets
+    `blur(40px) saturate(200%)` + hairline outer ring, palette HUD
+    `blur(48px) saturate(200%)`. Dark canvas deepens to #000. The spacing
+    scale normalizes to a strict 4pt/8pt rhythm (2/4/6/8/12/16/20/24/28/32/
+    40/48/56/64). Light accent darkens to #0062c6 for 4.5:1 AA. Kinematics:
+    spring-curved press compression (`scale(0.96)`) on all buttons, floating
+    borderless data rows (radius + margin instead of border-bottom, hover
+    `scale(1.01)`), inverted secondary inks inside the palette's active row.
+    Numerics pin `letter-spacing: 0` for jitter-free tabular columns;
+    focus-visible gains a soft 4px halo. The Overview due-card drops its
+    nested bounding box and its all-clear becomes a dot + one status line.

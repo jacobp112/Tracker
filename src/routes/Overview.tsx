@@ -209,16 +209,17 @@ export function Overview({ store }: { store: Store }) {
             )}
           </div>
           {due.length === 0 ? (
-            <p className="due-clear">
-              Nothing is below {duePct}% retention. You're on top of it.
-            </p>
+            /* Borderless status line, not a boxed empty state — the good news
+             * shouldn't wear more chrome than the bad. */
+            <div className="due-clear">
+              <span className="dot ok" aria-hidden="true" />
+              <p>Nothing below {duePct}% retention. You're on top of it.</p>
+            </div>
           ) : (
             <>
-              <p className="due-sub">
-                {due.length === 1 ? '1 topic has' : `${due.length} topics have`} decayed below{' '}
-                {duePct}%. Most-decayed first.
-              </p>
-              <div className="list-card due-list">
+              {/* Compressed: the count is already the big number above. */}
+              <p className="due-sub">Below {duePct}% — most-decayed first.</p>
+              <div className="due-list">
                 {due.map(({ topic, courseTitle }) => (
                   <RetentionRow
                     key={topic.topic_id}

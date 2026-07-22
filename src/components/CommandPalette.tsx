@@ -114,7 +114,8 @@ export function CommandPalette({
             aria-activedescendant={results.length > 0 ? optionId(selected) : undefined}
             aria-autocomplete="list"
             aria-label="Search courses, topics and actions"
-            placeholder="Jump to or run…"
+            placeholder="What do you want to study?"
+            autoFocus
             autoComplete="off"
             spellCheck={false}
             value={query}
@@ -136,9 +137,9 @@ export function CommandPalette({
               const heading = item.group !== lastGroup ? item.group : null;
               lastGroup = item.group;
               return (
-                <li key={item.id} className="palette-row">
+                <li key={item.id} className="palette-row-wrapper">
                   {heading && (
-                    <div className="palette-group" role="presentation">
+                    <div className="palette-group group-label" role="presentation">
                       {heading}
                     </div>
                   )}
@@ -163,14 +164,14 @@ export function CommandPalette({
 
         <div className="palette-foot">
           <span>
-            <kbd>↑</kbd>
-            <kbd>↓</kbd> to navigate
+            <kbd className="delta-chip flat">↑</kbd>
+            <kbd className="delta-chip flat">↓</kbd> to navigate
           </span>
           <span>
-            <kbd>↵</kbd> to select
+            <kbd className="delta-chip flat">↵</kbd> to select
           </span>
           <span>
-            <kbd>esc</kbd> to close
+            <kbd className="delta-chip flat">esc</kbd> to close
           </span>
         </div>
       </div>

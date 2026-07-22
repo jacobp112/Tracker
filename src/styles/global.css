@@ -19,6 +19,8 @@ body {
   font-family: var(--font-sans);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
   font-feature-settings: 'cv05', 'cv08', 'ss01', 'tnum' 0;
   letter-spacing: -0.006em;
   /* the canvas is never flat (Doc 3 §2.1) */
@@ -76,13 +78,19 @@ ol {
 .mono-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  /* Override the body's negative tracking: tabular digits only align into
+   * stable columns at zero letter-spacing — live mutations must not jitter. */
+  letter-spacing: 0;
 }
 
-/* ── Card material: shadow + light-catching top edge (Doc 3 §3) ── */
+/* ── Card material: liquid glass — alpha surface + backdrop refraction +
+ * light-catching top edge (Doc 3 §3, §9 v0.6) ── */
 .card {
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   transition: box-shadow var(--dur-standard) var(--ease),
     transform var(--dur-standard) var(--ease),
     background-color var(--dur-standard) var(--ease);
@@ -164,6 +172,7 @@ body.loaded .reveal {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-chip);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 /* Screen-reader-only utility. */

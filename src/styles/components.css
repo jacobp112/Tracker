@@ -17,17 +17,20 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: transform var(--dur-micro) var(--ease), box-shadow var(--dur-micro) var(--ease),
+  /* Spring on transform — presses and lifts read as physical, not eased. */
+  transition: transform var(--dur-micro) var(--spring), box-shadow var(--dur-micro) var(--ease),
     filter var(--dur-micro);
 }
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
   filter: brightness(1.04);
-  box-shadow: 0 2px 4px rgba(0, 113, 227, 0.3), 0 10px 22px rgba(94, 92, 230, 0.36),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  /* Volumetric lift: the glow spreads further as the button rises. */
+  box-shadow: 0 3px 6px rgba(0, 113, 227, 0.32), 0 14px 30px rgba(94, 92, 230, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 .btn-primary:active:not(:disabled) {
-  transform: translateY(0);
+  /* Physical compression — depth under the finger, not a flat state swap. */
+  transform: scale(0.96);
 }
 .btn-primary:disabled {
   opacity: 0.45;
@@ -43,11 +46,15 @@
   border-radius: var(--radius-pill);
   font-size: var(--fs-secondary);
   font-weight: 600;
-  transition: background var(--dur-micro), border-color var(--dur-micro);
+  transition: background var(--dur-micro), border-color var(--dur-micro),
+    transform var(--dur-micro) var(--spring);
 }
 .btn-secondary:hover:not(:disabled) {
   background: rgba(128, 128, 128, 0.08);
   border-color: var(--ink-muted);
+}
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.96);
 }
 .btn-secondary:disabled {
   opacity: 0.45;
@@ -66,10 +73,14 @@
   border-radius: var(--radius-pill);
   font-size: var(--fs-secondary);
   font-weight: 600;
-  transition: background var(--dur-micro), border-color var(--dur-micro);
+  transition: background var(--dur-micro), border-color var(--dur-micro),
+    transform var(--dur-micro) var(--spring);
 }
 .btn-danger:hover:not(:disabled) {
   background: var(--danger-soft);
+}
+.btn-danger:active:not(:disabled) {
+  transform: scale(0.96);
 }
 .btn-danger:disabled {
   opacity: 0.45;
@@ -327,25 +338,29 @@
   padding: 2px 0;
   overflow: hidden;
 }
+/* Rows float free of dividing lines (§9 v0.6): separation comes from spacing
+ * and the hover raise, not from border ink. */
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-6);
   padding: 13px 22px;
-  border-bottom: 1px solid var(--border);
-  transition: background var(--dur-micro) var(--ease);
-  width: 100%;
+  border-radius: var(--radius-md);
+  margin: 2px 8px;
+  width: calc(100% - 16px);
+  transition: background var(--dur-micro) var(--ease), transform var(--dur-micro) var(--spring);
   text-align: left;
   /* anchors .topic-btn::after, which stretches the title's hit area to the row */
   position: relative;
 }
-.row:last-child {
-  border-bottom: none;
-}
 .row:hover,
 .row:focus-visible {
   background: var(--surface-sunken);
+  transform: scale(1.01);
+}
+.row:active {
+  transform: scale(0.99);
 }
 .row-left {
   display: flex;
@@ -894,9 +909,9 @@ body.loaded .bar-fill {
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 90;
   display: flex;
   align-items: center;
@@ -915,7 +930,11 @@ body.loaded .bar-fill {
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--edge);
+  /* Deep glass: heavy refraction plus a hairline outer ring and the top edge. */
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  box-shadow: var(--shadow-card-hover), 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 var(--edge-strong);
   width: min(560px, 100%);
   max-height: 85vh;
   overflow-y: auto;

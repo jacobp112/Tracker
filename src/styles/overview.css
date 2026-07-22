@@ -79,18 +79,27 @@
 .due-clear {
   font-size: var(--fs-secondary);
   color: var(--ink-secondary);
-  margin: var(--space-4) 0 var(--space-8);
+  margin: var(--space-4) 0 var(--space-5);
 }
+/* All-clear reads as a status line, not a boxed empty state (§9 v0.6):
+ * a green dot and one sentence. */
 .due-clear {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
   margin-bottom: 0;
 }
-/* The list is nested inside a card, so its radius steps down — outer always
- * larger than inner (Doc 3 §2.5). */
+.due-clear p {
+  margin: 0;
+}
+/* No bounding box (§9 v0.6): the rows float, separated by proximity and
+ * their own hover raise — hierarchy from type and space, not line ink. */
 .due-list {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
   margin-top: auto;
+  /* Rows carry 8px side margins for their float; pull the list back out so
+   * their text still aligns with the card's own padding. */
+  margin-left: -8px;
+  margin-right: -8px;
 }
 
 /* ── Recent activity feed ──────────────────────────────────────── */
