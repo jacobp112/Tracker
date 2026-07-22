@@ -201,7 +201,7 @@ export function Jobs({
 
   return (
     <div className="content">
-      <div className="page-head split">
+      <div className="page-head split reveal" style={{ ['--i' as string]: 0 }}>
         <div>
           <h1>Jobs</h1>
           <p>Every application and where it stands.</p>
@@ -210,7 +210,7 @@ export function Jobs({
       </div>
 
       {!hasAny ? (
-        <div className="section">
+        <div className="section reveal" style={{ ['--i' as string]: 1 }}>
           <Card>
             <EmptyState
               icon={<JobsIcon />}
@@ -223,7 +223,7 @@ export function Jobs({
         <>
           {/* The shared props-row (Document 3 §3) — one card, internal dividers,
             * responsive collapse. Not a one-off stat cluster. */}
-          <PropsRow>
+          <PropsRow className="reveal" style={{ ['--i' as string]: 1 }}>
             <Prop label="Active" value={stats.active} caption="in the pipeline" />
             <Prop label="Applied" value={stats.applied} caption="applications sent" />
             <Prop
@@ -241,7 +241,7 @@ export function Jobs({
             <Prop label="Offers" value={stats.offers} caption={stats.offers === 1 ? 'offer' : 'offers'} />
           </PropsRow>
 
-          <div className="section">
+          <div className="section reveal" style={{ ['--i' as string]: 2 }}>
             <div className="job-board" role="list" aria-label="Application pipeline">
               {columns.map((col) => (
                 <div key={col.stage} className="job-column" role="listitem">
@@ -271,7 +271,7 @@ export function Jobs({
           </div>
 
           {closed.length > 0 && (
-            <div className="section">
+            <div className="section reveal" style={{ ['--i' as string]: 3 }}>
               <div className="eyebrow block-label">Closed ({closed.length})</div>
               <Card className="list-card">
                 {closed.map((app) => {

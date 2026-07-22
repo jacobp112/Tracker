@@ -92,7 +92,7 @@ export function QuickAdd({
 
   return (
     <div className="content">
-      <div className="page-head">
+      <div className="page-head reveal" style={{ ['--i' as string]: 0 }}>
         <h1>Quick add</h1>
         <p>
           Paste any JSON your AI gave you — course, session, exam, run, lift, or job application.
@@ -100,7 +100,7 @@ export function QuickAdd({
         </p>
       </div>
 
-      <div className="section">
+      <div className="section reveal" style={{ ['--i' as string]: 1 }}>
         <Card style={{ padding: 'var(--space-12)' }}>
           <div className="paste-panel">
             <div>

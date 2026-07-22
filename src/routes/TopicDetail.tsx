@@ -1,7 +1,7 @@
 import { DataTable, SegmentedControl } from '@/components/controls';
 import { RetentionCurve } from '@/components/RetentionCurve';
 import { Sheet } from '@/components/Sheet';
-import { Tag } from '@/components/primitives';
+import { Hint, Tag } from '@/components/primitives';
 import type { Confidence, Topic, TopicStatus } from '@/domain/types';
 import { badges, health, overconfidenceIndex, shouldShowHealth } from '@/engine/metrics';
 import { retentionPct } from '@/engine/retention';
@@ -41,11 +41,14 @@ function daysAgo(iso: string, now: Date): string {
   return `${d} days ago`;
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Stat({ value, label, hint }: { value: string; label: string; hint?: string }) {
   return (
     <div className="stat-mini stack micro">
       <span className="stat-mini-value mono-num">{value}</span>
-      <span className="stat-mini-label">{label}</span>
+      <span className="stat-mini-label">
+        {label}
+        {hint && <Hint text={hint} label={`About ${label}`} />}
+      </span>
     </div>
   );
 }
@@ -106,12 +109,32 @@ export function TopicDetail({
         </div>
 
         <div className="cluster roomy">
-          <Stat value={ret === null ? '—' : `${Math.round(ret)}%`} label="retention" />
+          <Stat
+            value={ret === null ? '—' : `${Math.round(ret)}%`}
+            label="retention"
+            hint="How much of this topic you'd likely recall right now, from the forgetting curve. Falls between reviews, recovers when you review."
+          />
           {/* Health is only surfaced at Practising/Mastered (Document 2 §6). */}
-          <Stat value={showHealth ? String(health(topic, now)) : '—'} label="health" />
-          <Stat value={`${oci >= 0 ? '+' : ''}${oci.toFixed(2)}`} label="calibration" />
-          <Stat value={topic.strength.toFixed(1)} label="strength" />
-          <Stat value={topic.k_factor.toFixed(1)} label="decay k" />
+          <Stat
+            value={showHealth ? String(health(topic, now)) : '—'}
+            label="health"
+            hint="A 0-100 blend of retention, calibration, unresolved mistakes, confidence and flashcard coverage. Only measured once a topic is Practising or beyond."
+          />
+          <Stat
+            value={`${oci >= 0 ? '+' : ''}${oci.toFixed(2)}`}
+            label="calibration"
+            hint="Your confidence vs. your actual test scores. Positive means overconfident, negative means underconfident, 0.00 means spot on."
+          />
+          <Stat
+            value={topic.strength.toFixed(1)}
+            label="strength"
+            hint="Grows with every review and never falls. The stronger a topic, the slower it decays."
+          />
+          <Stat
+            value={topic.k_factor.toFixed(1)}
+            label="decay k"
+            hint="The decay constant, self-tuned from your test results. Higher means the model has learned you forget this topic more slowly."
+          />
         </div>
 
         <div>

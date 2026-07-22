@@ -1,5 +1,5 @@
 import { Children, type HTMLAttributes, type ReactNode } from 'react';
-import { Card } from './primitives';
+import { Card, Hint } from './primitives';
 
 function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -70,11 +70,7 @@ export function Prop({
       <div className="prop-top">
         {icon}
         <span>{label}</span>
-        {hint && (
-          <span className="prop-hint" tabIndex={0} title={hint} aria-label={`${label}: ${hint}`}>
-            i
-          </span>
-        )}
+        {hint && <Hint text={hint} label={`About ${label}`} />}
         {after}
       </div>
       <div className="prop-value mono-num">{value}</div>

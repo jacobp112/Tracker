@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { EmptyState } from '@/components/feedback';
 import { HeroRing } from '@/components/HeroRing';
-import { Button, Card, Eyebrow } from '@/components/primitives';
+import { Button, Card, Eyebrow, Hint } from '@/components/primitives';
 import { Prop, PropsRow } from '@/components/PropsRow';
 import { RetentionRow } from '@/components/RetentionRow';
 import { CONFIG } from '@/config/constants';
@@ -185,6 +185,7 @@ export function Overview({ store }: { store: Store }) {
             className="reveal"
             style={{ ['--i' as string]: 1 }}
             eyebrow="Course health"
+            hint="A 0-100 score for every topic you're actively learning: current retention, confidence calibration, unresolved mistakes and flashcard coverage, combined."
             value={health}
             caption="Across all active topics"
           />
@@ -193,7 +194,13 @@ export function Overview({ store }: { store: Store }) {
         {/* Dense, but deliberately not the loudest surface (§5.1). */}
         <Card className="due-card reveal" style={{ ['--i' as string]: 2 }}>
           <div className="due-head">
-            <Eyebrow>Due for review</Eyebrow>
+            <div className="eyebrow-row">
+              <Eyebrow>Due for review</Eyebrow>
+              <Hint
+                text={`Topics whose predicted retention has fallen below ${duePct}%. Reviewing these now gives the biggest payoff.`}
+                label="About due for review"
+              />
+            </div>
             {due.length > 0 && (
               <span className="due-count mono-num">
                 {due.length}

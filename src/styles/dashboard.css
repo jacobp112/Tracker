@@ -344,32 +344,9 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-/* The info marker — a small circled "i" carrying the metric's plain-language
- * explanation. Overrides the uppercase label styling above (it's a glyph, not
- * a label) and reads on hover/focus via its title + aria-label. */
-.prop-top .prop-hint {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
-  color: var(--ink-muted);
-  font-size: 9px;
-  font-weight: 700;
-  font-style: italic;
-  font-family: var(--font-mono);
-  letter-spacing: 0;
-  text-transform: none;
-  cursor: help;
-  transition: color var(--dur-micro), border-color var(--dur-micro);
-}
-.prop-top .prop-hint:hover,
-.prop-top .prop-hint:focus-visible {
-  color: var(--accent);
-  border-color: var(--accent);
-}
+/* The metric explainer is the shared Hint primitive (components.css) — a "?"
+ * with a real tooltip. `.prop-top span` above uppercases every span, so the
+ * hint's own classes reset that with higher specificity. */
 .prop-value {
   font-size: var(--fs-prop);
   font-weight: 700;

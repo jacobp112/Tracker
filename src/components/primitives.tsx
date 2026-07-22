@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import { useId, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
 import { healthStop, retentionStop, type Stop } from '@/design/scale';
 
 /** Map a §2.2(a) stop to the class suffix the stylesheet uses. */
@@ -35,6 +35,27 @@ export function Card({
 /* ── Eyebrow ─────────────────────────────────────────────────── */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cx('eyebrow', className)}>{children}</div>;
+}
+
+/* ── Hint ────────────────────────────────────────────────────────
+ * The "?" beside a metric whose name doesn't explain itself (Calibration,
+ * Health, decay k…). A real tooltip, not a native `title`: it opens on hover
+ * AND on focus/tap, so keyboard and touch users get the same explanation.
+ * The trigger is a button wired to the tip via aria-describedby; screen
+ * readers announce the text on focus without needing the visual popup.
+ */
+export function Hint({ text, label }: { text: string; label?: string }) {
+  const id = useId();
+  return (
+    <span className="hint">
+      <button type="button" className="hint-btn" aria-label={label ?? 'What is this?'} aria-describedby={id}>
+        ?
+      </button>
+      <span role="tooltip" id={id} className="hint-tip">
+        {text}
+      </span>
+    </span>
+  );
 }
 
 /* ── Buttons ─────────────────────────────────────────────────── */

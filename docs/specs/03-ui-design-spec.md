@@ -410,3 +410,15 @@ source doc is updated before implementation deviates from it.
    sheet, and funnel props-row join §5 as a new screen family; the Overview
    gains a "Coming up" agenda (job next-action dates) and job stage events in
    the activity feed.
+8. **Hint primitive ("?" tooltips).** Metrics whose names don't explain
+   themselves (Calibration, Health, strength, decay k, Due threshold, funnel
+   rates) carry a shared `Hint` primitive: a "?" marker opening a real tooltip
+   on hover AND focus/tap (the previous native-`title` marker was invisible to
+   touch and keyboard users). The tip is wired via `aria-describedby`, so
+   screen readers get the text without the visual popup.
+9. **Motion & elevation completion.** The §2.6 entrance cascade (`.reveal`)
+   extends to every screen (Jobs, Exams, Fitness, Study index, Quick add — not
+   just Overview/course). Interactive cards (job cards, quick-review buttons)
+   gain `--shadow-card` hover elevation and a press-scale acknowledgment, all
+   inside `prefers-reduced-motion: no-preference` in addition to the global
+   reduce kill switch.

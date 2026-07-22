@@ -28,7 +28,7 @@ export function Exams({ store }: { store: Store }) {
 
   return (
     <div className="content">
-      <div className="page-head split">
+      <div className="page-head split reveal" style={{ ['--i' as string]: 0 }}>
         <div>
           <h1>Exams</h1>
           <p>Every exam and the effect it had on your topics.</p>
@@ -36,7 +36,7 @@ export function Exams({ store }: { store: Store }) {
         <Button onClick={() => navigate('/exams/add')}>+ Add exam result</Button>
       </div>
 
-      <div className="section">
+      <div className="section reveal" style={{ ['--i' as string]: 1 }}>
         {views.length === 0 ? (
           <Card>
             <EmptyState

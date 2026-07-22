@@ -76,13 +76,18 @@
 }
 .job-card:hover {
   border-color: var(--accent);
+  box-shadow: var(--shadow-card);
 }
 @media (prefers-reduced-motion: no-preference) {
   .job-card {
-    transition: border-color 120ms ease, transform 120ms ease;
+    transition: border-color var(--dur-micro) var(--ease), transform var(--dur-micro) var(--ease),
+      box-shadow var(--dur-micro) var(--ease);
   }
   .job-card:hover {
     transform: translateY(-1px);
+  }
+  .job-card:active {
+    transform: translateY(0) scale(0.99);
   }
 }
 .job-card:focus-visible {

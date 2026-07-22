@@ -162,7 +162,7 @@ export function Fitness({ store }: { store: Store }) {
 
   return (
     <div className="content">
-      <div className="page-head split">
+      <div className="page-head split reveal" style={{ ['--i' as string]: 0 }}>
         <div>
           <h1>Fitness</h1>
           <p>Running and lifting progression.</p>
@@ -174,7 +174,7 @@ export function Fitness({ store }: { store: Store }) {
       </div>
 
       {empty ? (
-        <div className="section">
+        <div className="section reveal" style={{ ['--i' as string]: 1 }}>
           <Card>
             <EmptyState
               icon={<FitnessIcon />}
@@ -184,7 +184,7 @@ export function Fitness({ store }: { store: Store }) {
           </Card>
         </div>
       ) : (
-        <div className="section">
+        <div className="section reveal" style={{ ['--i' as string]: 1 }}>
           <div className="panel-gap">
             <SegmentedControl
               label="Fitness view"

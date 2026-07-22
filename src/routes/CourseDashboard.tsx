@@ -115,6 +115,7 @@ export function CourseDashboard({
           className="reveal"
           style={{ ['--i' as string]: 2 }}
           eyebrow="Avg retention"
+          hint="How much of this course you'd likely recall right now, averaged across started topics. It decays between reviews and recovers when you log one."
           value={avgRet === null ? null : Math.round(avgRet)}
           caption={avgRet === null ? 'No history yet' : 'Past 30 days'}
           delta={avgRet === null ? undefined : delta}
@@ -145,6 +146,7 @@ export function CourseDashboard({
         <Prop
           icon={<HealthIcon />}
           label="Health"
+          hint="A 0-100 score across your active topics: retention, calibration, unresolved mistakes, confidence and flashcard coverage, combined."
           value={chealth ?? '—'}
           caption={chealth === null ? 'No active topics yet' : healthCaption(chealth)}
         />

@@ -143,11 +143,11 @@ function StudyIndex({ store }: { store: Store }) {
   }
   return (
     <div className="content">
-      <div className="page-head">
+      <div className="page-head reveal" style={{ ['--i' as string]: 0 }}>
         <h1>Study</h1>
         <p>Your courses.</p>
       </div>
-      <div className="section">
+      <div className="section reveal" style={{ ['--i' as string]: 1 }}>
         <Card className="list-card">
           {store.courses.map((c) => {
             const topics = c.sections.flatMap((s) => s.topics);

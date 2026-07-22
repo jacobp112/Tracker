@@ -1,6 +1,6 @@
 import { ProgressRing } from '@/components/controls';
 import { useCountUp } from '@/hooks/useCountUp';
-import { Card, Eyebrow } from './primitives';
+import { Card, Eyebrow, Hint } from './primitives';
 
 /**
  * The ring variant of the §3 hero stat — same card treatment (`--shadow-hero` +
@@ -17,12 +17,15 @@ import { Card, Eyebrow } from './primitives';
  */
 export function HeroRing({
   eyebrow,
+  hint,
   value,
   caption,
   className,
   style,
 }: {
   eyebrow: string;
+  /** Plain-language explanation, surfaced as a "?" tooltip beside the eyebrow. */
+  hint?: string;
   /** 0–100. */
   value: number;
   caption: string;
@@ -33,7 +36,10 @@ export function HeroRing({
 
   return (
     <Card className={`hero-stat hero-ring ${className ?? ''}`} style={style}>
-      <Eyebrow>{eyebrow}</Eyebrow>
+      <div className="eyebrow-row">
+        <Eyebrow>{eyebrow}</Eyebrow>
+        {hint && <Hint text={hint} label={`About ${eyebrow}`} />}
+      </div>
       <div className="hero-ring-body">
         <ProgressRing value={value} size={168} stroke={12}>
           <span className="hero-ring-num mono-num">{shown}</span>

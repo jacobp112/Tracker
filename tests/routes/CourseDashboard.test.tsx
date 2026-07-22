@@ -153,10 +153,14 @@ describe('empty states are honest, not broken-looking', () => {
     expect(within(due).getByText('0')).toBeInTheDocument();
   });
 
-  it('explains the jargon labels with an info affordance', () => {
+  it('explains the jargon labels with a "?" hint tooltip', () => {
     renderDash(fresh());
     const calibration = propOf('Calibration');
-    expect(within(calibration).getByLabelText(/calibration:.*confidence/i)).toBeInTheDocument();
+    // The Hint primitive: a focusable "?" button wired to its tooltip text
+    // via aria-describedby, so the explanation reads on focus and hover alike.
+    const btn = within(calibration).getByRole('button', { name: /about calibration/i });
+    expect(btn).toHaveAccessibleDescription(/confidence/i);
+    expect(within(calibration).getByRole('tooltip')).toBeInTheDocument();
   });
 });
 

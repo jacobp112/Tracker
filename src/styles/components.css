@@ -697,6 +697,19 @@ body.loaded .bar-fill {
 .quick-review-btn:hover {
   border-color: var(--accent);
   color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .quick-review-btn {
+    transition: border-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease),
+      transform var(--dur-micro) var(--spring), box-shadow var(--dur-micro) var(--ease);
+  }
+  .quick-review-btn:hover {
+    transform: translateY(-1px);
+  }
+  .quick-review-btn:active {
+    transform: scale(0.96);
+  }
 }
 .quick-review-btn:focus-visible {
   outline: 2px solid var(--accent);
@@ -726,6 +739,92 @@ body.loaded .bar-fill {
 .deadline-overdue {
   color: var(--danger);
   font-weight: 600;
+}
+
+/* ── Hint ("?" + tooltip) ────────────────────────────────────────
+ * Opens on hover and on focus (tap focuses, so touch works too). The tip is
+ * always in the DOM for aria-describedby; only its visibility animates.
+ */
+.hint {
+  position: relative;
+  display: inline-flex;
+}
+.hint .hint-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: none;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1;
+  cursor: help;
+  transition: color var(--dur-micro), border-color var(--dur-micro);
+}
+.hint .hint-btn:hover,
+.hint .hint-btn:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.hint .hint-btn:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+.hint .hint-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  width: max-content;
+  max-width: 240px;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--bg-page);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: var(--shadow-card-hover);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 60;
+  transition: opacity var(--dur-micro) var(--ease), transform var(--dur-micro) var(--ease);
+}
+.hint:hover .hint-tip,
+.hint:focus-within .hint-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+/* Reduced motion: the global kill switch flattens the transition; the tip
+ * still appears/disappears instantly, and .hint-tip stays reachable via
+ * aria-describedby regardless. */
+
+/* Eyebrow + hint on one line (hero cards, card heads). */
+.eyebrow-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.eyebrow-row .eyebrow {
+  margin-bottom: 0;
+}
+/* Mini-stat labels host a hint inline. */
+.stat-mini-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* ── Settings rows ─────────────────────────────────────────────── */
