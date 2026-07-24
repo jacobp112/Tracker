@@ -87,15 +87,23 @@ append-only history — **no stored snapshots**.
 `applyEvent` over the topic's `review_history` events with `date ≤ d` to get its
 exact state as-of day `d`, then evaluate `min(1, predictRetention(state, d))`.
 
+**The most-recent point is short-circuited to live state.** Rather than replaying
+to reproduce today, `expTrend`'s last point reads `retrievable(store, now)`
+directly. This makes invariant 2 unconditionally true — including for an imported
+topic whose genesis `k_factor ≠ DECAY_K`, where a from-genesis replay would
+otherwise diverge from live state. It is also cheaper. Only the *earlier* points
+(strictly in the past) come from replay.
+
 We do **not** reconstruct past state by subtracting recent strength increments:
 strength is additive, but `k_factor` self-tunes over a *set* of drift samples and
 is not generally reversible by removing the last few events. Forward-replay is
 provably correct and costs nothing at this scale (7 days × N topics).
 
-> Note: forward-replay assumes genesis `k_factor = DECAY_K`, which is exact for
+> Note: from-genesis replay assumes genesis `k_factor = DECAY_K`, exact for
 > topics created in-app. A topic *imported* with pre-baked history and a
-> non-default `k_factor` will have exact **current** EXP (live state is always
-> used) but its historical trend points may be approximate. Acceptable edge.
+> non-default `k_factor` has exact **current** EXP (the most-recent point is live
+> state, per above) but its *earlier* trend points may be approximate. Acceptable
+> edge — it never touches today's headline figure or invariant 2.
 
 **What the sparkline plots: `exp / ceiling`, not raw `exp`.** Over 21 months you
 ingest three A-level syllabi at staggered times; a heavy study week on new
@@ -116,12 +124,17 @@ the ratchet a real property rather than an assumption about how health behaves,
 the surfaced level is the **high-water mark over replayed history**:
 
 ```
-topicLevelHighWater(topic, now) = max over event boundaries d of topicLevel(state_asof d, statusOf(d), d)
+topicLevelHighWater(topic, now) = max over boundaries d of topicLevel(state_asof d, statusOf(d), d)
 ```
 
-evaluated at each event date (health peaks immediately after an event, since
-retention only decays between events, so event boundaries capture every local
-maximum).
+The **boundary set is `{ each event date } ∪ { mastered_at }`**. Event dates
+capture health's local maxima (health peaks immediately after an event, since
+retention only decays between events). `mastered_at` is unioned in explicitly:
+mastery is a status flip that unlocks level 5 but is not guaranteed to fall on an
+event date, and under mastered status the level peaks *at* `mastered_at` (health
+decays from there). If `mastered_at` always coincides with its triggering event
+this is a harmless no-op; if it ever doesn't, omitting it would silently cap the
+watermark at 4 — the exact failure the status reconstruction exists to prevent.
 
 **Status must be reconstructed, because it gates the level and is not in
 `review_history`.** Two status distinctions affect `topicLevel`: `not_started`
@@ -150,6 +163,13 @@ No stored "last level" is needed. `useStore` already commits via clone → mutat
 swap, so both old and new stores are in hand at commit. `levelUps(oldStore,
 newStore, now)` returns the topics whose high-water level rose; the committing
 route (LogSession / AddExam) fires a toast per increase.
+
+**Only topics touched by the commit are examined.** A watermark is a max over
+past states, so the passage of time alone can never raise it — only a topic
+receiving an event this commit can level up. `levelUps` restricts to the changed
+topics (by `topic_id` diff), which is both cheaper (no full-corpus scan that
+grows with the syllabi) and semantically tighter: it makes "level-ups are
+evidence-only" structural rather than emergent.
 
 ## UI
 
@@ -192,10 +212,12 @@ magic numbers inline.
 
 ## Invariants (encoded as tests, per the spec-as-tests convention)
 
-1. **EXP decays.** With no new events, `exp` strictly decreases as `now` advances
-   (started topics past `t=0`), and never exceeds `ceiling`.
-2. **Trend reversibility.** `expTrend`'s most-recent point equals live
-   `retrievable` (forward-replay of the full history reproduces current state).
+1. **EXP decays.** Given ≥1 started topic past `t=0`, `exp` strictly decreases as
+   `now` advances with no new events (the "≥1" scope avoids passing trivially on
+   an empty store), and `exp` never exceeds `ceiling`.
+2. **Most-recent point is live.** `expTrend`'s last point equals live
+   `retrievable(store, now)` unconditionally — it is short-circuited to live
+   state, so it holds even for imported topics with a non-default `k_factor`.
 3. **Ratchet holds.** A mastered-then-decayed topic keeps its high-water level
    (Lv 5) even as `topicLevel` (current band) and retention fall.
 4. **Level-ups are evidence-only and non-negative.** A toast fires only when the
