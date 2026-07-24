@@ -105,6 +105,18 @@ export const CONFIG = {
      */
     UNVALIDATED_CAP: 3,
   },
+
+  /** Progress surfacing (engine/progress.ts) — all derived, never stored. */
+  PROGRESS: {
+    /** Days of history shown in the Overview EXP trend sparkline. */
+    TREND_DAYS: 7,
+    /**
+     * Nominal minutes per study session — the honest volume proxy. Session
+     * duration is decomposed away on ingestion, so "hours" is a count × this,
+     * exact in the count and approximate in the hours (mirrors weeklyVolume).
+     */
+    SESSION_MINUTES: 30,
+  },
 } as const;
 
 /** Health weights must sum to 1, or `health` is no longer a 0–100 score. */
