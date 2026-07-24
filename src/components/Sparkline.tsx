@@ -104,15 +104,18 @@ export function Sparkline({
   idPrefix,
   label = 'Average retention',
   locale,
+  unit = '%',
 }: {
   data: readonly SparkPoint[];
-  goal: number;
+  goal?: number;
   /** Optional stable id for the gradients. Defaults to a React-generated one. */
   idPrefix?: string;
   /** What the series measures — used in the accessible description. */
   label?: string;
   /** Overrides the runtime locale for the date readout. */
   locale?: string;
+  /** Value unit rendered in readouts and the label. Defaults to '%'. */
+  unit?: string;
 }) {
   const reduced = useReducedMotion();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -145,8 +148,10 @@ export function Sparkline({
       if (d.value < lo) lo = d.value;
       if (d.value > hi) hi = d.value;
     }
-    lo = Math.min(lo, goal);
-    hi = Math.max(hi, goal);
+    if (goal !== undefined) {
+      lo = Math.min(lo, goal);
+      hi = Math.max(hi, goal);
+    }
     const span = hi - lo || 1;
 
     const n = data.length;
@@ -161,7 +166,7 @@ export function Sparkline({
         ? `${l} L${p[p.length - 1]!.x.toFixed(1)},${base} L${p[0]!.x.toFixed(1)},${base} Z`
         : '';
 
-    return { pts: p, line: l, fill: f, goalY: y(goal) };
+    return { pts: p, line: l, fill: f, goalY: goal === undefined ? null : y(goal) };
   }, [data, goal, w, h]);
 
   const end = pts[pts.length - 1];
@@ -222,17 +227,17 @@ export function Sparkline({
   if (data.length === 0) {
     return (
       <div className="hero-chart hero-chart--empty" ref={wrapRef}>
-        <span className="goal-label">Goal {goal}%</span>
+        {goal !== undefined && <span className="goal-label">Goal {goal}{unit}</span>}
         <p className="spark-empty">No readings yet. Data appears after the first sync.</p>
       </div>
     );
   }
 
-  const describe = (p: Pt) => `${formatValue(p.v)}% on ${dateFmt.format(p.date)}`;
+  const describe = (p: Pt) => `${formatValue(p.v)}${unit} on ${dateFmt.format(p.date)}`;
 
   return (
     <div className="hero-chart" ref={wrapRef}>
-      <span className="goal-label">Goal {goal}%</span>
+      {goal !== undefined && <span className="goal-label">Goal {goal}{unit}</span>}
 
       <svg
         ref={svgRef}
@@ -251,7 +256,7 @@ export function Sparkline({
         role="img"
         aria-label={`${label} over the last ${data.length} days, currently ${formatValue(
           end?.v ?? 0,
-        )}%. Goal ${goal}%. Use the arrow keys to read individual days.`}
+        )}${unit}.${goal !== undefined ? ` Goal ${goal}${unit}.` : ''} Use the arrow keys to read individual days.`}
       >
         <defs>
           <linearGradient id={lineId} x1="0" y1="0" x2="1" y2="0">
@@ -264,15 +269,17 @@ export function Sparkline({
           </linearGradient>
         </defs>
 
-        <line
-          x1={PAD_X}
-          x2={w - PAD_X}
-          y1={goalY}
-          y2={goalY}
-          stroke="var(--border-strong)"
-          strokeWidth="1"
-          strokeDasharray="3 4"
-        />
+        {goalY !== null && (
+          <line
+            x1={PAD_X}
+            x2={w - PAD_X}
+            y1={goalY}
+            y2={goalY}
+            stroke="var(--border-strong)"
+            strokeWidth="1"
+            strokeDasharray="3 4"
+          />
+        )}
 
         {fill && <path d={fill} fill={`url(#${fillId})`} stroke="none" />}
         {line && (
@@ -345,7 +352,7 @@ export function Sparkline({
             opacity: 1,
           }}
         >
-          <span className="ro-val">{formatValue(active.v)}%</span>
+          <span className="ro-val">{formatValue(active.v)}{unit}</span>
           <span className="ro-date">{dateFmt.format(active.date)}</span>
         </div>
       )}
