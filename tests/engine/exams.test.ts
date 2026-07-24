@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildExamView } from '@/engine/exams';
-import { emptyStore, type Course, type Exam, type Store } from '@/domain/types';
+import { buildExamView, type TopicIndex } from '@/engine/exams';
+import { allTopics, emptyStore, type Course, type Exam, type Store } from '@/domain/types';
 
 function course(id: string, title: string, topics: Array<[string, string]>): Course {
   return {
@@ -37,6 +37,13 @@ function storeWith(...courses: Course[]): Store {
   return { ...emptyStore(), courses };
 }
 
+/** The topic index buildExamView now takes — built exactly as examViews does. */
+function indexOf(store: Store): TopicIndex {
+  return new Map(
+    allTopics(store).map(({ topic, course }) => [topic.topic_id, { title: topic.title, course }]),
+  );
+}
+
 describe('E5-S3 — exam view (Document 3 §5.4)', () => {
   it('marks a pass (≥80%) boosted and a fail flagged', () => {
     const store = storeWith(
@@ -59,7 +66,7 @@ describe('E5-S3 — exam view (Document 3 §5.4)', () => {
       ],
     };
 
-    const view = buildExamView(exam, store);
+    const view = buildExamView(exam, indexOf(store));
     const rows = view.groups[0]!.topics;
     expect(rows.find((r) => r.title === 'Epsilon-delta')!.effect).toBe('boosted'); // 90%
     expect(rows.find((r) => r.title === 'Chain rule')!.effect).toBe('flagged'); // 60%
@@ -81,7 +88,7 @@ describe('E5-S3 — exam view (Document 3 §5.4)', () => {
       max_score: 40,
     };
 
-    const view = buildExamView(exam, store);
+    const view = buildExamView(exam, indexOf(store));
     expect(view.groups).toHaveLength(2);
     expect(view.groups.map((g) => g.courseTitle).sort()).toEqual(['Calculus I', 'Org Chem']);
   });
@@ -98,7 +105,7 @@ describe('E5-S3 — exam view (Document 3 §5.4)', () => {
       max_score: 20,
     };
 
-    const view = buildExamView(exam, store);
+    const view = buildExamView(exam, indexOf(store));
     const row = view.groups[0]!.topics[0]!;
     expect(row.earned).toBeNull(); // signals "applied overall" in the UI
     expect(row.effect).toBe('boosted'); // 90%
@@ -116,7 +123,7 @@ describe('E5-S3 — exam view (Document 3 §5.4)', () => {
       max_score: 20,
     };
 
-    const view = buildExamView(exam, store);
+    const view = buildExamView(exam, indexOf(store));
     expect(view.groups[0]!.courseTitle).toBe('Removed course');
     expect(view.groups[0]!.topics[0]!.title).toBe('topic_gone');
   });
