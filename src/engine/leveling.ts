@@ -108,3 +108,33 @@ export function overallLevel(store: Store, now: Date = new Date()): number {
   const sum = topics.reduce((acc, { topic }) => acc + topicLevel(topic, now), 0);
   return Math.round(sum / topics.length);
 }
+
+export interface LevelUp {
+  topic: Topic;
+  from: number;
+  to: number;
+}
+
+/**
+ * Level-ups introduced by a single commit. A watermark is a max over past
+ * states, so only a topic that received an event this commit can level up —
+ * we restrict to topics whose review_history length changed, which makes
+ * "level-ups are evidence-only" structural rather than emergent (and avoids a
+ * full-corpus scan). Deltas are non-negative by construction.
+ */
+export function levelUps(oldStore: Store, newStore: Store, now: Date = new Date()): LevelUp[] {
+  const oldById = new Map(allTopics(oldStore).map(({ topic }) => [topic.topic_id, topic]));
+  const out: LevelUp[] = [];
+
+  for (const { topic } of allTopics(newStore)) {
+    const prev = oldById.get(topic.topic_id);
+    if (!prev) continue; // brand-new topics start not_started → level 0
+    if (prev.review_history.length === topic.review_history.length) continue; // untouched
+
+    const to = topicLevelHighWater(topic, now);
+    const from = topicLevelHighWater(prev, now);
+    if (to > from) out.push({ topic, from, to });
+  }
+
+  return out;
+}

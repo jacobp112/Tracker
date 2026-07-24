@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_LEVEL, overallLevel, topicLevel, topicLevelHighWater } from '@/engine/leveling';
+import { MAX_LEVEL, levelUps, overallLevel, topicLevel, topicLevelHighWater } from '@/engine/leveling';
+import { applyEvent } from '@/engine/recalculate';
 import { CONFIG } from '@/config/constants';
 import { emptyStore, type Course, type ReviewEvent, type Store, type Topic } from '@/domain/types';
 
@@ -167,5 +168,36 @@ describe('topicLevelHighWater — the ratchet', () => {
     });
     expect(topicLevel(t, late)).toBeLessThan(MAX_LEVEL); // live level has decayed
     expect(topicLevelHighWater(t, late)).toBe(MAX_LEVEL); // held only by the mastered_at boundary
+  });
+});
+
+describe('levelUps — commit diff', () => {
+  it('reports a topic whose watermark rose from a validating event', () => {
+    // Before: practising, no test → capped at UNVALIDATED_CAP.
+    const before = topic({ status: 'practising', mastered_at: null, review_history: [] });
+    // After: same topic gains a passing test → validated, uncapped.
+    const after = { ...before, review_history: [], strength: before.strength };
+    const validated = applyEvent(after, passEvent(), NOW);
+
+    const oldStore = storeOf([before]);
+    const newStore = storeOf([validated]);
+    const ups = levelUps(oldStore, newStore, NOW);
+    expect(ups).toHaveLength(1);
+    expect(ups[0]).toBeDefined();
+    expect(ups[0]!.to).toBeGreaterThan(ups[0]!.from);
+    expect(ups[0]!.topic.topic_id).toBe('topic_x');
+  });
+
+  it('ignores topics whose history did not change this commit', () => {
+    const t = topic();
+    expect(levelUps(storeOf([t]), storeOf([t]), NOW)).toEqual([]);
+  });
+
+  it('never returns a negative delta (watermark cannot fall)', () => {
+    const before = topic();
+    const after = applyEvent(topic(), passEvent(), NOW);
+    for (const up of levelUps(storeOf([before]), storeOf([after]), NOW)) {
+      expect(up.to).toBeGreaterThan(up.from);
+    }
   });
 });
