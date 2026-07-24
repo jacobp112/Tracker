@@ -1,6 +1,7 @@
 import { CONFIG } from '@/config/constants';
 import { allTopics, type Store, type Topic } from '@/domain/types';
 import { health } from './metrics';
+import { topicStateAsOf } from './replay';
 
 /**
  * Per-topic and overall leveling — a live view of genuine progress.
@@ -46,6 +47,52 @@ export function topicLevel(topic: Topic, now: Date = new Date()): number {
   if (topic.status !== 'mastered') level = Math.min(level, MAX_LEVEL - 1);
 
   return level;
+}
+
+/**
+ * The ratchet: the highest level this topic has ever legitimately reached.
+ *
+ * `topicLevel` reads health, which includes retention, so a mastered-then-decayed
+ * topic's current level falls. The watermark evaluates `topicLevel` at every
+ * boundary where the level could have peaked — each event date (health peaks
+ * right after an event, since retention only decays between them) plus
+ * `mastered_at` (the status flip that unlocks level 5 need not fall on an event
+ * date) — and takes the max. Derived, unstored, and non-decreasing over time.
+ *
+ * Event-sourced fields are reconstructed exactly via `topicStateAsOf`; active
+ * errors are date-filtered from the log; mastery status comes from `mastered_at`.
+ * Flashcard count is not event-sourced and is held at its current value — the
+ * lone approximation, bounded by W_CARD (the smallest health weight).
+ */
+export function topicLevelHighWater(topic: Topic, now: Date = new Date()): number {
+  const boundaries: Date[] = topic.review_history.map((e) => new Date(e.date));
+  if (topic.mastered_at) boundaries.push(new Date(topic.mastered_at));
+
+  let max = topicLevel(topic, now); // live level covers status not present in history
+
+  for (const d of boundaries) {
+    if (d.getTime() > now.getTime()) continue;
+
+    const base = topicStateAsOf(topic, d);
+    const activeErrors = topic.error_log.filter(
+      (e) =>
+        new Date(e.date).getTime() <= d.getTime() &&
+        (!e.resolved || e.resolved_date === null || new Date(e.resolved_date).getTime() > d.getTime()),
+    );
+    const mastered = topic.mastered_at !== null && new Date(topic.mastered_at).getTime() <= d.getTime();
+
+    const snapshot: Topic = {
+      ...base,
+      cards: topic.cards,
+      error_log: activeErrors,
+      status: mastered ? 'mastered' : base.status,
+    };
+
+    const lvl = topicLevel(snapshot, d);
+    if (lvl > max) max = lvl;
+  }
+
+  return max;
 }
 
 /**

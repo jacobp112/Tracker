@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_LEVEL, overallLevel, topicLevel } from '@/engine/leveling';
+import { MAX_LEVEL, overallLevel, topicLevel, topicLevelHighWater } from '@/engine/leveling';
 import { CONFIG } from '@/config/constants';
 import { emptyStore, type Course, type ReviewEvent, type Store, type Topic } from '@/domain/types';
 
@@ -112,5 +112,41 @@ describe('overallLevel — aggregate', () => {
 
   it('does not reward an empty tracker with a nonzero level', () => {
     expect(overallLevel(storeOf([]), NOW)).toBe(0);
+  });
+});
+
+describe('topicLevelHighWater — the ratchet', () => {
+  it('keeps the peak level after retention decays (never falls with time)', () => {
+    // A validated, mastered topic reviewed at NOW: current level is MAX_LEVEL.
+    const fresh = topic();
+    const peak = topicLevelHighWater(fresh, NOW);
+    expect(peak).toBe(MAX_LEVEL);
+
+    // 120 days later with no new events: current topicLevel has dropped...
+    const later = new Date(NOW.getTime() + 120 * 86_400_000);
+    expect(topicLevel(fresh, later)).toBeLessThan(MAX_LEVEL);
+    // ...but the watermark holds.
+    expect(topicLevelHighWater(fresh, later)).toBe(MAX_LEVEL);
+  });
+
+  it('never drops below the current live level', () => {
+    const t = topic({ status: 'practising' });
+    expect(topicLevelHighWater(t, NOW)).toBeGreaterThanOrEqual(topicLevel(t, NOW));
+  });
+
+  it('reaches level 5 for a topic mastered in the past even if never re-tested since', () => {
+    // mastered_at precedes the (only) validating event's decay; the mastery gate
+    // must be reconstructed from mastered_at, not from replayed history.
+    const masteredLongAgo = topic({
+      mastered_at: '2026-02-01T00:00:00Z',
+      last_reviewed: '2026-02-01T00:00:00Z',
+      review_history: [{ ...passEvent(), date: '2026-02-01T00:00:00Z' }],
+    });
+    expect(topicLevelHighWater(masteredLongAgo, NOW)).toBe(MAX_LEVEL);
+  });
+
+  it('does not fabricate a level for an unvalidated topic', () => {
+    const untested = topic({ status: 'practising', mastered_at: null, review_history: [] });
+    expect(topicLevelHighWater(untested, NOW)).toBeLessThanOrEqual(CONFIG.LEVEL.UNVALIDATED_CAP);
   });
 });
