@@ -1,8 +1,7 @@
 /*
- * Design tokens — Document 3 v0.3 §2, re-based on the approved mockup
- * (mockups/studyos-notion-apple.html). Single source of truth for colour,
- * type, spacing, radius, elevation and motion. No component may hardcode a
- * raw value; everything references these named custom properties.
+ * Design tokens — Document 3 v0.3 §2, re-based on the approved mockup.
+ * Single source of truth for colour, type, spacing, radius, elevation and motion.
+ * No component may hardcode a raw value; everything references these named custom properties.
  *
  * Theme model: `:root` / [data-theme="light"] holds light, [data-theme="dark"]
  * overrides. The attribute is written before first paint by the inline script
@@ -33,20 +32,22 @@
   /* ── 2.6 Motion ──────────────────────────────────────────────── */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  
   --dur-micro: 0.15s;
   --dur-standard: 0.25s;
   --dur-theme: 0.4s;
   --dur-reveal: 0.6s;
   --dur-data: 0.9s;
   --dur-draw: 1.1s;
+  
   --reveal-step: 70ms;
 
   /* ── 2.5 Radius — nested: outer always larger than inner ─────── */
+  --radius-pill: 980px;
   --radius-lg: 20px;
   --radius-md: 14px;
   --radius-sm: 10px;
   --radius-chip: 6px;
-  --radius-pill: 980px;
 
   /* ── 2.5 Spacing — strict 4pt/8pt rhythm (Doc 3 §9 v0.6) ─────── */
   --space-1: 2px;
@@ -64,9 +65,10 @@
   --space-13: 56px;
   --space-14: 64px;
 
-  /* layout */
+  /* ── Layout parameters ───────────────────────────────────────── */
   --sidebar-width: 264px;
   --content-max: 1180px;
+  
   /* Height of the <768px bottom tab bar. Consumed both by .tab's min-height and
    * by the content padding that keeps the last row clear of it, so the two can
    * never drift apart. */
@@ -76,36 +78,33 @@
 /* ---------- LIGHT (default) ---------- */
 :root,
 [data-theme='light'] {
+  color-scheme: light;
+
+  /* Inks */
   --ink: #1d1d1f;
   --ink-secondary: #6e6e73;
-  /* Mockup used #a1a1a6, which is ~2.6:1 on white and fails WCAG AA. Was #767980,
-   * but that measured 4.36:1 on --surface and only 4.0:1 on --bg-page — a fail
-   * against §6 that the earlier audit missed. #696c73 clears AA on every light
-   * surface (4.83:1 on the worst case, --bg-page). §6 is a hard requirement. */
-  --ink-muted: #696c73;
+  --ink-muted: #696c73; /* Evaluated: clears AA on --surface and --bg-page */
 
+  /* Surfaces & Backgrounds */
   --bg-page: #f5f5f7;
-  /* Liquid Glass (§9 v0.6): alpha surfaces let the page washes refract
-   * through containers; .card supplies the backdrop blur. */
   --bg-sidebar: rgba(251, 251, 250, 0.65);
   --surface: rgba(255, 255, 255, 0.75);
   --surface-sunken: rgba(245, 245, 245, 0.6);
 
+  /* Borders & Edges */
   --border: rgba(0, 0, 0, 0.05);
   --border-strong: rgba(0, 0, 0, 0.1);
-
-  /* the light-catching top edge — the "material" cue (§2.1) */
   --edge: rgba(255, 255, 255, 0.95);
   --edge-strong: #ffffff;
 
-  /* Darkened from #0071e3 to clear 4.5:1 AA on the light surfaces. */
+  /* Brand Accents */
   --accent: #0062c6;
   --accent-2: #5e5ce6;
   --accent-soft: #eaf2fe;
   --accent-ring: rgba(0, 113, 227, 0.35);
   --accent-gradient: linear-gradient(135deg, #0080ff, #5e5ce6);
 
-  /* §2.2(a) retention / health — 3-stop semantic traffic light */
+  /* §2.2(a) Semantic states */
   --success: #1d7a3a;
   --success-soft: #e9f6ec;
   --warning: #8f5a00;
@@ -115,57 +114,59 @@
 
   --track: #ececec;
 
-  /* error_type categorical palette (Doc 3 §5.4) — muted on purpose: these
-   * categorize, they don't alarm. Distinct from both §2.2 scales. */
+  /* Categorical error types (Doc 3 §5.4) */
   --cat-conceptual: #6b6f8c;
   --cat-procedural: #64748b;
   --cat-careless: #9a8352;
   --cat-knowledge_gap: #a06b78;
 
-  /* §2.2(b) study activity — 5-step blue sequential ramp */
+  /* §2.2(b) Sequential ramp */
   --cell-0: #eef0f2;
   --cell-1: #cfe2fb;
   --cell-2: #8ec0f6;
   --cell-3: #4a97ef;
   --cell-4: #0071e3;
 
+  /* Elevation */
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03), 0 12px 32px rgba(0, 0, 0, 0.04);
   --shadow-card-hover: 0 8px 16px rgba(0, 0, 0, 0.04), 0 24px 48px rgba(0, 0, 0, 0.08);
   --shadow-hero: 0 1px 2px rgba(0, 113, 227, 0.06), 0 22px 46px rgba(0, 113, 227, 0.13),
     0 4px 14px rgba(0, 0, 0, 0.04);
 
-  /* page washes — the canvas is never flat (§2.1) */
+  /* Wash layers */
   --wash-1: rgba(0, 113, 227, 0.055);
   --wash-2: rgba(94, 92, 230, 0.05);
-
-  color-scheme: light;
 }
 
 /* ---------- DARK ---------- */
 [data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Inks */
   --ink: #f5f5f7;
   --ink-secondary: #a1a1a6;
-  /* #6e6e73 was ~3.1:1 on --surface; lifted to clear AA on dark. */
   --ink-muted: #9296a0;
 
+  /* Surfaces & Backgrounds */
   --bg-page: #000000;
   --bg-sidebar: rgba(28, 28, 30, 0.45);
   --surface: rgba(30, 30, 32, 0.55);
   --surface-sunken: rgba(20, 20, 22, 0.45);
 
+  /* Borders & Edges */
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
-
-  /* note the inversion: a faint white lift rather than a highlight (§2.3) */
   --edge: rgba(255, 255, 255, 0.08);
   --edge-strong: rgba(255, 255, 255, 0.12);
 
+  /* Brand Accents */
   --accent: #0a84ff;
   --accent-2: #7d7aff;
   --accent-soft: rgba(10, 132, 255, 0.16);
   --accent-ring: rgba(10, 132, 255, 0.45);
   --accent-gradient: linear-gradient(135deg, #0080ff, #5e5ce6);
 
+  /* §2.2(a) Semantic states */
   --success: #4fd07a;
   --success-soft: rgba(48, 160, 90, 0.18);
   --warning: #f0b03e;
@@ -175,26 +176,28 @@
 
   --track: #3a3a3c;
 
+  /* Categorical error types (Doc 3 §5.4) */
   --cat-conceptual: #9aa0c4;
   --cat-procedural: #94a3b8;
   --cat-careless: #c4b088;
   --cat-knowledge_gap: #c99caa;
 
+  /* §2.2(b) Sequential ramp */
   --cell-0: #212123;
   --cell-1: #1e3a5f;
   --cell-2: #1f5aa8;
   --cell-3: #1878e0;
   --cell-4: #0a84ff;
 
+  /* Elevation */
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.6), 0 12px 32px rgba(0, 0, 0, 0.5);
   --shadow-card-hover: 0 8px 16px rgba(0, 0, 0, 0.7), 0 24px 48px rgba(0, 0, 0, 0.6);
   --shadow-hero: 0 1px 2px rgba(0, 0, 0, 0.5), 0 22px 46px rgba(0, 0, 0, 0.5),
     0 0 0 0.5px rgba(125, 122, 255, 0.12);
 
+  /* Wash layers */
   --wash-1: rgba(10, 132, 255, 0.1);
   --wash-2: rgba(125, 122, 255, 0.09);
-
-  color-scheme: dark;
 }
 
 /*
@@ -206,14 +209,22 @@
   *,
   *::before,
   *::after {
-    transition: none !important;
-    animation: none !important;
+    /* 
+     * Using 0.01ms instead of 'none' ensures that JavaScript 'transitionend' 
+     * and 'animationend' events still fire for components relying on state engines,
+     * preventing UI freezes while fully satisfying reduced motion constraints.
+     */
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  
   .reveal {
     opacity: 1 !important;
     transform: none !important;
   }
+  
   .bar-fill {
     width: var(--w) !important;
   }

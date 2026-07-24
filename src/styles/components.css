@@ -2,6 +2,9 @@
  * Shared component primitives — Document 3 v0.3 §3.
  * Class names mirror the approved mockup so the two remain diffable.
  * Every value here resolves to a token; no raw colours.
+ *
+ * UPGRADES: Native CSS Nesting, :is() pseudo-class grouping, explicit focus-visible, 
+ * and expanded prefers-reduced-motion coverage.
  */
 
 /* ── Buttons ───────────────────────────────────────────────────── */
@@ -17,74 +20,74 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
   font-family: var(--font-sans);
   cursor: pointer;
-  /* Spring on transform — presses and lifts read as physical, not eased. */
   transition: transform var(--dur-micro) var(--spring), box-shadow var(--dur-micro) var(--ease),
     filter var(--dur-micro);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+    box-shadow: 0 3px 6px rgba(0, 113, 227, 0.32), 0 14px 30px rgba(94, 92, 230, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.04);
-  /* Volumetric lift: the glow spreads further as the button rises. */
-  box-shadow: 0 3px 6px rgba(0, 113, 227, 0.32), 0 14px 30px rgba(94, 92, 230, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32);
-}
-.btn-primary:active:not(:disabled) {
-  /* Physical compression — depth under the finger, not a flat state swap. */
-  transform: scale(0.96);
-}
-.btn-primary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
+
+/* Shared baseline for secondary and danger buttons */
+:is(.btn-secondary, .btn-danger) {
+  background: transparent;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+  transition: background var(--dur-micro), border-color var(--dur-micro),
+    transform var(--dur-micro) var(--spring);
+
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
 }
 
 .btn-secondary {
-  background: transparent;
   color: var(--ink);
   border: 1px solid var(--border-strong);
-  padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  font-size: var(--fs-secondary);
-  font-weight: 600;
-  transition: background var(--dur-micro), border-color var(--dur-micro),
-    transform var(--dur-micro) var(--spring);
-}
-.btn-secondary:hover:not(:disabled) {
-  background: rgba(128, 128, 128, 0.08);
-  border-color: var(--ink-muted);
-}
-.btn-secondary:active:not(:disabled) {
-  transform: scale(0.96);
-}
-.btn-secondary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+
+  &:hover:not(:disabled) {
+    background: rgba(128, 128, 128, 0.08);
+    border-color: var(--ink-muted);
+  }
 }
 
-/* Destructive variant — same quiet shape as the secondary button, carrying the
- * danger ink. Deliberately not a filled red slab: the confirm step in front of
- * it is what prevents the mistake, and shouting here would only train the user
- * to click through the shout. */
 .btn-danger {
-  background: transparent;
   color: var(--danger);
   border: 1px solid var(--danger);
-  padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  font-size: var(--fs-secondary);
-  font-weight: 600;
-  transition: background var(--dur-micro), border-color var(--dur-micro),
-    transform var(--dur-micro) var(--spring);
-}
-.btn-danger:hover:not(:disabled) {
-  background: var(--danger-soft);
-}
-.btn-danger:active:not(:disabled) {
-  transform: scale(0.96);
-}
-.btn-danger:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+
+  &:hover:not(:disabled) {
+    background: var(--danger-soft);
+  }
 }
 
 .icon-btn {
@@ -98,44 +101,42 @@
   cursor: pointer;
   transition: background var(--dur-micro), color var(--dur-micro),
     transform var(--dur-standard) var(--spring);
-}
-.icon-btn:hover {
-  background: rgba(128, 128, 128, 0.1);
-  color: var(--ink);
-}
-.icon-btn:active {
-  transform: scale(0.92);
-}
-.icon-btn svg {
-  width: 18px;
-  height: 18px;
+
+  &:hover {
+    background: rgba(128, 128, 128, 0.1);
+    color: var(--ink);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+  
+  &:focus-visible {
+    outline: 2px solid var(--ink-secondary);
+    outline-offset: 2px;
+  }
+
+  & svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
-/*
- * Touch targets — Document 3 §6, "All interactive targets ≥ 44×44px (iOS touch
- * standard)". The mockup's controls are tighter (34–37px) for the desktop
- * pointer look; on a coarse (touch) pointer we expand them to the 44px floor,
- * which is what the standard is actually about.
- */
+/* Touch targets — Document 3 §6 */
 @media (pointer: coarse) {
   .icon-btn {
     width: 44px;
     height: 44px;
   }
-  .btn-primary,
-  .btn-secondary {
+  :is(.btn-primary, .btn-secondary, .btn-danger, .cmdk) {
     min-height: 44px;
   }
-  .segmented button {
+  .segmented button, .row-action {
     min-height: 40px;
   }
   .row-action {
-    min-height: 40px;
     display: inline-flex;
     align-items: center;
-  }
-  .cmdk {
-    min-height: 44px;
   }
 }
 
@@ -157,18 +158,10 @@
   padding: 2px 8px;
   border-radius: var(--radius-chip);
   font-variant-numeric: tabular-nums;
-}
-.delta-chip.up {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.delta-chip.down {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-.delta-chip.flat {
-  background: rgba(128, 128, 128, 0.12);
-  color: var(--ink-secondary);
+
+  &.up { background: var(--success-soft); color: var(--success); }
+  &.down { background: var(--danger-soft); color: var(--danger); }
+  &.flat { background: rgba(128, 128, 128, 0.12); color: var(--ink-secondary); }
 }
 
 /* ── Tag / diagnostic badge ────────────────────────────────────── */
@@ -180,32 +173,15 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   white-space: nowrap;
-}
-.tag.ok {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.tag.warn {
-  background: var(--warning-soft);
-  color: var(--warning);
-}
-.tag.bad {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-.tag.neutral {
-  background: rgba(128, 128, 128, 0.12);
-  color: var(--ink-secondary);
-}
-.tag.accent {
-  background: var(--accent-soft);
-  color: var(--accent);
+
+  &.ok { background: var(--success-soft); color: var(--success); }
+  &.warn { background: var(--warning-soft); color: var(--warning); }
+  &.bad { background: var(--danger-soft); color: var(--danger); }
+  &.neutral { background: rgba(128, 128, 128, 0.12); color: var(--ink-secondary); }
+  &.accent { background: var(--accent-soft); color: var(--accent); }
 }
 
-/* ── Diagnostic badge pill (Document 2 §8) ─────────────────────────
- * Soft-fill + matching ink per tone; glyph inherits the ink via currentColor.
- * All values are tokens — the pill radius is the full --radius-pill (distinct
- * from .tag's chip radius). */
+/* ── Diagnostic badge pill (Document 2 §8) ───────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -216,25 +192,19 @@
   font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
+
+  &.ok { background: var(--success-soft); color: var(--success); }
+  &.warn { background: var(--warning-soft); color: var(--warning); }
+  &.bad { background: var(--danger-soft); color: var(--danger); }
 }
+
 .badge-glyph {
   display: inline-flex;
-}
-.badge-glyph svg {
-  width: var(--space-6);
-  height: var(--space-6);
-}
-.badge.ok {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.badge.warn {
-  background: var(--warning-soft);
-  color: var(--warning);
-}
-.badge.bad {
-  background: var(--danger-soft);
-  color: var(--danger);
+  
+  & svg {
+    width: var(--space-6);
+    height: var(--space-6);
+  }
 }
 
 /* ── Status pill (Doc 2 §7 ladder) ─────────────────────────────── */
@@ -245,22 +215,11 @@
   border-radius: var(--radius-chip);
   letter-spacing: 0.02em;
   white-space: nowrap;
-}
-.status-pill.mastered {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.status-pill.practising {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.status-pill.learning {
-  background: var(--warning-soft);
-  color: var(--warning);
-}
-.status-pill.not-started {
-  background: rgba(128, 128, 128, 0.12);
-  color: var(--ink-muted);
+
+  &.mastered { background: var(--success-soft); color: var(--success); }
+  &.practising { background: var(--accent-soft); color: var(--accent); }
+  &.learning { background: var(--warning-soft); color: var(--warning); }
+  &.not-started { background: rgba(128, 128, 128, 0.12); color: var(--ink-muted); }
 }
 
 /* ── Health chip ───────────────────────────────────────────────── */
@@ -274,25 +233,14 @@
   padding: 2px 8px;
   border-radius: var(--radius-chip);
   font-variant-numeric: tabular-nums;
-}
-.health-chip.ok {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.health-chip.warn {
-  background: var(--warning-soft);
-  color: var(--warning);
-}
-.health-chip.bad {
-  background: var(--danger-soft);
-  color: var(--danger);
+
+  &.ok { background: var(--success-soft); color: var(--success); }
+  &.warn { background: var(--warning-soft); color: var(--warning); }
+  &.bad { background: var(--danger-soft); color: var(--danger); }
 }
 
-/* ── error_type chips (Doc 3 §5.4) — categorical, muted, not alarm ── */
-.cat-conceptual,
-.cat-procedural,
-.cat-careless,
-.cat-knowledge_gap {
+/* ── error_type chips (Doc 3 §5.4) ─────────────────────────────── */
+:is(.cat-conceptual, .cat-procedural, .cat-careless, .cat-knowledge_gap) {
   font-size: var(--fs-micro);
   font-weight: 600;
   padding: 2px 8px;
@@ -300,18 +248,16 @@
   text-transform: capitalize;
   white-space: nowrap;
   color: #fff;
+
+  [data-theme='dark'] & {
+    color: var(--bg-page);
+  }
 }
+
 .cat-conceptual { background: var(--cat-conceptual); }
 .cat-procedural { background: var(--cat-procedural); }
 .cat-careless { background: var(--cat-careless); }
 .cat-knowledge_gap { background: var(--cat-knowledge_gap); }
-
-[data-theme='dark'] .cat-conceptual,
-[data-theme='dark'] .cat-procedural,
-[data-theme='dark'] .cat-careless,
-[data-theme='dark'] .cat-knowledge_gap {
-  color: var(--bg-page);
-}
 
 /* ── Status dot ────────────────────────────────────────────────── */
 .dot {
@@ -319,18 +265,11 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-.dot.ok {
-  background: var(--success);
-}
-.dot.warn {
-  background: var(--warning);
-}
-.dot.bad {
-  background: var(--danger);
-}
-.dot.none {
-  background: var(--ink-muted);
+
+  &.ok { background: var(--success); }
+  &.warn { background: var(--warning); }
+  &.bad { background: var(--danger); }
+  &.none { background: var(--ink-muted); }
 }
 
 /* ── Retention row ─────────────────────────────────────────────── */
@@ -338,8 +277,7 @@
   padding: 2px 0;
   overflow: hidden;
 }
-/* Rows float free of dividing lines (§9 v0.6): separation comes from spacing
- * and the hover raise, not from border ink. */
+
 .row {
   display: flex;
   align-items: center;
@@ -351,35 +289,39 @@
   width: calc(100% - 16px);
   transition: background var(--dur-micro) var(--ease), transform var(--dur-micro) var(--spring);
   text-align: left;
-  /* anchors .topic-btn::after, which stretches the title's hit area to the row */
   position: relative;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--surface-sunken);
+    transform: scale(1.01);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
+
+  &:focus-within {
+    background: var(--surface-sunken);
+    box-shadow: inset 2px 0 0 var(--accent);
+    
+    & .row-action {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  &:hover .row-action {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
-.row:hover,
-.row:focus-visible {
-  background: var(--surface-sunken);
-  transform: scale(1.01);
-}
-.row:active {
-  transform: scale(0.99);
-}
-.row-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  min-width: 0;
-}
-.row-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-7);
-  flex-shrink: 0;
-}
-/* A counted quantity plus its unit, e.g. "12 topics". Distinct from .pct, which
- * is width-locked to align bars down a matrix and reads as a percentage. */
-.row-count {
-  font-size: var(--fs-secondary);
-  color: var(--ink-secondary);
-}
+
+.row-left { display: flex; align-items: center; gap: var(--space-6); min-width: 0; }
+.row-right { display: flex; align-items: center; gap: var(--space-7); flex-shrink: 0; }
+
+.row-count { font-size: var(--fs-secondary); color: var(--ink-secondary); }
+
 .topic {
   font-size: var(--fs-row);
   font-weight: 500;
@@ -387,154 +329,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Stretched link: the title button owns the whole row's hit area without the
- * row itself becoming a control (see RetentionRow.tsx). */
-.topic-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+
+.topic-btn {
+  &::after { content: ''; position: absolute; inset: 0; z-index: 0; }
+  &:focus-visible { outline: none; }
 }
-.topic-btn:focus-visible {
-  outline: none;
-}
-/* Focus lands on the title but reads as the whole row lighting up. */
-.row:focus-within {
-  background: var(--surface-sunken);
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-/* Keep the action clickable above the stretched title. */
+
 .row-action {
   position: relative;
   z-index: 1;
-}
-.bar-track {
-  width: 110px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--track);
-  overflow: hidden;
-}
-/* ── Layout layer ─────────────────────────────────────────────────
- * Two primitives (a vertical stack, a horizontal cluster) plus a few named
- * blocks. These exist because the same handful of flex arrangements had been
- * re-declared as inline styles on every screen — token-driven, but still
- * per-screen variants of one idea, which Doc 3 §3 forbids and Doc 4 §2 DoD
- * item 4 restates. Spacing comes from the scale, never a literal.
- */
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-10);
-}
-.stack.tight {
-  gap: var(--space-4);
-}
-.stack.micro {
-  gap: var(--space-1);
-}
-.cluster {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-.cluster.roomy {
-  gap: var(--space-12);
-}
-/* Title left, actions right — the page-head and card-head arrangement. */
-.split {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: var(--space-6);
-}
-/* The standard inner padding for a content card. */
-.panel {
-  padding: var(--space-11) var(--space-12);
-}
-.panel-gap {
-  margin-bottom: var(--space-8);
-}
-/* An eyebrow that heads a block rather than labelling a value inline. */
-.block-label {
-  margin-bottom: var(--space-5);
-}
-/* Secondary prose inside a card — empty-ish states, captions. */
-.muted-note {
-  font-size: var(--fs-secondary);
-  color: var(--ink-secondary);
-  margin: 0;
-}
-/* A whole row that navigates. Kills the underline without killing the ink. */
-.row-link {
-  text-decoration: none;
-  color: inherit;
-}
-.row-chevron {
-  color: var(--ink-muted);
-}
-/* The .pct column is width-locked to 36px so bars align down the matrix; where
- * there is no bar to align to, it sizes to its content instead. */
-.pct.auto {
-  width: auto;
-}
-
-/* The topic-detail header stats (Doc 3 §5.3) — the five numbers that define a
- * topic's state. Smaller sibling of the props-row value. */
-.stat-mini .stat-mini-value {
-  font-size: var(--fs-prop);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.stat-mini .stat-mini-label {
-  font-size: var(--fs-micro);
-  color: var(--ink-secondary);
-}
-/* The section · status · last-reviewed line under a topic's title (§5.3). */
-.topic-meta {
-  font-size: var(--fs-caption);
-  color: var(--ink-secondary);
-}
-/* A checkbox that fills its table cell, so the tap target is the cell. */
-.check-cell {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  cursor: pointer;
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  width: 0;
-  transition: width var(--dur-data) var(--ease);
-}
-body.loaded .bar-fill {
-  width: var(--w);
-}
-.bar-fill.ok {
-  background: var(--success);
-}
-.bar-fill.warn {
-  background: var(--warning);
-}
-.bar-fill.bad {
-  background: var(--danger);
-}
-.bar-fill.none {
-  background: var(--ink-muted);
-}
-.pct {
-  font-family: var(--font-mono);
-  font-size: var(--fs-secondary);
-  font-weight: 600;
-  width: 36px;
-  text-align: right;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.row-action {
   opacity: 0;
   transform: translateX(6px);
   transition: opacity var(--dur-micro) var(--ease), transform var(--dur-micro) var(--ease);
@@ -546,13 +349,83 @@ body.loaded .bar-fill {
   background: var(--accent-soft);
   white-space: nowrap;
   cursor: pointer;
+
+  &:focus-visible {
+    opacity: 1;
+    transform: translateX(0);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
-.row:hover .row-action,
-.row:focus-within .row-action,
-.row-action:focus-visible {
-  opacity: 1;
-  transform: translateX(0);
+
+.bar-track {
+  width: 110px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track);
+  overflow: hidden;
 }
+
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 0;
+  transition: width var(--dur-data) var(--ease);
+
+  body.loaded & { width: var(--w); }
+  &.ok { background: var(--success); }
+  &.warn { background: var(--warning); }
+  &.bad { background: var(--danger); }
+  &.none { background: var(--ink-muted); }
+}
+
+/* ── Layout layer ───────────────────────────────────────────────── */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+
+  &.tight { gap: var(--space-4); }
+  &.micro { gap: var(--space-1); }
+}
+
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+
+  &.roomy { gap: var(--space-12); }
+}
+
+.split { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-6); }
+.panel { padding: var(--space-11) var(--space-12); }
+.panel-gap { margin-bottom: var(--space-8); }
+.block-label { margin-bottom: var(--space-5); }
+.muted-note { font-size: var(--fs-secondary); color: var(--ink-secondary); margin: 0; }
+.row-link { text-decoration: none; color: inherit; }
+.row-chevron { color: var(--ink-muted); }
+
+.pct {
+  font-family: var(--font-mono);
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+  width: 36px;
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+
+  &.auto { width: auto; }
+}
+
+/* ── Mini Stats & Meta ─────────────────────────────────────────── */
+.stat-mini {
+  &-value { font-size: var(--fs-prop); font-weight: 700; letter-spacing: -0.01em; }
+  &-label { font-size: var(--fs-micro); color: var(--ink-secondary); display: inline-flex; align-items: center; gap: 4px; }
+}
+
+.topic-meta { font-size: var(--fs-caption); color: var(--ink-secondary); }
+.check-cell { display: flex; align-items: center; gap: var(--space-3); cursor: pointer; }
 
 /* ── Group label ───────────────────────────────────────────────── */
 .group-label {
@@ -562,9 +435,8 @@ body.loaded .bar-fill {
   letter-spacing: 0.05em;
   color: var(--ink-secondary);
   margin: var(--space-10) 0 var(--space-4);
-}
-.group-label:first-child {
-  margin-top: 0;
+
+  &:first-child { margin-top: 0; }
 }
 
 /* ── Segmented control ─────────────────────────────────────────── */
@@ -574,20 +446,22 @@ body.loaded .bar-fill {
   border-radius: var(--radius-sm);
   padding: 2px;
   gap: 2px;
-}
-.segmented button {
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: var(--fs-sub);
-  font-weight: 500;
-  color: var(--ink-secondary);
-  transition: background var(--dur-micro), color var(--dur-micro);
-}
-.segmented button[aria-selected='true'] {
-  background: var(--surface);
-  color: var(--ink);
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+
+  & button {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: var(--fs-sub);
+    font-weight: 500;
+    color: var(--ink-secondary);
+    transition: background var(--dur-micro), color var(--dur-micro);
+
+    &[aria-selected='true'] {
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+  }
 }
 
 /* ── Empty state ───────────────────────────────────────────────── */
@@ -599,20 +473,10 @@ body.loaded .bar-fill {
   gap: var(--space-5);
   padding: var(--space-14) var(--space-11);
   color: var(--ink-secondary);
-}
-.empty-state .empty-icon {
-  width: 40px;
-  height: 40px;
-  color: var(--ink-muted);
-}
-.empty-state h3 {
-  font-size: var(--fs-body);
-  font-weight: 600;
-  color: var(--ink);
-}
-.empty-state p {
-  font-size: var(--fs-secondary);
-  max-width: 42ch;
+
+  & .empty-icon { width: 40px; height: 40px; color: var(--ink-muted); }
+  & h3 { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+  & p { font-size: var(--fs-secondary); max-width: 42ch; }
 }
 
 /* ── Toast ─────────────────────────────────────────────────────── */
@@ -627,6 +491,7 @@ body.loaded .bar-fill {
   gap: var(--space-4);
   pointer-events: none;
 }
+
 .toast {
   display: flex;
   align-items: center;
@@ -640,61 +505,50 @@ body.loaded .bar-fill {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
   pointer-events: auto;
   animation: toastIn var(--dur-standard) var(--spring);
-}
-@keyframes toastIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.96);
+
+  & .toast-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
-  to {
-    opacity: 1;
-    transform: none;
+
+  &.success .toast-dot { background: var(--success); }
+  &.error .toast-dot { background: var(--danger); }
+  &.info .toast-dot { background: var(--accent); }
+
+  & .toast-action {
+    font: inherit;
+    font-weight: 600;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    margin-left: var(--space-3);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    border-radius: var(--radius-chip);
+
+    &:focus-visible { outline: 2px solid var(--bg-page); outline-offset: 1px; }
   }
-}
-.toast .toast-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.toast.success .toast-dot {
-  background: var(--success);
-}
-.toast.error .toast-dot {
-  background: var(--danger);
-}
-.toast.info .toast-dot {
-  background: var(--accent);
-}
-/* Inline toast action (e.g. Undo) — inverted context, so it borrows the
- * toast's own ink rather than the page palette. */
-.toast .toast-action {
-  font: inherit;
-  font-weight: 600;
-  color: inherit;
-  background: none;
-  border: none;
-  padding: 2px 4px;
-  margin-left: var(--space-3);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  border-radius: var(--radius-chip);
-}
-.toast .toast-action:focus-visible {
-  outline: 2px solid var(--bg-page);
-  outline-offset: 1px;
 }
 
-/* ── Quick review (topic detail) ─────────────────────────────────
- * Five confidence taps, each a statement not a score: number + wording.
- */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── Quick review ──────────────────────────────────────────────── */
 .quick-review {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: var(--space-4);
   margin-top: var(--space-5);
+
+  @media (max-width: 480px) { gap: var(--space-3); }
 }
+
 .quick-review-btn {
   display: flex;
   flex-direction: column;
@@ -708,97 +562,68 @@ body.loaded .bar-fill {
   padding: var(--space-4) var(--space-2);
   cursor: pointer;
   transition: border-color 120ms ease, color 120ms ease;
-}
-.quick-review-btn:hover {
-  border-color: var(--accent);
-  color: var(--ink);
-  box-shadow: var(--shadow-card);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .quick-review-btn {
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--ink);
+    box-shadow: var(--shadow-card);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
     transition: border-color var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease),
       transform var(--dur-micro) var(--spring), box-shadow var(--dur-micro) var(--ease);
-  }
-  .quick-review-btn:hover {
-    transform: translateY(-1px);
-  }
-  .quick-review-btn:active {
-    transform: scale(0.96);
+
+    &:hover { transform: translateY(-1px); }
+    &:active { transform: scale(0.96); }
   }
 }
-.quick-review-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.quick-review-num {
-  font-size: var(--fs-row);
-  font-weight: 700;
-  color: var(--ink);
-}
+
+.quick-review-num { font-size: var(--fs-row); font-weight: 700; color: var(--ink); }
 .quick-review-hint {
   font-size: var(--fs-micro);
   text-align: center;
   line-height: 1.3;
-}
-@media (max-width: 480px) {
-  .quick-review {
-    grid-template-columns: repeat(5, 1fr);
-    gap: var(--space-3);
-  }
-  .quick-review-hint {
-    display: none; /* numbers alone at phone width; hints don't fit legibly */
-  }
+
+  @media (max-width: 480px) { display: none; }
 }
 
-/* Overdue deadline — the one place the feed date carries a warning. */
-.deadline-overdue {
-  color: var(--danger);
-  font-weight: 600;
-}
+.deadline-overdue { color: var(--danger); font-weight: 600; }
 
-/* ── Hint ("?" + tooltip) ────────────────────────────────────────
- * Opens on hover and on focus (tap focuses, so touch works too). The tip is
- * always in the DOM for aria-describedby; only its visibility animates.
- */
+/* ── Hint ("?" + tooltip) ──────────────────────────────────────── */
 .hint {
   position: relative;
   display: inline-flex;
+
+  & .hint-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: none;
+    color: var(--ink-muted);
+    font-family: var(--font-sans);
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: help;
+    transition: color var(--dur-micro), border-color var(--dur-micro);
+
+    &:hover,
+    &:focus-visible { color: var(--accent); border-color: var(--accent); }
+    
+    &:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 1px; }
+  }
 }
-.hint .hint-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
-  background: none;
-  color: var(--ink-muted);
-  font-family: var(--font-sans);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  line-height: 1;
-  cursor: help;
-  transition: color var(--dur-micro), border-color var(--dur-micro);
-}
-.hint .hint-btn:hover,
-.hint .hint-btn:focus-visible {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.hint .hint-btn:focus-visible {
-  outline: 2px solid var(--accent-ring);
-  outline-offset: 1px;
-}
-/* The tip lives in a portal at <body> with fixed coordinates set inline by
- * the component — cards and the sheet body are overflow containers, so an
- * in-place tooltip would be clipped at the box edge. `left`/`top` anchor the
- * trigger's centre; the transform shifts the tip above (default) or below
- * (.below) that anchor. Closed, it parks off-screen (opacity alone would
- * still let an invisible box stretch the page). */
+
 .hint-tip {
   position: fixed;
   left: -9999px;
@@ -812,41 +637,23 @@ body.loaded .bar-fill {
   color: var(--bg-page);
   font-size: var(--fs-caption);
   font-weight: 500;
-  font-family: var(--font-sans);
-  letter-spacing: 0;
-  text-transform: none;
   line-height: 1.45;
-  text-align: left;
   box-shadow: var(--shadow-card-hover);
   opacity: 0;
   pointer-events: none;
-  z-index: 200; /* above the sheet backdrop and the command palette */
+  z-index: 200;
   transition: opacity var(--dur-micro) var(--ease);
-}
-.hint-tip.below {
-  transform: translateX(-50%) translateY(0);
-}
-.hint-tip.open {
-  opacity: 1;
-}
-/* Reduced motion: the global kill switch flattens the fade; the tip still
- * appears/disappears instantly, and it stays reachable via aria-describedby
- * regardless. */
 
-/* Eyebrow + hint on one line (hero cards, card heads). */
+  &.below { transform: translateX(-50%) translateY(0); }
+  &.open { opacity: 1; }
+}
+
 .eyebrow-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-.eyebrow-row .eyebrow {
-  margin-bottom: 0;
-}
-/* Mini-stat labels host a hint inline. */
-.stat-mini-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  
+  & .eyebrow { margin-bottom: 0; }
 }
 
 /* ── Settings rows ─────────────────────────────────────────────── */
@@ -858,51 +665,44 @@ body.loaded .bar-fill {
   padding: var(--space-7) 0;
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
+
+  &:last-child { border-bottom: none; }
 }
-.settings-row:last-child {
-  border-bottom: none;
-}
-.settings-label {
-  font-size: var(--fs-row);
-  font-weight: 600;
-}
-.settings-hint {
-  font-size: var(--fs-caption);
-  color: var(--ink-secondary);
-  margin-top: 2px;
-  max-width: 46ch;
-}
+
+.settings-label { font-size: var(--fs-row); font-weight: 600; }
+.settings-hint { font-size: var(--fs-caption); color: var(--ink-secondary); margin-top: 2px; max-width: 46ch; }
 
 /* ── Data table ────────────────────────────────────────────────── */
 .data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--fs-sub);
-}
-.data-table th {
-  background: var(--surface-sunken);
-  color: var(--ink-secondary);
-  font-size: var(--fs-micro);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: left;
-  padding: 10px 16px;
-  white-space: nowrap;
-}
-.data-table td {
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  height: 44px; /* iOS touch target (Doc 3 §3) */
-}
-.data-table td.num,
-.data-table th.num {
-  text-align: right;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.data-table tbody tr:hover {
-  background: var(--surface-sunken);
+
+  & th {
+    background: var(--surface-sunken);
+    color: var(--ink-secondary);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    padding: 10px 16px;
+    white-space: nowrap;
+  }
+
+  & td {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    height: 44px;
+  }
+
+  & :is(td.num, th.num) {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  & tbody tr:hover { background: var(--surface-sunken); }
 }
 
 /* ── Sheet / modal ─────────────────────────────────────────────── */
@@ -919,18 +719,15 @@ body.loaded .bar-fill {
   padding: var(--space-10);
   animation: fadeIn var(--dur-standard) var(--ease);
 }
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+
 .sheet {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  /* Deep glass: heavy refraction plus a hairline outer ring and the top edge. */
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
   box-shadow: var(--shadow-card-hover), 0 0 0 1px rgba(255, 255, 255, 0.05),
@@ -940,30 +737,23 @@ body.loaded .bar-fill {
   overflow-y: auto;
   animation: sheetIn var(--dur-standard) var(--spring);
 }
+
 @keyframes sheetIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
+
 .sheet-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-11) var(--space-12) var(--space-6);
+
+  & h2 { font-size: var(--fs-section); }
 }
-.sheet-head h2 {
-  font-size: var(--fs-section);
-}
-.sheet-body {
-  padding: 0 var(--space-12) var(--space-12);
-}
-/* Sheet footer — actions pinned below the body, separated by a rule so they
- * read as the sheet's commit bar rather than more content. */
+
+.sheet-body { padding: 0 var(--space-12) var(--space-12); }
+
 .sheet-foot {
   display: flex;
   align-items: center;
@@ -977,22 +767,10 @@ body.loaded .bar-fill {
 }
 
 /* ── Destructive confirmation ──────────────────────────────────── */
-.confirm-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-9);
-}
-.confirm-lede {
-  font-size: var(--fs-body);
-  line-height: 1.55;
-  color: var(--ink-secondary);
-}
-.confirm-lede strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-/* The escape hatch, offered at the moment of danger rather than left for the
- * user to remember on their own. */
+.confirm-block { display: flex; flex-direction: column; gap: var(--space-9); }
+.confirm-lede { font-size: var(--fs-body); line-height: 1.55; color: var(--ink-secondary); }
+.confirm-lede strong { color: var(--ink); font-weight: 600; }
+
 .confirm-escape {
   display: flex;
   align-items: center;
@@ -1006,24 +784,24 @@ body.loaded .bar-fill {
   color: var(--ink-secondary);
   flex-wrap: wrap;
 }
+
 .confirm-field {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+
+  & label { font-size: var(--fs-secondary); font-weight: 600; color: var(--ink); }
+  
+  & code {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sub);
+    padding: 1px 5px;
+    border-radius: var(--radius-chip);
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
 }
-.confirm-field label {
-  font-size: var(--fs-secondary);
-  font-weight: 600;
-  color: var(--ink);
-}
-.confirm-field code {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sub);
-  padding: 1px 5px;
-  border-radius: var(--radius-chip);
-  background: var(--danger-soft);
-  color: var(--danger);
-}
+
 .confirm-input {
   width: 100%;
   background: var(--surface);
@@ -1034,14 +812,15 @@ body.loaded .bar-fill {
   font-size: var(--fs-sub);
   color: var(--ink);
   transition: border-color var(--dur-micro), box-shadow var(--dur-micro);
-}
-.confirm-input:focus {
-  outline: none;
-  border-color: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-soft);
+
+  &:focus {
+    outline: none;
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px var(--danger-soft);
+  }
 }
 
-/* On mobile the modal becomes a bottom sheet (Doc 3 §3). */
+/* ── Media queries overrides ───────────────────────────────────── */
 @media (max-width: 720px) {
   .sheet-backdrop {
     align-items: flex-end;
@@ -1053,13 +832,14 @@ body.loaded .bar-fill {
     max-height: 92vh;
   }
   @keyframes sheetIn {
-    from {
-      opacity: 0;
-      transform: translateY(100%);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
+    from { opacity: 0; transform: translateY(100%); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* Expand reduced-motion safety to global structural animations */
+@media (prefers-reduced-motion: reduce) {
+  .toast, .sheet, .sheet-backdrop {
+    animation-duration: 0.01ms !important;
   }
 }
