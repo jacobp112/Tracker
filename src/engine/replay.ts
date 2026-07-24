@@ -1,6 +1,6 @@
 import { CONFIG } from '@/config/constants';
 import type { Topic } from '@/domain/types';
-import { applyEvent, promote } from './recalculate';
+import { applyEvent } from './recalculate';
 
 /**
  * Reconstruct a topic's event-sourced state as-of a past date by forward-replay
@@ -31,13 +31,13 @@ export function topicStateAsOf(topic: Topic, asOf: Date): Topic {
     .filter((e) => new Date(e.date).getTime() <= asOf.getTime())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  // Plain fold: applyEvent owns the promotion/seeding rules exactly as the live
+  // system applies them (a logged event on a not_started topic increments
+  // strength and auto-promotes — the SEED_STRENGTH branch is skipped because the
+  // increment already made strength truthy). Reproducing that path verbatim is
+  // what makes the replay faithful; do not pre-promote or pre-seed here.
   let state = genesis;
   for (const e of events) {
-    // Promote out of not_started before the first event so seeding happens
-    // before the strength increment from that event
-    if (state.status === 'not_started') {
-      state = promote(state, 'learning', new Date(e.date));
-    }
     state = applyEvent(state, e, new Date(e.date));
   }
   return state;
