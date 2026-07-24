@@ -4,7 +4,6 @@ import { useToast } from '@/components/feedback';
 import { Card, DangerButton, SecondaryButton } from '@/components/primitives';
 import { Sheet } from '@/components/Sheet';
 import { exportBundle, importBundle } from '@/core/transfer';
-import { usePreferences } from '@/hooks/usePreferences';
 import { useTheme } from '@/theme/useTheme';
 import type { Store } from '@/domain/types';
 
@@ -17,16 +16,14 @@ function quantity(n: number, one: string, many: string): string | null {
 }
 
 /**
- * "2 courses, 1 exam and 3 runs" — names what is about to be destroyed in the
- * user's own units. Zero-count domains are omitted; listing "0 lifts" is noise
- * that dilutes the counts that do matter.
+ * "2 courses and 1 exam" — names what is about to be destroyed in the user's
+ * own units. Zero-count domains are omitted; listing "0 exams" is noise that
+ * dilutes the counts that do matter.
  */
 export function inventory(store: Store): string {
   const parts = [
     quantity(store.courses.length, 'course', 'courses'),
     quantity(store.exams.length, 'exam', 'exams'),
-    quantity(store.runs.length, 'run', 'runs'),
-    quantity(store.lifts.length, 'lift', 'lifts'),
   ].filter((p): p is string => p !== null);
 
   if (parts.length === 0) return 'nothing';
@@ -128,7 +125,6 @@ export function Settings({
   clearStore: () => string | null;
 }) {
   const { theme, set: setTheme } = useTheme();
-  const { prefs, setWeightUnit } = usePreferences();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -160,8 +156,8 @@ export function Settings({
       toast(err, 'error');
       return;
     }
-    const { courses, exams, runs, lifts } = result.counts;
-    toast(`Imported ${courses} courses, ${exams} exams, ${runs} runs, ${lifts} lifts`);
+    const { courses, exams } = result.counts;
+    toast(`Imported ${courses} courses and ${exams} exams`);
   };
 
   return (
@@ -186,21 +182,6 @@ export function Settings({
               options={[
                 { value: 'light', label: 'Light' },
                 { value: 'dark', label: 'Dark' },
-              ]}
-            />
-          </div>
-          <div className="settings-row">
-            <div>
-              <div className="settings-label">Weight unit</div>
-              <div className="settings-hint">Display only — lifts are always stored in kg.</div>
-            </div>
-            <SegmentedControl
-              label="Weight unit"
-              value={prefs.weightUnit}
-              onChange={setWeightUnit}
-              options={[
-                { value: 'kg', label: 'kg' },
-                { value: 'lb', label: 'lb' },
               ]}
             />
           </div>

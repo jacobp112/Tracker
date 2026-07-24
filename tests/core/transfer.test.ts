@@ -151,3 +151,35 @@ describe('E8-S1 — import validation (full E2 checks)', () => {
     if (r.ok) expect(r.store).toEqual(emptyStore());
   });
 });
+
+describe('E8-S1 — importing an old (pre-strip) bundle', () => {
+  it('accepts a v2 bundle and ignores its removed fitness/job domains', () => {
+    const store = realisticStore();
+    // Hand-build an old bundle: the study data as exported today, but stamped
+    // 2.0.0 and carrying the domains that used to exist.
+    const oldBundle = {
+      kind: 'studyos-export',
+      schema_version: '2.0.0',
+      exported_at: '2026-07-01T00:00:00Z',
+      store: {
+        ...store,
+        schema_version: '2.0.0',
+        runs: [{ activity_id: 'activity_1', distance_km: 5 }],
+        lifts: [{ session_id: 'session_lift1', exercises: [] }],
+        applications: [{ application_id: 'application_1' }],
+      },
+    };
+
+    const r = importBundle(JSON.stringify(oldBundle));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    // Study data restored; the removed domains simply don't come across.
+    expect(r.store.courses).toHaveLength(store.courses.length);
+    expect(r.store.exams).toHaveLength(store.exams.length);
+    expect((r.store as unknown as Record<string, unknown>).runs).toBeUndefined();
+    expect((r.store as unknown as Record<string, unknown>).lifts).toBeUndefined();
+    expect((r.store as unknown as Record<string, unknown>).applications).toBeUndefined();
+    expect(r.counts).toEqual({ courses: store.courses.length, exams: store.exams.length });
+  });
+});

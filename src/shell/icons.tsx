@@ -18,25 +18,10 @@ export const StudyIcon = () => (
   </svg>
 );
 
-export const FitnessIcon = () => (
-  <svg viewBox="0 0 24 24" {...S}>
-    <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
-    <rect x="2" y="10" width="4" height="4" rx="1" />
-    <rect x="18" y="10" width="4" height="4" rx="1" />
-  </svg>
-);
-
 export const ExamsIcon = () => (
   <svg viewBox="0 0 24 24" {...S}>
     <rect x="4" y="3" width="12" height="18" rx="1.5" />
     <path d="M9 3v18M18 7h2a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-2" />
-  </svg>
-);
-
-export const JobsIcon = () => (
-  <svg viewBox="0 0 24 24" {...S}>
-    <rect x="3" y="7" width="18" height="13" rx="2" />
-    <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18" />
   </svg>
 );
 

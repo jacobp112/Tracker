@@ -29,7 +29,6 @@ const FIELD_LABELS: Record<string, string> = {
   topic_id: 'topic ID',
   session_id: 'session ID',
   exam_id: 'exam ID',
-  activity_id: 'activity ID',
   event_id: 'event ID',
   error_id: 'error ID',
   source_id: 'source ID',
@@ -60,17 +59,6 @@ const FIELD_LABELS: Record<string, string> = {
   error_type: 'error type',
   description: 'description',
   resolved: 'resolved flag',
-  distance_km: 'distance',
-  duration_seconds: 'duration',
-  pace_sec_per_km: 'pace',
-  type: 'run type',
-  exercises: 'exercises',
-  exercise_name: 'exercise name',
-  sets: 'sets',
-  set_number: 'set number',
-  reps: 'reps',
-  weight_kg: 'weight',
-  rpe: 'RPE',
   kind: 'event kind',
   source: 'source',
   notes: 'notes',
@@ -121,15 +109,13 @@ function subject(root: unknown, pointer: string): string | null {
     const v = valueAt(root, p);
     if (v && typeof v === 'object' && !Array.isArray(v)) {
       const obj = v as Record<string, unknown>;
-      const title = obj['title'] ?? obj['exercise_name'];
+      const title = obj['title'];
       if (typeof title === 'string' && title.length > 0) {
         const kind = p.includes('/topics/')
           ? 'Topic'
           : p.includes('/sections/')
             ? 'Section'
-            : p.includes('/exercises/')
-              ? 'Exercise'
-              : null;
+            : null;
         return kind ? `${kind} '${title}'` : `'${title}'`;
       }
     }

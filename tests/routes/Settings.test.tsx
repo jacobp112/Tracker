@@ -20,15 +20,15 @@ function populated(): Store {
   return {
     ...emptyStore(),
     courses: [course('course_a', 'Linear Algebra'), course('course_b', 'Organic Chemistry')],
-    runs: [
+    exams: [
       {
         schema_version: '2.0.0',
-        activity_id: 'activity_0000001',
+        exam_id: 'exam_0000001',
+        title: 'Midterm',
         date: '2026-07-15',
-        distance_km: 8,
-        duration_seconds: 2400,
-        pace_sec_per_km: 300,
-        type: 'tempo',
+        linked_topic_ids: [],
+        score: 8,
+        max_score: 10,
       },
     ],
   };
@@ -67,9 +67,9 @@ describe('Settings — clearing all data', () => {
     await openDialog(user);
 
     const dialog = screen.getByRole('dialog', { name: /clear all data/i });
-    expect(dialog).toHaveTextContent('2 courses and 1 run');
+    expect(dialog).toHaveTextContent('2 courses and 1 exam');
     // Domains with nothing in them are omitted rather than listed as zero.
-    expect(dialog).not.toHaveTextContent(/0 exams|0 lifts/);
+    expect(dialog).not.toHaveTextContent(/0 exams|0 courses/);
   });
 
   it('will not clear until the word is typed', async () => {

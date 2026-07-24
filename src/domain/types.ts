@@ -6,7 +6,7 @@
  * layer, so these types use the storage names verbatim.
  */
 
-export const SCHEMA_VERSION = '2.0.0';
+export const SCHEMA_VERSION = '3.0.0';
 
 /** Document 2 §7 ladder. Stored snake_case; Document 3 owns the display labels. */
 export type TopicStatus = 'not_started' | 'learning' | 'practising' | 'mastered';
@@ -132,101 +132,12 @@ export interface Exam {
   breakdown?: ExamBreakdownEntry[];
 }
 
-export interface RunningActivity {
-  schema_version: string;
-  activity_id: string;
-  date: string;
-  distance_km: number;
-  duration_seconds: number;
-  /** Computed on ingestion (Document 1 §5.1), never user-supplied. */
-  pace_sec_per_km: number;
-  type: 'easy' | 'tempo' | 'long' | 'interval' | 'race';
-  notes?: string;
-}
-
-export interface LiftSet {
-  set_number: number;
-  reps: number;
-  weight_kg: number;
-  rpe?: number;
-}
-
-export interface LiftingSession {
-  schema_version: string;
-  session_id: string;
-  date: string;
-  exercises: Array<{ exercise_name: string; sets: LiftSet[] }>;
-}
-
-/* ── Job applications ──────────────────────────────────────────── */
-
-/**
- * Pipeline stages an application moves through, plus the two terminal states.
- * Current stage is always `stage_history.at(-1)` — never stored separately,
- * so it can't drift from the history that explains it.
- */
-export type JobStage =
-  | 'saved'
-  | 'applied'
-  | 'screen'
-  | 'interview'
-  | 'offer'
-  | 'rejected'
-  | 'accepted';
-
-export interface StageEvent {
-  event_id: string;
-  date: string;
-  stage: JobStage;
-  notes?: string;
-}
-
-export interface JobContact {
-  name: string;
-  role?: string;
-  email?: string;
-}
-
-/**
- * Hybrid record: descriptive fields (company, role, url, …) are freely
- * editable in-app; `stage_history` is append-only, the same split Topic makes
- * between editable metadata and its append-only `review_history`.
- */
-export interface JobApplication {
-  schema_version: string;
-  application_id: string;
-  company: string;
-  role: string;
-  location?: string;
-  url?: string;
-  salary_range?: string;
-  /** Where the posting was found. */
-  source?: string;
-  description?: string;
-  contacts?: JobContact[];
-  /** Upcoming interview / follow-up date (YYYY-MM-DD). */
-  next_action_date?: string;
-  /** Append-only; the last entry is the current stage. Never empty once stored. */
-  stage_history: StageEvent[];
-  created_at: string;
-  /** Archived applications leave the board but keep funnel math honest. */
-  archived: boolean;
-}
-
-/** Current stage = last stage event. Falls back to 'saved' defensively. */
-export function currentStage(app: JobApplication): JobStage {
-  return app.stage_history[app.stage_history.length - 1]?.stage ?? 'saved';
-}
-
 /* ── Store ─────────────────────────────────────────────────────── */
 
 export interface Store {
   schema_version: string;
   courses: Course[];
   exams: Exam[];
-  runs: RunningActivity[];
-  lifts: LiftingSession[];
-  applications: JobApplication[];
 }
 
 export function emptyStore(): Store {
@@ -234,9 +145,6 @@ export function emptyStore(): Store {
     schema_version: SCHEMA_VERSION,
     courses: [],
     exams: [],
-    runs: [],
-    lifts: [],
-    applications: [],
   };
 }
 

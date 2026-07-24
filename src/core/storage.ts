@@ -29,24 +29,35 @@ export function loadStore(): Store {
   if (!raw) return emptyStore();
 
   try {
-    const parsed = JSON.parse(raw) as Store;
-    // Guard against a store written by a future/other version rather than
-    // reading it as if it were ours.
-    if (parsed.schema_version !== SCHEMA_VERSION) {
+    const parsed = JSON.parse(raw) as { schema_version?: string };
+    // A version NEWER than ours isn't something we can safely down-convert.
+    if (parsed.schema_version && parsed.schema_version > SCHEMA_VERSION) {
       throw new StorageError(
-        `Your saved data is version ${parsed.schema_version ?? 'unknown'}, but this app expects ${SCHEMA_VERSION}. It hasn't been touched — export it before continuing.`,
+        `Your saved data is version ${parsed.schema_version}, but this app expects ${SCHEMA_VERSION}. It hasn't been touched — export it before continuing.`,
       );
     }
-    return {
-      ...emptyStore(),
-      ...parsed,
-    };
+    return migrate(parsed);
   } catch (e) {
     if (e instanceof StorageError) throw e;
     throw new StorageError(
       "Your saved data couldn't be read — it may be corrupted. It hasn't been overwritten.",
     );
   }
+}
+
+/**
+ * Forward-migrate any saved store to the current study-only shape. Courses and
+ * exams are structurally unchanged across versions, so they carry over verbatim;
+ * removed domains (runs/lifts/applications) are dropped. Applied for any saved
+ * version at or below the current one.
+ */
+function migrate(parsed: unknown): Store {
+  const p = (parsed ?? {}) as Record<string, unknown>;
+  return {
+    schema_version: SCHEMA_VERSION,
+    courses: Array.isArray(p.courses) ? (p.courses as Store['courses']) : [],
+    exams: Array.isArray(p.exams) ? (p.exams as Store['exams']) : [],
+  };
 }
 
 /**

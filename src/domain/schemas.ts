@@ -13,7 +13,6 @@ import type { SchemaObject } from 'ajv';
 const ID_PATTERN = (prefix: string) => ({ type: 'string', pattern: `^${prefix}_[A-Za-z0-9]+$` });
 
 const ISO_DATETIME = { type: 'string', format: 'date-time' };
-const ISO_DATE = { type: 'string', format: 'date' };
 
 const CONFIDENCE = {
   type: 'integer',
@@ -205,131 +204,12 @@ export const EXAM_SCHEMA: SchemaObject = {
   },
 };
 
-export const RUNNING_SCHEMA: SchemaObject = {
-  $id: 'running',
-  type: 'object',
-  additionalProperties: false,
-  // pace_sec_per_km is computed on ingestion (Document 1 §5.1), so it is NOT
-  // required on input — supplying it is how inconsistent math gets in.
-  required: ['schema_version', 'activity_id', 'date', 'distance_km', 'duration_seconds', 'type'],
-  properties: {
-    schema_version: { type: 'string' },
-    activity_id: ID_PATTERN('activity'),
-    date: ISO_DATE,
-    distance_km: { type: 'number', exclusiveMinimum: 0 },
-    duration_seconds: { type: 'integer', exclusiveMinimum: 0 },
-    pace_sec_per_km: { type: 'number', exclusiveMinimum: 0 },
-    type: { type: 'string', enum: ['easy', 'tempo', 'long', 'interval', 'race'] },
-    notes: { type: 'string' },
-  },
-};
-
-export const LIFTING_SCHEMA: SchemaObject = {
-  $id: 'lifting',
-  type: 'object',
-  additionalProperties: false,
-  required: ['schema_version', 'session_id', 'date', 'exercises'],
-  properties: {
-    schema_version: { type: 'string' },
-    session_id: ID_PATTERN('session'),
-    date: ISO_DATE,
-    exercises: {
-      type: 'array',
-      minItems: 1,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['exercise_name', 'sets'],
-        properties: {
-          exercise_name: { type: 'string', minLength: 1 },
-          sets: {
-            type: 'array',
-            minItems: 1,
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              required: ['set_number', 'reps', 'weight_kg'],
-              properties: {
-                set_number: { type: 'integer', minimum: 1 },
-                reps: { type: 'integer', minimum: 0 },
-                weight_kg: { type: 'number', minimum: 0 },
-                rpe: { type: 'number', minimum: 1, maximum: 10 },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-};
-
-const JOB_STAGE = {
-  type: 'string',
-  enum: ['saved', 'applied', 'screen', 'interview', 'offer', 'rejected', 'accepted'],
-};
-
-const STAGE_EVENT: SchemaObject = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['event_id', 'date', 'stage'],
-  properties: {
-    event_id: ID_PATTERN('event'),
-    date: ISO_DATETIME,
-    stage: JOB_STAGE,
-    notes: { type: 'string', maxLength: 500 },
-  },
-};
-
-export const JOB_SCHEMA: SchemaObject = {
-  $id: 'job',
-  type: 'object',
-  additionalProperties: false,
-  // stage_history / created_at / archived are engine-managed and synthesized on
-  // ingestion (like running's pace_sec_per_km) — NOT required on input, but
-  // permitted so a stored application re-validates on import.
-  required: ['schema_version', 'application_id', 'company', 'role'],
-  properties: {
-    schema_version: { type: 'string' },
-    application_id: ID_PATTERN('application'),
-    company: { type: 'string', minLength: 1, maxLength: 120 },
-    role: { type: 'string', minLength: 1, maxLength: 120 },
-    location: { type: 'string', maxLength: 120 },
-    url: { type: 'string', maxLength: 500 },
-    salary_range: { type: 'string', maxLength: 80 },
-    source: { type: 'string', maxLength: 120 },
-    description: { type: 'string', maxLength: 2000 },
-    contacts: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['name'],
-        properties: {
-          name: { type: 'string', minLength: 1 },
-          role: { type: 'string' },
-          email: { type: 'string' },
-        },
-      },
-    },
-    next_action_date: ISO_DATE,
-    // Where the application starts on ingestion; consumed into the first
-    // StageEvent by merge, never stored.
-    initial_stage: JOB_STAGE,
-    stage_history: { type: 'array', items: STAGE_EVENT },
-    created_at: ISO_DATETIME,
-    archived: { type: 'boolean' },
-  },
-};
-
-export type SchemaName = 'course' | 'session' | 'exam' | 'running' | 'lifting' | 'job';
+export type SchemaName = 'course' | 'session' | 'exam';
 
 export const SCHEMAS: Record<SchemaName, SchemaObject> = {
   course: COURSE_SCHEMA,
   session: SESSION_SCHEMA,
   exam: EXAM_SCHEMA,
-  running: RUNNING_SCHEMA,
-  lifting: LIFTING_SCHEMA,
-  job: JOB_SCHEMA,
 };
 
 /** User-facing name for each schema, for error messages and previews. */
@@ -337,7 +217,4 @@ export const SCHEMA_LABEL: Record<SchemaName, string> = {
   course: 'course',
   session: 'study session',
   exam: 'exam result',
-  running: 'run',
-  lifting: 'lifting session',
-  job: 'job application',
 };

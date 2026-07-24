@@ -7,8 +7,6 @@ import {
   AddIcon,
   ChevronDown,
   ExamsIcon,
-  FitnessIcon,
-  JobsIcon,
   MoonIcon,
   OverviewIcon,
   SearchIcon,
@@ -23,17 +21,13 @@ type NavName = Route['name'];
 function activeFor(route: Route): NavName {
   if (route.name === 'course' || route.name === 'add-course') return 'study';
   if (route.name === 'add-exam') return 'exams';
-  if (route.name === 'add-run' || route.name === 'add-lift') return 'fitness';
-  if (route.name === 'add-job') return 'jobs';
   return route.name;
 }
 
 const TABS = [
   { name: 'overview' as const, label: 'Overview', href: '#/overview', Icon: OverviewIcon },
   { name: 'study' as const, label: 'Study', href: '#/study', Icon: StudyIcon },
-  { name: 'fitness' as const, label: 'Fitness', href: '#/fitness', Icon: FitnessIcon },
   { name: 'exams' as const, label: 'Exams', href: '#/exams', Icon: ExamsIcon },
-  { name: 'jobs' as const, label: 'Jobs', href: '#/jobs', Icon: JobsIcon },
   { name: 'settings' as const, label: 'Settings', href: '#/settings', Icon: SettingsIcon },
 ];
 
@@ -160,29 +154,12 @@ export function AppShell({
 
           <button
             type="button"
-            className={`nav-item ${active === 'fitness' ? 'active' : ''}`}
-            onClick={() => navigate('/fitness')}
-          >
-            <FitnessIcon />
-            Fitness
-          </button>
-          <button
-            type="button"
             className={`nav-item ${active === 'exams' ? 'active' : ''}`}
             onClick={() => navigate('/exams')}
           >
             <ExamsIcon />
             Exams
           </button>
-          <button
-            type="button"
-            className={`nav-item ${active === 'jobs' ? 'active' : ''}`}
-            onClick={() => navigate('/jobs')}
-          >
-            <JobsIcon />
-            Jobs
-          </button>
-
           <div className="nav-divider" />
 
           <button

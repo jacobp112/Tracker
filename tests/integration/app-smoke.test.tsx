@@ -110,32 +110,6 @@ function populated(): Store {
   );
   if (exam.ok) store = commit('exam', exam.value, store, mergeInto);
 
-  const run = ingest(
-    JSON.stringify({
-      schema_version: '2.0.0',
-      activity_id: 'activity_smoke01',
-      date: '2026-07-15',
-      distance_km: 8,
-      duration_seconds: 2400,
-      type: 'tempo',
-    }),
-    'running',
-    store,
-  );
-  if (run.ok) store = commit('running', run.value, store, mergeInto);
-
-  const lift = ingest(
-    JSON.stringify({
-      schema_version: '2.0.0',
-      session_id: 'session_smokelift',
-      date: '2026-07-14',
-      exercises: [{ exercise_name: 'Back Squat', sets: [{ set_number: 1, reps: 5, weight_kg: 90 }] }],
-    }),
-    'lifting',
-    store,
-  );
-  if (lift.ok) store = commit('lifting', lift.value, store, mergeInto);
-
   return store;
 }
 
@@ -190,12 +164,6 @@ describe('App smoke — every route renders with real data', () => {
     expect(screen.getByText(/flagged weak/i)).toBeInTheDocument();
   });
 
-  it('Fitness', () => {
-    mountAt('#/fitness');
-    expect(screen.getByRole('heading', { name: /^fitness$/i })).toBeInTheDocument();
-    expect(screen.getByText(/pace trend/i)).toBeInTheDocument();
-  });
-
   it('Settings', () => {
     mountAt('#/settings');
     expect(screen.getByRole('heading', { name: /^settings$/i })).toBeInTheDocument();
@@ -220,7 +188,7 @@ describe('App smoke — the sidebar only claims a course when you are in one', (
   });
 
   it('does not present an arbitrary course as context on other routes', () => {
-    mountAt('#/fitness');
+    mountAt('#/exams');
     // The seeded store has a course, so the old `courses[0]` fallback rendered
     // "Advanced Theory / Mastery 50%" here as though it were where you are.
     expect(screen.queryByText(/mastery \d+%/i)).not.toBeInTheDocument();
@@ -234,11 +202,6 @@ describe('App smoke — empty store shows guiding empty states (Doc 3 §7)', () 
   it('Overview tells the user to add a course', () => {
     mountAt('#/overview');
     expect(screen.getByText(/add a course to start tracking retention/i)).toBeInTheDocument();
-  });
-
-  it('Fitness tells the user to log something', () => {
-    mountAt('#/fitness');
-    expect(screen.getByText(/no activities yet/i)).toBeInTheDocument();
   });
 
   it('Exams tells the user to add a result', () => {

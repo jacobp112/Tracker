@@ -10,13 +10,8 @@ export type Route =
   | { name: 'study' }
   | { name: 'add-course' }
   | { name: 'course'; courseId: string }
-  | { name: 'fitness' }
-  | { name: 'add-run' }
-  | { name: 'add-lift' }
   | { name: 'exams' }
   | { name: 'add-exam' }
-  | { name: 'jobs' }
-  | { name: 'add-job' }
   | { name: 'settings' }
   | { name: 'quick-add' }
   | { name: 'dev-tokens' }
@@ -31,14 +26,8 @@ export function parseHash(hash: string): Route {
       return tail ? { name: 'course', courseId: tail } : { name: 'study' };
     case 'study':
       return tail === 'add' ? { name: 'add-course' } : { name: 'study' };
-    case 'fitness':
-      if (tail === 'add-run') return { name: 'add-run' };
-      if (tail === 'add-lift') return { name: 'add-lift' };
-      return { name: 'fitness' };
     case 'exams':
       return tail === 'add' ? { name: 'add-exam' } : { name: 'exams' };
-    case 'jobs':
-      return tail === 'add' ? { name: 'add-job' } : { name: 'jobs' };
     case 'settings':
       return { name: 'settings' };
     case 'add':

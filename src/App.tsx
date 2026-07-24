@@ -11,13 +11,9 @@ import { AppShell, type CourseSummary } from '@/shell/AppShell';
 import { AddIcon } from '@/shell/icons';
 import { AddCourse } from '@/routes/AddCourse';
 import { AddExam } from '@/routes/AddExam';
-import { AddFitness } from '@/routes/AddFitness';
-import { AddJob } from '@/routes/AddJob';
-import { Jobs } from '@/routes/Jobs';
 import { ComponentShowcase } from '@/routes/ComponentShowcase';
 import { CourseDashboard } from '@/routes/CourseDashboard';
 import { Exams } from '@/routes/Exams';
-import { Fitness } from '@/routes/Fitness';
 import { LogSession } from '@/routes/LogSession';
 import { Overview } from '@/routes/Overview';
 import { QuickAdd } from '@/routes/QuickAdd';
@@ -182,9 +178,6 @@ function AppInner() {
     toggleError,
     promoteTopic,
     logManualReview,
-    moveStage,
-    editApplication,
-    archiveApplication,
     replaceStore,
     clearStore,
     loadError,
@@ -204,7 +197,7 @@ function AppInner() {
   const courses = store.courses.map(summarise);
   // Only a course route has an active course. Falling back to courses[0] made
   // the sidebar present an arbitrary course — and its mastery % — as the
-  // current context on Overview, Fitness, Exams and Settings.
+  // current context on Overview, Exams and Settings.
   const activeCourse =
     route.name === 'course' ? courses.find((c) => c.courseId === route.courseId) : undefined;
 
@@ -241,27 +234,10 @@ function AppInner() {
           />
         );
       }
-      case 'fitness':
-        return <Fitness store={store} />;
-      case 'add-run':
-        return <AddFitness kind="running" store={store} commitValue={commitValue} undoLast={undoLast} />;
-      case 'add-lift':
-        return <AddFitness kind="lifting" store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'exams':
         return <Exams store={store} />;
       case 'add-exam':
         return <AddExam store={store} commitValue={commitValue} undoLast={undoLast} />;
-      case 'jobs':
-        return (
-          <Jobs
-            store={store}
-            moveStage={moveStage}
-            editApplication={editApplication}
-            archiveApplication={archiveApplication}
-          />
-        );
-      case 'add-job':
-        return <AddJob store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'quick-add':
         return <QuickAdd store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'settings':

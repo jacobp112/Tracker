@@ -1,5 +1,5 @@
 import { type SchemaName } from '@/domain/schemas';
-import { type Course, type Exam, emptyStore, type JobApplication, type LiftingSession, type RunningActivity, SCHEMA_VERSION, type Store } from '@/domain/types';
+import { type Course, type Exam, emptyStore, SCHEMA_VERSION, type Store } from '@/domain/types';
 import type { FriendlyError } from './errorTranslation';
 import { checkIntegrity } from './integrity';
 import { validateAgainst } from './validate';
@@ -79,13 +79,15 @@ export function importBundle(input: string): ImportResult {
       ],
     };
   }
-  if (parsed.schema_version !== SCHEMA_VERSION) {
+  // Older bundles migrate forward (courses + exams are unchanged, removed
+  // domains are simply ignored below); only a NEWER version is rejected.
+  if (parsed.schema_version && parsed.schema_version > SCHEMA_VERSION) {
     return {
       ok: false,
       errors: [
         {
           path: '/schema_version',
-          message: `This export is version ${parsed.schema_version ?? 'unknown'}, but this app expects ${SCHEMA_VERSION}.`,
+          message: `This export is version ${parsed.schema_version}, but this app expects ${SCHEMA_VERSION}.`,
         },
       ],
     };
@@ -110,21 +112,6 @@ export function importBundle(input: string): ImportResult {
     if (errs.length === 0) draft.exams.push(exam as Exam);
     else errors.push(...prefix(`Exam "${exam.title ?? exam.exam_id}"`, errs));
   }
-  for (const run of src.runs ?? []) {
-    const errs = check(draft, 'running', run);
-    if (errs.length === 0) draft.runs.push(run as RunningActivity);
-    else errors.push(...prefix('Run', errs));
-  }
-  for (const lift of src.lifts ?? []) {
-    const errs = check(draft, 'lifting', lift);
-    if (errs.length === 0) draft.lifts.push(lift as LiftingSession);
-    else errors.push(...prefix('Lift', errs));
-  }
-  for (const app of src.applications ?? []) {
-    const errs = check(draft, 'job', app);
-    if (errs.length === 0) draft.applications.push(app as JobApplication);
-    else errors.push(...prefix(`Application "${app.company ?? app.application_id}"`, errs));
-  }
 
   if (errors.length > 0) return { ok: false, errors };
 
@@ -134,9 +121,6 @@ export function importBundle(input: string): ImportResult {
     counts: {
       courses: draft.courses.length,
       exams: draft.exams.length,
-      runs: draft.runs.length,
-      lifts: draft.lifts.length,
-      applications: draft.applications.length,
     },
   };
 }

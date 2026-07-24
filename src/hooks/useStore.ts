@@ -5,11 +5,8 @@ import { cloneStore, loadStore, saveStore, StorageError } from '@/core/storage';
 import type { SchemaName } from '@/domain/schemas';
 import {
   allTopics,
-  currentStage,
   emptyStore,
   type Confidence,
-  type JobApplication,
-  type JobStage,
   type ReviewEvent,
   type Store,
   type TopicStatus,
@@ -168,85 +165,6 @@ export function useStore() {
     [store],
   );
 
-  /**
-   * Move an application to a new stage — APPENDS a StageEvent, never rewrites
-   * history, so time-in-stage and the funnel stay honest. The descriptive half
-   * of the record is edited via `editApplication`; this is the append-only half.
-   */
-  const moveStage = useCallback(
-    (applicationId: string, stage: JobStage, notes?: string): string | null => {
-      try {
-        const draft = cloneStore(store);
-        const app = draft.applications.find((a) => a.application_id === applicationId);
-        if (!app) return "That application couldn't be found — nothing was changed.";
-        if (currentStage(app) === stage) return null; // no-op, not an event
-
-        app.stage_history.push({
-          event_id: makeId('event'),
-          date: new Date().toISOString(),
-          stage,
-          ...(notes ? { notes } : {}),
-        });
-
-        saveStore(draft);
-        setStore(draft);
-        return null;
-      } catch (e) {
-        if (e instanceof StorageError) return e.message;
-        return "That couldn't be saved. Your existing data is unchanged.";
-      }
-    },
-    [store],
-  );
-
-  /** Edit an application's descriptive fields (the mutable half of the hybrid
-   *  record). Stage and history are deliberately not patchable here. */
-  const editApplication = useCallback(
-    (
-      applicationId: string,
-      patch: Partial<
-        Omit<JobApplication, 'application_id' | 'schema_version' | 'stage_history' | 'created_at' | 'archived'>
-      >,
-    ): string | null => {
-      try {
-        const draft = cloneStore(store);
-        const app = draft.applications.find((a) => a.application_id === applicationId);
-        if (!app) return "That application couldn't be found — nothing was changed.";
-
-        Object.assign(app, patch);
-
-        saveStore(draft);
-        setStore(draft);
-        return null;
-      } catch (e) {
-        if (e instanceof StorageError) return e.message;
-        return "That couldn't be saved. Your existing data is unchanged.";
-      }
-    },
-    [store],
-  );
-
-  /** Archive/unarchive — leaves the board but keeps funnel math honest. */
-  const archiveApplication = useCallback(
-    (applicationId: string, archived = true): string | null => {
-      try {
-        const draft = cloneStore(store);
-        const app = draft.applications.find((a) => a.application_id === applicationId);
-        if (!app) return "That application couldn't be found — nothing was changed.";
-
-        app.archived = archived;
-
-        saveStore(draft);
-        setStore(draft);
-        return null;
-      } catch (e) {
-        if (e instanceof StorageError) return e.message;
-        return "That couldn't be saved. Your existing data is unchanged.";
-      }
-    },
-    [store],
-  );
-
   /** Replace the whole store (import / restore). Atomic: the write happens
    *  before the swap, so a failure leaves current state intact (E2-S4). */
   const replaceStore = useCallback((next: Store): string | null => {
@@ -270,9 +188,6 @@ export function useStore() {
     toggleError,
     promoteTopic,
     logManualReview,
-    moveStage,
-    editApplication,
-    archiveApplication,
     replaceStore,
     clearStore,
     loadError,

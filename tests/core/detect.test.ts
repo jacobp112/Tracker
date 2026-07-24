@@ -6,9 +6,6 @@ describe('detectSchema — the Quick-add discriminators', () => {
     expect(detectSchema({ sections: [] })).toBe('course');
     expect(detectSchema({ topics_covered: [] })).toBe('session');
     expect(detectSchema({ linked_topic_ids: [] })).toBe('exam');
-    expect(detectSchema({ activity_id: 'activity_x' })).toBe('running');
-    expect(detectSchema({ exercises: [] })).toBe('lifting');
-    expect(detectSchema({ application_id: 'application_x' })).toBe('job');
   });
 
   it('detects realistic full objects', () => {
@@ -22,15 +19,6 @@ describe('detectSchema — the Quick-add discriminators', () => {
         topics_covered: [{ topic_id: 'topic_a', confidence_reported: 3 }],
       }),
     ).toBe('session');
-    // Lifting also carries session_id — `exercises` must win, not the id.
-    expect(
-      detectSchema({
-        schema_version: '2.0.0',
-        session_id: 'session_abc',
-        date: '2026-07-22',
-        exercises: [{ exercise_name: 'Squat', sets: [] }],
-      }),
-    ).toBe('lifting');
   });
 
   it('returns null for unknown shapes and non-objects', () => {
