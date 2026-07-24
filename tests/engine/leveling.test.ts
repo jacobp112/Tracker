@@ -149,4 +149,23 @@ describe('topicLevelHighWater — the ratchet', () => {
     const untested = topic({ status: 'practising', mastered_at: null, review_history: [] });
     expect(topicLevelHighWater(untested, NOW)).toBeLessThanOrEqual(CONFIG.LEVEL.UNVALIDATED_CAP);
   });
+
+  it('reaches level 5 only via the mastered_at boundary when mastery postdates the last review', () => {
+    // Last review at E (fresh there, but pre-mastery → capped one below the top),
+    // mastery marked 3 days later at M (retention still high → level 5 there),
+    // and "now" is ~60 days on, by which point the live level has decayed below 5.
+    // The ONLY boundary that yields MAX_LEVEL is mastered_at — so this fails if
+    // mastered_at is not unioned into the boundary set.
+    const E = '2026-05-01T00:00:00Z';
+    const M = '2026-05-04T00:00:00Z';
+    const late = new Date('2026-06-30T00:00:00Z');
+    const t = topic({
+      status: 'mastered',
+      mastered_at: M,
+      last_reviewed: E,
+      review_history: [{ ...passEvent(), date: E }],
+    });
+    expect(topicLevel(t, late)).toBeLessThan(MAX_LEVEL); // live level has decayed
+    expect(topicLevelHighWater(t, late)).toBe(MAX_LEVEL); // held only by the mastered_at boundary
+  });
 });
