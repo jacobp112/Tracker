@@ -214,28 +214,3 @@ describe('exam merge — Document 1 §6.3 / Document 2 §4.2', () => {
     expect(next.exams).toHaveLength(1);
   });
 });
-
-describe('running merge — Document 1 §5.1', () => {
-  it('computes pace on ingestion rather than trusting the input', () => {
-    const store = emptyStore();
-    // A deliberately wrong pace: it must be recomputed, not preserved.
-    const r = ingest(
-      JSON.stringify({
-        schema_version: '2.0.0',
-        activity_id: 'activity_01J8ZXE1',
-        date: '2026-07-14',
-        distance_km: 8,
-        duration_seconds: 2400,
-        pace_sec_per_km: 999,
-        type: 'tempo',
-      }),
-      'running',
-      store,
-    );
-    expect(r.ok).toBe(true);
-    if (!r.ok) return;
-
-    const next = commit('running', r.value, store, mergeInto);
-    expect(next.runs[0]!.pace_sec_per_km).toBe(300); // 2400 / 8
-  });
-});

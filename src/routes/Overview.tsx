@@ -19,7 +19,7 @@ import {
 import { retrievable, expTrend, workLogged } from '@/engine/progress';
 import { retentionPct } from '@/engine/retention';
 import { navigate } from '@/router';
-import { ExamsIcon, FitnessIcon, OverviewIcon, StudyIcon } from '@/shell/icons';
+import { ExamsIcon, OverviewIcon, StudyIcon } from '@/shell/icons';
 
 function greeting(now: Date): string {
   const h = now.getHours();
@@ -75,8 +75,6 @@ function nextAction(
 const FEED_ICON: Record<FeedKind, () => JSX.Element> = {
   session: StudyIcon,
   exam: ExamsIcon,
-  run: FitnessIcon,
-  lift: FitnessIcon,
 };
 
 function relDate(iso: string, now: Date): string {
@@ -113,7 +111,7 @@ export function Overview({ store }: { store: Store }) {
     [store, now],
   );
 
-  const nothingYet = mastery.total === 0 && store.runs.length === 0 && store.lifts.length === 0;
+  const nothingYet = mastery.total === 0;
   const action = nextAction(store, due, feed.length > 0, now);
 
   if (nothingYet) {

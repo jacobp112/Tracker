@@ -2,7 +2,6 @@ import { toLocalDateKey } from '@/components/ActivityCalendar';
 import type { Store } from '@/domain/types';
 import { allTopics } from '@/domain/types';
 import { courseHealth, dueQueue, type TopicRef } from './course';
-import { formatPace } from './fitness';
 
 /**
  * Cross-domain aggregations for the Overview — Document 3 §5.1, Document 4 E7-S1.
@@ -88,7 +87,7 @@ export function weeklyVolume(store: Store, now = new Date()): { sessions: number
 
 /* ── Unified activity feed (the visible event-sourcing model) ────── */
 
-export type FeedKind = 'session' | 'exam' | 'run' | 'lift';
+export type FeedKind = 'session' | 'exam';
 
 export interface FeedItem {
   id: string;
@@ -99,9 +98,9 @@ export interface FeedItem {
 }
 
 /**
- * One chronological stream across sessions, exams, runs and lifts
- * (Document 3 §5.1). Sessions are reconstructed from the event log by grouping
- * events that share a `source_id`.
+ * One chronological stream across sessions and exams (Document 3 §5.1).
+ * Sessions are reconstructed from the event log by grouping events that share
+ * a `source_id`.
  */
 export function activityFeed(store: Store, limit = 20): FeedItem[] {
   const items: FeedItem[] = [];
@@ -136,27 +135,6 @@ export function activityFeed(store: Store, limit = 20): FeedItem[] {
       date: exam.date,
       title: exam.title,
       detail: `${exam.score}/${exam.max_score} · ${exam.linked_topic_ids.length} topics`,
-    });
-  }
-
-  for (const run of store.runs) {
-    items.push({
-      id: run.activity_id,
-      kind: 'run',
-      date: run.date,
-      title: `${run.type[0]!.toUpperCase()}${run.type.slice(1)} run`,
-      detail: `${run.distance_km} km · ${formatPace(run.pace_sec_per_km)}/km`,
-    });
-  }
-
-  for (const lift of store.lifts) {
-    const exercises = lift.exercises.length;
-    items.push({
-      id: lift.session_id,
-      kind: 'lift',
-      date: lift.date,
-      title: 'Lifting session',
-      detail: `${exercises} ${exercises === 1 ? 'exercise' : 'exercises'}`,
     });
   }
 

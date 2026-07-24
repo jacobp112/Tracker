@@ -18,14 +18,6 @@ export const StudyIcon = () => (
   </svg>
 );
 
-export const FitnessIcon = () => (
-  <svg viewBox="0 0 24 24" {...S}>
-    <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
-    <rect x="2" y="10" width="4" height="4" rx="1" />
-    <rect x="18" y="10" width="4" height="4" rx="1" />
-  </svg>
-);
-
 export const ExamsIcon = () => (
   <svg viewBox="0 0 24 24" {...S}>
     <rect x="4" y="3" width="12" height="18" rx="1.5" />

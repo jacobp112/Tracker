@@ -132,40 +132,12 @@ export interface Exam {
   breakdown?: ExamBreakdownEntry[];
 }
 
-export interface RunningActivity {
-  schema_version: string;
-  activity_id: string;
-  date: string;
-  distance_km: number;
-  duration_seconds: number;
-  /** Computed on ingestion (Document 1 §5.1), never user-supplied. */
-  pace_sec_per_km: number;
-  type: 'easy' | 'tempo' | 'long' | 'interval' | 'race';
-  notes?: string;
-}
-
-export interface LiftSet {
-  set_number: number;
-  reps: number;
-  weight_kg: number;
-  rpe?: number;
-}
-
-export interface LiftingSession {
-  schema_version: string;
-  session_id: string;
-  date: string;
-  exercises: Array<{ exercise_name: string; sets: LiftSet[] }>;
-}
-
 /* ── Store ─────────────────────────────────────────────────────── */
 
 export interface Store {
   schema_version: string;
   courses: Course[];
   exams: Exam[];
-  runs: RunningActivity[];
-  lifts: LiftingSession[];
 }
 
 export function emptyStore(): Store {
@@ -173,8 +145,6 @@ export function emptyStore(): Store {
     schema_version: SCHEMA_VERSION,
     courses: [],
     exams: [],
-    runs: [],
-    lifts: [],
   };
 }
 

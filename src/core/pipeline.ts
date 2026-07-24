@@ -1,5 +1,5 @@
 import { SCHEMA_LABEL, type SchemaName } from '@/domain/schemas';
-import type { Course, Exam, LiftingSession, RunningActivity, Store, StudySession } from '@/domain/types';
+import type { Course, Exam, Store, StudySession } from '@/domain/types';
 import type { FriendlyError } from './errorTranslation';
 import { checkIntegrity } from './integrity';
 import { cloneStore } from './storage';
@@ -86,21 +86,6 @@ function buildPreview(schemaName: SchemaName, value: unknown): Preview {
           : [`No per-topic breakdown — ${pct}% will be applied to every linked topic.`],
       };
     }
-    case 'running': {
-      const r = value as RunningActivity;
-      return {
-        summary: `${r.distance_km} km ${r.type} run on ${r.date}`,
-        detail: [],
-      };
-    }
-    case 'lifting': {
-      const l = value as LiftingSession;
-      const sets = l.exercises.reduce((n, e) => n + e.sets.length, 0);
-      return {
-        summary: `${plural(l.exercises.length, 'exercise')}, ${plural(sets, 'set')} on ${l.date}`,
-        detail: l.exercises.map((e) => `${e.exercise_name} · ${plural(e.sets.length, 'set')}`),
-      };
-    }
   }
 }
 
@@ -127,8 +112,6 @@ export const COMMIT_VERB: Record<SchemaName, string> = {
   course: 'Course added',
   session: 'Session logged',
   exam: 'Exam result added',
-  running: 'Run logged',
-  lifting: 'Lifting session logged',
 };
 
 export { SCHEMA_LABEL };

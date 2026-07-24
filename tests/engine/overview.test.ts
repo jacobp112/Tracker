@@ -117,7 +117,7 @@ describe('E7-S1 — due queue across all courses', () => {
 });
 
 describe('E7-S1 — unified activity feed', () => {
-  it('merges sessions, exams, runs and lifts newest-first', () => {
+  it('merges sessions and exams newest-first', () => {
     const s = storeWith({
       courses: [
         course('c1', [topic('t1', { review_history: [ev('2026-07-14T18:00:00Z', 'session_1')] })]),
@@ -133,28 +133,9 @@ describe('E7-S1 — unified activity feed', () => {
           max_score: 10,
         },
       ],
-      runs: [
-        {
-          schema_version: '2.0.0',
-          activity_id: 'activity_1',
-          date: '2026-07-15',
-          distance_km: 5,
-          duration_seconds: 1500,
-          pace_sec_per_km: 300,
-          type: 'easy',
-        },
-      ],
-      lifts: [
-        {
-          schema_version: '2.0.0',
-          session_id: 'session_lift1',
-          date: '2026-07-13',
-          exercises: [{ exercise_name: 'Squat', sets: [{ set_number: 1, reps: 5, weight_kg: 100 }] }],
-        },
-      ],
     });
 
     const feed = activityFeed(s);
-    expect(feed.map((f) => f.kind)).toEqual(['exam', 'run', 'session', 'lift']);
+    expect(feed.map((f) => f.kind)).toEqual(['exam', 'session']);
   });
 });

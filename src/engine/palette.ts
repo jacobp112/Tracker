@@ -37,7 +37,6 @@ const MAX_SUGGESTED_DUE = 5;
 const SCREENS: ReadonlyArray<{ label: string; hash: string }> = [
   { label: 'Overview', hash: '#/overview' },
   { label: 'Study', hash: '#/study' },
-  { label: 'Fitness', hash: '#/fitness' },
   { label: 'Exams', hash: '#/exams' },
   { label: 'Settings', hash: '#/settings' },
 ];
@@ -57,8 +56,6 @@ const ACTIONS: readonly PaletteItem[] = [
   },
   { id: 'action:add-course', label: 'Add a course', group: 'Actions', target: { type: 'route', hash: '#/study/add' } },
   { id: 'action:add-exam', label: 'Add an exam result', group: 'Actions', target: { type: 'route', hash: '#/exams/add' } },
-  { id: 'action:add-run', label: 'Log a run', group: 'Actions', target: { type: 'route', hash: '#/fitness/add-run' } },
-  { id: 'action:add-lift', label: 'Log a lift', group: 'Actions', target: { type: 'route', hash: '#/fitness/add-lift' } },
   {
     id: 'action:toggle-theme',
     label: 'Toggle light / dark theme',

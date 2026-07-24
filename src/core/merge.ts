@@ -5,9 +5,7 @@ import type {
   Course,
   ErrorLogEntry,
   Exam,
-  LiftingSession,
   ReviewEvent,
-  RunningActivity,
   Store,
   StudySession,
   Topic,
@@ -169,19 +167,6 @@ function mergeExam(draft: Store, exam: Exam): void {
   }
 }
 
-/** Document 1 §6.3 — fitness objects append directly; no recalculation. */
-function mergeRunning(draft: Store, run: RunningActivity): void {
-  draft.runs.push({
-    ...run,
-    // Computed on ingestion, never user-supplied (Document 1 §5.1).
-    pace_sec_per_km: run.duration_seconds / run.distance_km,
-  });
-}
-
-function mergeLifting(draft: Store, session: LiftingSession): void {
-  draft.lifts.push(session);
-}
-
 export function mergeInto(draft: Store, schemaName: SchemaName, value: unknown): void {
   switch (schemaName) {
     case 'course':
@@ -190,9 +175,5 @@ export function mergeInto(draft: Store, schemaName: SchemaName, value: unknown):
       return mergeSession(draft, value as StudySession);
     case 'exam':
       return mergeExam(draft, value as Exam);
-    case 'running':
-      return mergeRunning(draft, value as RunningActivity);
-    case 'lifting':
-      return mergeLifting(draft, value as LiftingSession);
   }
 }

@@ -13,7 +13,6 @@ import type { SchemaObject } from 'ajv';
 const ID_PATTERN = (prefix: string) => ({ type: 'string', pattern: `^${prefix}_[A-Za-z0-9]+$` });
 
 const ISO_DATETIME = { type: 'string', format: 'date-time' };
-const ISO_DATE = { type: 'string', format: 'date' };
 
 const CONFIDENCE = {
   type: 'integer',
@@ -205,72 +204,12 @@ export const EXAM_SCHEMA: SchemaObject = {
   },
 };
 
-export const RUNNING_SCHEMA: SchemaObject = {
-  $id: 'running',
-  type: 'object',
-  additionalProperties: false,
-  // pace_sec_per_km is computed on ingestion (Document 1 §5.1), so it is NOT
-  // required on input — supplying it is how inconsistent math gets in.
-  required: ['schema_version', 'activity_id', 'date', 'distance_km', 'duration_seconds', 'type'],
-  properties: {
-    schema_version: { type: 'string' },
-    activity_id: ID_PATTERN('activity'),
-    date: ISO_DATE,
-    distance_km: { type: 'number', exclusiveMinimum: 0 },
-    duration_seconds: { type: 'integer', exclusiveMinimum: 0 },
-    pace_sec_per_km: { type: 'number', exclusiveMinimum: 0 },
-    type: { type: 'string', enum: ['easy', 'tempo', 'long', 'interval', 'race'] },
-    notes: { type: 'string' },
-  },
-};
-
-export const LIFTING_SCHEMA: SchemaObject = {
-  $id: 'lifting',
-  type: 'object',
-  additionalProperties: false,
-  required: ['schema_version', 'session_id', 'date', 'exercises'],
-  properties: {
-    schema_version: { type: 'string' },
-    session_id: ID_PATTERN('session'),
-    date: ISO_DATE,
-    exercises: {
-      type: 'array',
-      minItems: 1,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['exercise_name', 'sets'],
-        properties: {
-          exercise_name: { type: 'string', minLength: 1 },
-          sets: {
-            type: 'array',
-            minItems: 1,
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              required: ['set_number', 'reps', 'weight_kg'],
-              properties: {
-                set_number: { type: 'integer', minimum: 1 },
-                reps: { type: 'integer', minimum: 0 },
-                weight_kg: { type: 'number', minimum: 0 },
-                rpe: { type: 'number', minimum: 1, maximum: 10 },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-};
-
-export type SchemaName = 'course' | 'session' | 'exam' | 'running' | 'lifting';
+export type SchemaName = 'course' | 'session' | 'exam';
 
 export const SCHEMAS: Record<SchemaName, SchemaObject> = {
   course: COURSE_SCHEMA,
   session: SESSION_SCHEMA,
   exam: EXAM_SCHEMA,
-  running: RUNNING_SCHEMA,
-  lifting: LIFTING_SCHEMA,
 };
 
 /** User-facing name for each schema, for error messages and previews. */
@@ -278,6 +217,4 @@ export const SCHEMA_LABEL: Record<SchemaName, string> = {
   course: 'course',
   session: 'study session',
   exam: 'exam result',
-  running: 'run',
-  lifting: 'lifting session',
 };

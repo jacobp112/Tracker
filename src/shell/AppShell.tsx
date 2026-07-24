@@ -7,7 +7,6 @@ import {
   AddIcon,
   ChevronDown,
   ExamsIcon,
-  FitnessIcon,
   MoonIcon,
   OverviewIcon,
   SearchIcon,
@@ -22,14 +21,12 @@ type NavName = Route['name'];
 function activeFor(route: Route): NavName {
   if (route.name === 'course' || route.name === 'add-course') return 'study';
   if (route.name === 'add-exam') return 'exams';
-  if (route.name === 'add-run' || route.name === 'add-lift') return 'fitness';
   return route.name;
 }
 
 const TABS = [
   { name: 'overview' as const, label: 'Overview', href: '#/overview', Icon: OverviewIcon },
   { name: 'study' as const, label: 'Study', href: '#/study', Icon: StudyIcon },
-  { name: 'fitness' as const, label: 'Fitness', href: '#/fitness', Icon: FitnessIcon },
   { name: 'exams' as const, label: 'Exams', href: '#/exams', Icon: ExamsIcon },
   { name: 'settings' as const, label: 'Settings', href: '#/settings', Icon: SettingsIcon },
 ];
@@ -155,14 +152,6 @@ export function AppShell({
             </div>
           </div>
 
-          <button
-            type="button"
-            className={`nav-item ${active === 'fitness' ? 'active' : ''}`}
-            onClick={() => navigate('/fitness')}
-          >
-            <FitnessIcon />
-            Fitness
-          </button>
           <button
             type="button"
             className={`nav-item ${active === 'exams' ? 'active' : ''}`}

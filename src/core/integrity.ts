@@ -31,10 +31,6 @@ export function checkIntegrity(
       return checkSession(value as StudySession, store);
     case 'exam':
       return checkExam(value as Exam, store);
-    // Fitness objects carry no cross-object references (Document 1 §6.3).
-    case 'running':
-    case 'lifting':
-      return [];
   }
 }
 

@@ -77,24 +77,6 @@ ${list}
 
 Exam details: [USER PASTES SCORES / MARKED PAPER]`;
 }
-/** Document 4 §3.4 — running. `pace_sec_per_km` is intentionally omitted; the
- *  app computes it on ingestion (Document 1 §5.1). */
-export const RUNNING_PROMPT = `You are logging a run into a tracker. Output only valid JSON matching this schema — no fences, no commentary, no extra fields.
-
-{schema_version: "2.0.0", activity_id: "activity_" + 10 random alphanumeric characters, date: "YYYY-MM-DD", distance_km: number, duration_seconds: integer, type: one of "easy" | "tempo" | "long" | "interval" | "race", notes: optional string}
-
-Do NOT include pace_sec_per_km — the tracker computes it from distance and duration.
-
-Run details: [PASTE YOUR RUN HERE]`;
-
-/** Document 4 §3.4 — lifting. Sets stay as an array (Document 1 §5.2). */
-export const LIFTING_PROMPT = `You are logging a lifting session. Output only valid JSON matching this schema — no fences, no commentary, no extra fields.
-
-{schema_version: "2.0.0", session_id: "session_" + 10 random alphanumeric characters, date: "YYYY-MM-DD", exercises: [{exercise_name, sets: [{set_number, reps, weight_kg, rpe}]}]}
-
-Weights are in kg. rpe (1-10) is optional. Keep each set as its own entry — do not collapse sets into a total.
-
-Session details: [PASTE YOUR WORKOUT HERE]`;
 
 /*
  * The auto-repair prompt (Document 4 §3.3) is deliberately NOT here. Auto-repair
