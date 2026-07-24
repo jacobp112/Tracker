@@ -149,6 +149,7 @@ describe('App smoke — every route renders with real data', () => {
     mountAt('#/overview');
     expect(screen.getByRole('heading', { name: /good (morning|afternoon|evening)/i })).toBeInTheDocument();
     expect(screen.getByText(/recent activity/i)).toBeInTheDocument();
+    expect(screen.getByText('Retrievable now')).toBeInTheDocument();
   });
 
   it('Study index', () => {

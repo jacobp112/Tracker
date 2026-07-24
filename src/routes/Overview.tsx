@@ -4,6 +4,7 @@ import { HeroRing } from '@/components/HeroRing';
 import { Button, Card, Eyebrow, Hint } from '@/components/primitives';
 import { Prop, PropsRow } from '@/components/PropsRow';
 import { RetentionRow } from '@/components/RetentionRow';
+import { Sparkline, type SparkPoint } from '@/components/Sparkline';
 import { CONFIG } from '@/config/constants';
 import type { Store } from '@/domain/types';
 import {
@@ -16,6 +17,7 @@ import {
   type FeedKind,
 } from '@/engine/overview';
 import { STAGE_LABEL, upcomingActions } from '@/engine/jobs';
+import { retrievable, expTrend, workLogged } from '@/engine/progress';
 import { retentionPct } from '@/engine/retention';
 import { currentStage } from '@/domain/types';
 import { navigate } from '@/router';
@@ -119,6 +121,12 @@ export function Overview({ store }: { store: Store }) {
   const mastery = overallMastery(store);
   const streak = studyStreak(store, now);
   const volume = weeklyVolume(store, now);
+  const exp = retrievable(store, now);
+  const work = workLogged(store);
+  const trend = useMemo<SparkPoint[]>(
+    () => expTrend(store, now).map((p) => ({ value: Math.round(p.ratio * 100), date: p.date })),
+    [store, now],
+  );
 
   const nothingYet = mastery.total === 0 && store.runs.length === 0 && store.lifts.length === 0;
   const action = nextAction(store, due, feed.length > 0, now);
@@ -235,7 +243,29 @@ export function Overview({ store }: { store: Store }) {
         </Card>
       </div>
 
-      <PropsRow className="reveal" style={{ ['--i' as string]: 3 }}>
+      {exp.ceiling > 0 && (
+        <div className="section reveal" style={{ ['--i' as string]: 3 }}>
+          <Card>
+            <div className="eyebrow-row">
+              <Eyebrow>Retrievable now</Eyebrow>
+              <Hint
+                label="About retrievable now"
+                text="How much you could recall across every started topic right now — the sum of each topic's current retention. It falls when you don't study and recovers when you review; that's the point."
+              />
+            </div>
+            <div className="hero-value mono-num">
+              {exp.exp.toFixed(1)} <span className="hero-value-sub">/ {exp.ceiling} topics</span>
+            </div>
+            <Sparkline
+              data={trend}
+              label="Retrievable knowledge"
+              idPrefix="exp-trend"
+            />
+          </Card>
+        </div>
+      )}
+
+      <PropsRow className="reveal" style={{ ['--i' as string]: 4 }}>
         <Prop
           label="Study streak"
           value={streak}
@@ -251,10 +281,16 @@ export function Overview({ store }: { store: Store }) {
           value={`${mastery.pct}%`}
           caption={`${mastery.mastered}/${mastery.total} topics mastered`}
         />
+        <Prop
+          label="Work logged"
+          value={work.sessions}
+          caption={`${work.sessions === 1 ? 'session' : 'sessions'} · ${work.papers} ${work.papers === 1 ? 'paper' : 'papers'}`}
+          hint="Everything you've put in — total study sessions and exam papers. Unlike retrievable-now, this only ever goes up."
+        />
       </PropsRow>
 
       {actions.length > 0 && (
-        <div className="section reveal" style={{ ['--i' as string]: 4 }}>
+        <div className="section reveal" style={{ ['--i' as string]: 5 }}>
           <div className="section-title">Coming up</div>
           <div className="section-sub">Job deadlines and interviews, soonest first.</div>
           <Card className="list-card">
@@ -283,7 +319,7 @@ export function Overview({ store }: { store: Store }) {
         </div>
       )}
 
-      <div className="section reveal" style={{ ['--i' as string]: 5 }}>
+      <div className="section reveal" style={{ ['--i' as string]: 6 }}>
         <div className="section-title">Recent activity</div>
         <div className="section-sub">Everything you've logged, newest first.</div>
         <Card className="list-card">
