@@ -8,7 +8,6 @@ describe('detectSchema — the Quick-add discriminators', () => {
     expect(detectSchema({ linked_topic_ids: [] })).toBe('exam');
     expect(detectSchema({ activity_id: 'activity_x' })).toBe('running');
     expect(detectSchema({ exercises: [] })).toBe('lifting');
-    expect(detectSchema({ application_id: 'application_x' })).toBe('job');
   });
 
   it('detects realistic full objects', () => {

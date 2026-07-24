@@ -21,7 +21,6 @@ const DESTINATION: Record<SchemaName, (value: unknown) => string> = {
   exam: () => '/exams',
   running: () => '/fitness',
   lifting: () => '/fitness',
-  job: () => '/jobs',
 };
 
 /**
@@ -95,7 +94,7 @@ export function QuickAdd({
       <div className="page-head reveal" style={{ ['--i' as string]: 0 }}>
         <h1>Quick add</h1>
         <p>
-          Paste any JSON your AI gave you — course, session, exam, run, lift, or job application.
+          Paste any JSON your AI gave you — course, session, exam, run, or lift.
           It's recognised automatically.
         </p>
       </div>
@@ -140,8 +139,8 @@ export function QuickAdd({
                 <h3>That's valid JSON, but it isn't a shape this tracker knows.</h3>
                 <div className="error-item">
                   <span>
-                    Expected a course, study session, exam result, run, lifting session, or job
-                    application generated from one of the app's prompts. Re-generate with the prompt
+                    Expected a course, study session, exam result, run, or lifting session
+                    generated from one of the app's prompts. Re-generate with the prompt
                     from the matching Add screen, then paste the result here.
                   </span>
                 </div>

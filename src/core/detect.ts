@@ -15,7 +15,6 @@ import type { SchemaName } from '@/domain/schemas';
  *  - exam     → `linked_topic_ids`
  *  - running  → `activity_id`
  *  - lifting  → `exercises`
- *  - job      → `application_id`
  */
 export function detectSchema(value: unknown): SchemaName | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
@@ -26,6 +25,5 @@ export function detectSchema(value: unknown): SchemaName | null {
   if ('linked_topic_ids' in keys) return 'exam';
   if ('activity_id' in keys) return 'running';
   if ('exercises' in keys) return 'lifting';
-  if ('application_id' in keys) return 'job';
   return null;
 }

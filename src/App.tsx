@@ -12,8 +12,6 @@ import { AddIcon } from '@/shell/icons';
 import { AddCourse } from '@/routes/AddCourse';
 import { AddExam } from '@/routes/AddExam';
 import { AddFitness } from '@/routes/AddFitness';
-import { AddJob } from '@/routes/AddJob';
-import { Jobs } from '@/routes/Jobs';
 import { ComponentShowcase } from '@/routes/ComponentShowcase';
 import { CourseDashboard } from '@/routes/CourseDashboard';
 import { Exams } from '@/routes/Exams';
@@ -182,9 +180,6 @@ function AppInner() {
     toggleError,
     promoteTopic,
     logManualReview,
-    moveStage,
-    editApplication,
-    archiveApplication,
     replaceStore,
     clearStore,
     loadError,
@@ -251,17 +246,6 @@ function AppInner() {
         return <Exams store={store} />;
       case 'add-exam':
         return <AddExam store={store} commitValue={commitValue} undoLast={undoLast} />;
-      case 'jobs':
-        return (
-          <Jobs
-            store={store}
-            moveStage={moveStage}
-            editApplication={editApplication}
-            archiveApplication={archiveApplication}
-          />
-        );
-      case 'add-job':
-        return <AddJob store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'quick-add':
         return <QuickAdd store={store} commitValue={commitValue} undoLast={undoLast} />;
       case 'settings':

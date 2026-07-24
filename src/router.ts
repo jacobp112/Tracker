@@ -15,8 +15,6 @@ export type Route =
   | { name: 'add-lift' }
   | { name: 'exams' }
   | { name: 'add-exam' }
-  | { name: 'jobs' }
-  | { name: 'add-job' }
   | { name: 'settings' }
   | { name: 'quick-add' }
   | { name: 'dev-tokens' }
@@ -37,8 +35,6 @@ export function parseHash(hash: string): Route {
       return { name: 'fitness' };
     case 'exams':
       return tail === 'add' ? { name: 'add-exam' } : { name: 'exams' };
-    case 'jobs':
-      return tail === 'add' ? { name: 'add-job' } : { name: 'jobs' };
     case 'settings':
       return { name: 'settings' };
     case 'add':
