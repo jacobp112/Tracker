@@ -253,8 +253,8 @@ export function Overview({ store }: { store: Store }) {
                 text="How much you could recall across every started topic right now — the sum of each topic's current retention. It falls when you don't study and recovers when you review; that's the point."
               />
             </div>
-            <div className="hero-value mono-num">
-              {exp.exp.toFixed(1)} <span className="hero-value-sub">/ {exp.ceiling} topics</span>
+            <div className="hero-number mono-num">
+              {exp.exp.toFixed(1)} <span className="hero-sub">/ {exp.ceiling} topics</span>
             </div>
             <Sparkline
               data={trend}
