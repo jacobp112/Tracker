@@ -4,6 +4,7 @@ import { Card } from '@/components/primitives';
 import { COMMIT_VERB } from '@/core/pipeline';
 import { examPrompt } from '@/domain/prompts';
 import type { Store } from '@/domain/types';
+import type { LevelUp } from '@/engine/leveling';
 import { navigate } from '@/router';
 
 /**
@@ -19,7 +20,11 @@ export function AddExam({
   undoLast,
 }: {
   store: Store;
-  commitValue: (schemaName: 'exam', value: unknown) => string | null;
+  commitValue: (
+    schemaName: 'exam',
+    value: unknown,
+    onLevelUps?: (ups: LevelUp[]) => void,
+  ) => string | null;
   undoLast: () => string | null;
 }) {
   const { toast } = useToast();
@@ -49,7 +54,11 @@ export function AddExam({
             prompt={examPrompt(store)}
             confirmLabel="Add exam result"
             onCommit={(value) => {
-              const error = commitValue('exam', value);
+              const error = commitValue('exam', value, (ups) => {
+                for (const up of ups) {
+                  toast(`${up.topic.title} reached level ${up.to}`, 'success');
+                }
+              });
               if (error) {
                 toast(error, 'error');
                 return;

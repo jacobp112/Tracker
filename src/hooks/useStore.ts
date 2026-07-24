@@ -15,6 +15,7 @@ import {
   type TopicStatus,
 } from '@/domain/types';
 import { makeId } from '@/core/merge';
+import { levelUps, type LevelUp } from '@/engine/leveling';
 import { applyEvent, promote } from '@/engine/recalculate';
 
 /**
@@ -40,12 +41,13 @@ export function useStore() {
 
   /** Returns null on success, or a plain-English message on failure. */
   const commitValue = useCallback(
-    (schemaName: SchemaName, value: unknown): string | null => {
+    (schemaName: SchemaName, value: unknown, onLevelUps?: (ups: LevelUp[]) => void): string | null => {
       try {
         const next = commit(schemaName, value, store, mergeInto);
         saveStore(next); // throws before we adopt the draft
         setUndoSnapshot(store); // the pre-commit state, for the toast's Undo
         setStore(next);
+        onLevelUps?.(levelUps(store, next, new Date()));
         return null;
       } catch (e) {
         if (e instanceof StorageError) return e.message;

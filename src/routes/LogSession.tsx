@@ -4,6 +4,7 @@ import { Sheet } from '@/components/Sheet';
 import { COMMIT_VERB } from '@/core/pipeline';
 import { sessionPrompt } from '@/domain/prompts';
 import type { Course, Store } from '@/domain/types';
+import type { LevelUp } from '@/engine/leveling';
 
 /**
  * Log session flow — Document 4 E4-S6.
@@ -23,7 +24,11 @@ export function LogSession({
   store: Store;
   open: boolean;
   onClose: () => void;
-  commitValue: (schemaName: 'session', value: unknown) => string | null;
+  commitValue: (
+    schemaName: 'session',
+    value: unknown,
+    onLevelUps?: (ups: LevelUp[]) => void,
+  ) => string | null;
   undoLast: () => string | null;
 }) {
   const { toast } = useToast();
@@ -42,7 +47,11 @@ export function LogSession({
         prompt={sessionPrompt(course.course_id, topics)}
         confirmLabel="Log session"
         onCommit={(value) => {
-          const error = commitValue('session', value);
+          const error = commitValue('session', value, (ups) => {
+            for (const up of ups) {
+              toast(`${up.topic.title} reached level ${up.to}`, 'success');
+            }
+          });
           if (error) {
             toast(error, 'error');
             return;
