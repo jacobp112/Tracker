@@ -24,25 +24,46 @@ function storeOf(topics: Topic[]): Store {
   return { ...emptyStore(), courses: [course] };
 }
 
+function studied(id: string, date: string): ReviewEvent {
+  return {
+    event_id: id, date, kind: 'study_review',
+    source: 'session', source_id: `s_${id}`, confidence_reported: 4,
+  };
+}
+
+/** A single logged review event dated at/ before `date`, for topics that
+ *  should count as "started" under the event-based EXP predicate. */
+function review(id: string, date: string = NOW.toISOString()): ReviewEvent {
+  return studied(id, date);
+}
+
 describe('retrievable — live EXP', () => {
   it('is zero on an empty store', () => {
     expect(retrievable(emptyStore(), NOW)).toEqual({ exp: 0, ceiling: 0 });
   });
 
-  it('excludes not_started topics from both exp and ceiling', () => {
-    const store = storeOf([topic({ topic_id: 'a' }), topic({ topic_id: 'b', status: 'not_started' })]);
-    const { ceiling } = retrievable(store, NOW);
+  it('counts only topics with a logged review event — status alone (not_started or merely promoted) does not count', () => {
+    const store = storeOf([
+      topic({ topic_id: 'a', review_history: [review('r_a')] }), // logged review → counts
+      topic({ topic_id: 'b', status: 'not_started', review_history: [] }), // never started → excluded
+      topic({ topic_id: 'c', status: 'practising', review_history: [] }), // status-promoted, no review → excluded
+    ]);
+    const { exp, ceiling } = retrievable(store, NOW);
     expect(ceiling).toBe(1);
+    expect(exp).toBeCloseTo(1, 5);
   });
 
   it('a topic reviewed today contributes ~1 (retention pinned to 1 at t=0)', () => {
-    const { exp, ceiling } = retrievable(storeOf([topic()]), NOW);
+    const { exp, ceiling } = retrievable(storeOf([topic({ review_history: [review('r1')] })]), NOW);
     expect(ceiling).toBe(1);
     expect(exp).toBeCloseTo(1, 5);
   });
 
   it('exp never exceeds ceiling, and falls as time passes with no new events', () => {
-    const store = storeOf([topic(), topic({ topic_id: 't2' })]);
+    const store = storeOf([
+      topic({ review_history: [review('r1')] }),
+      topic({ topic_id: 't2', review_history: [review('r2')] }),
+    ]);
     const today = retrievable(store, NOW);
     const laterDate = new Date(NOW.getTime() + 30 * 86_400_000);
     const later = retrievable(store, laterDate);
@@ -52,19 +73,16 @@ describe('retrievable — live EXP', () => {
   });
 
   it('clamps a backdated (future last_reviewed) topic to <= ceiling', () => {
-    // last_reviewed in the future relative to now → retention would be 1, not >1
-    const future = topic({ last_reviewed: new Date(NOW.getTime() + 5 * 86_400_000).toISOString() });
+    // last_reviewed in the future relative to now → retention would be 1, not >1.
+    // Still needs a logged review dated <= now to count under the new predicate.
+    const future = topic({
+      last_reviewed: new Date(NOW.getTime() + 5 * 86_400_000).toISOString(),
+      review_history: [review('r_future')],
+    });
     const { exp, ceiling } = retrievable(storeOf([future]), NOW);
     expect(exp).toBeLessThanOrEqual(ceiling);
   });
 });
-
-function studied(id: string, date: string): ReviewEvent {
-  return {
-    event_id: id, date, kind: 'study_review',
-    source: 'session', source_id: `s_${id}`, confidence_reported: 4,
-  };
-}
 
 describe('expTrend — 7-day trend', () => {
   it('returns one point per day, oldest first', () => {

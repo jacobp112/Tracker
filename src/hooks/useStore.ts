@@ -47,7 +47,14 @@ export function useStore() {
         saveStore(next); // throws before we adopt the draft
         setUndoSnapshot(store); // the pre-commit state, for the toast's Undo
         setStore(next);
-        onLevelUps?.(levelUps(store, next, new Date()));
+        // Level-up detection is cosmetic: it runs only after the commit has
+        // persisted and been adopted, and its own failure must never surface as a
+        // save error (the save already succeeded).
+        try {
+          onLevelUps?.(levelUps(store, next, new Date()));
+        } catch {
+          /* a failed celebratory toast is not a failed commit */
+        }
         return null;
       } catch (e) {
         if (e instanceof StorageError) return e.message;

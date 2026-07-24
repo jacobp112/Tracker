@@ -16,9 +16,9 @@ import { topicStateAsOf } from './replay';
  */
 
 export interface Retrievable {
-  /** Σ retention over started topics. */
+  /** Σ retention over topics with logged review history. */
   exp: number;
-  /** Count of started topics — the knowable ceiling EXP is rendered against. */
+  /** Count of topics with logged review history — the knowable ceiling EXP is rendered against. */
   ceiling: number;
 }
 
@@ -26,7 +26,12 @@ export function retrievable(store: Store, now: Date = new Date()): Retrievable {
   let exp = 0;
   let ceiling = 0;
   for (const { topic } of allTopics(store)) {
-    if (topic.status === 'not_started') continue;
+    // "Started" for EXP means the topic has logged review history — the same
+    // predicate expTrend uses for past days, so the live point and the trend
+    // can't disagree about which topics exist. A topic merely promoted via the
+    // status control (no logged review) has no retrieval evidence and no
+    // reconstructable history, so it doesn't count until a review is logged.
+    if (!topic.review_history.some((e) => new Date(e.date).getTime() <= now.getTime())) continue;
     ceiling += 1;
     const r = predictRetention(topic, now);
     if (r !== null) exp += Math.min(1, r); // clamp guards clock skew / backdating

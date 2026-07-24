@@ -37,7 +37,16 @@ function populated(): Store {
             last_reviewed: '2026-07-12T12:00:00Z',
             mastered_at: null,
             drift_history: [],
-            review_history: [],
+            review_history: [
+              {
+                event_id: 'event_smoke0001',
+                date: '2026-07-12T12:00:00Z',
+                kind: 'study_review',
+                source: 'session',
+                source_id: 'session_smoke001',
+                confidence_reported: 3,
+              },
+            ],
             error_log: [],
           },
           {
