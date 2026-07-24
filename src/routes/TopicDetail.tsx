@@ -3,6 +3,7 @@ import { RetentionCurve } from '@/components/RetentionCurve';
 import { Sheet } from '@/components/Sheet';
 import { Hint, Tag } from '@/components/primitives';
 import type { Confidence, Topic, TopicStatus } from '@/domain/types';
+import { topicLevelHighWater } from '@/engine/leveling';
 import { badges, health, overconfidenceIndex, shouldShowHealth } from '@/engine/metrics';
 import { retentionPct } from '@/engine/retention';
 
@@ -84,6 +85,7 @@ export function TopicDetail({
   const ret = retentionPct(topic, now);
   const oci = overconfidenceIndex(topic);
   const showHealth = shouldShowHealth(topic);
+  const level = topicLevelHighWater(topic, now);
 
   return (
     <Sheet open title={topic.title} onClose={onClose}>
@@ -109,6 +111,11 @@ export function TopicDetail({
         </div>
 
         <div className="cluster roomy">
+          <Stat
+            value={`Lv ${level}`}
+            label="level"
+            hint="The highest level you've demonstrably reached here — it ratchets on evidence (a passed test, mastery) and never falls, even as retention decays. That's why a high level can sit beside a low retention: one says you got here, the other says it's fading."
+          />
           <Stat
             value={ret === null ? '—' : `${Math.round(ret)}%`}
             label="retention"
