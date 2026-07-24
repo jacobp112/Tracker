@@ -79,13 +79,15 @@ export function importBundle(input: string): ImportResult {
       ],
     };
   }
-  if (parsed.schema_version !== SCHEMA_VERSION) {
+  // Older bundles migrate forward (courses + exams are unchanged, removed
+  // domains are simply ignored below); only a NEWER version is rejected.
+  if (parsed.schema_version && parsed.schema_version > SCHEMA_VERSION) {
     return {
       ok: false,
       errors: [
         {
           path: '/schema_version',
-          message: `This export is version ${parsed.schema_version ?? 'unknown'}, but this app expects ${SCHEMA_VERSION}.`,
+          message: `This export is version ${parsed.schema_version}, but this app expects ${SCHEMA_VERSION}.`,
         },
       ],
     };
