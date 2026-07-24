@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { expTrend, retrievable } from '@/engine/progress';
+import { expTrend, retrievable, workLogged } from '@/engine/progress';
 import { CONFIG } from '@/config/constants';
-import { emptyStore, type Course, type ReviewEvent, type Store, type Topic } from '@/domain/types';
+import { emptyStore, type Course, type Exam, type ReviewEvent, type Store, type Topic } from '@/domain/types';
 
 const NOW = new Date('2026-07-20T12:00:00Z');
 
@@ -101,5 +101,40 @@ describe('expTrend — 7-day trend', () => {
   it('ratio is exp/ceiling, and 0 when ceiling is 0', () => {
     const pts = expTrend(storeOf([]), NOW);
     expect(pts.every((p) => p.ratio === 0)).toBe(true);
+  });
+});
+
+describe('workLogged — monotonic effort', () => {
+  it('counts distinct study sessions, not events', () => {
+    // Two events sharing one source_id = one session.
+    const t = topic({ review_history: [
+      { event_id: 'a', date: NOW.toISOString(), kind: 'study_review', source: 'session',
+        source_id: 'sess_1', confidence_reported: 4 },
+      { event_id: 'b', date: NOW.toISOString(), kind: 'study_review', source: 'session',
+        source_id: 'sess_1', confidence_reported: 5 },
+    ] });
+    expect(workLogged(storeOf([t])).sessions).toBe(1);
+  });
+
+  it('counts exams as papers and derives hours from sessions', () => {
+    const t = topic({ review_history: [
+      { event_id: 'a', date: NOW.toISOString(), kind: 'study_review', source: 'session',
+        source_id: 'sess_1', confidence_reported: 4 },
+    ] });
+    const store = storeOf([t]);
+    const exam: Exam = { schema_version: '2.0.0', exam_id: 'ex1', title: 'Mock',
+      date: NOW.toISOString(), linked_topic_ids: [], score: 8, max_score: 10 };
+    store.exams = [exam];
+    const w = workLogged(store);
+    expect(w.papers).toBe(1);
+    expect(w.hours).toBeCloseTo(CONFIG.PROGRESS.SESSION_MINUTES / 60, 5);
+  });
+
+  it('ignores non-session provenance (manual_review) in the session count', () => {
+    const t = topic({ review_history: [
+      { event_id: 'm', date: NOW.toISOString(), kind: 'study_review', source: 'manual_review',
+        source_id: 'man_1', confidence_reported: 4 },
+    ] });
+    expect(workLogged(storeOf([t])).sessions).toBe(0);
   });
 });

@@ -78,3 +78,27 @@ export function expTrend(
   }
   return out;
 }
+
+export interface WorkLogged {
+  sessions: number;
+  hours: number;
+  papers: number;
+}
+
+/**
+ * "What have I put in." Derived from append-only history, so it is monotonic by
+ * construction — it never falls, which is exactly what EXP can't promise. Hours
+ * are a count × nominal duration (duration is decomposed away on ingestion):
+ * exact in the count, honest as a proxy in the hours.
+ */
+export function workLogged(store: Store): WorkLogged {
+  const sessionIds = new Set<string>();
+  for (const { topic } of allTopics(store)) {
+    for (const e of topic.review_history) {
+      if (e.source === 'session') sessionIds.add(e.source_id);
+    }
+  }
+  const sessions = sessionIds.size;
+  const hours = Math.round((sessions * CONFIG.PROGRESS.SESSION_MINUTES) / 60 * 10) / 10;
+  return { sessions, hours, papers: store.exams.length };
+}
