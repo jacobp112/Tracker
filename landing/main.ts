@@ -26,6 +26,7 @@ import './styles/recreations.css';
 
 import { createElement, Sun, Moon } from 'lucide';
 import { setupReveals } from './reveal';
+import { setupDataAnimations } from './animate';
 import { copyText } from './clipboard';
 import { currentTheme, setupThemeToggle } from './theme-toggle';
 
@@ -77,6 +78,11 @@ if (toggle) {
 }
 
 setupReveals(document.querySelectorAll('.reveal'), { reducedMotion });
+
+/* Data-driven recreations (ring draw, count-ups, bar fills) animate once on
+ * scroll-into-view. Reduced motion snaps them to final; no-JS shows final via
+ * the CSS fallbacks. Each group opts in with [data-animate]. */
+setupDataAnimations(document.querySelectorAll('[data-animate]'), { reducedMotion });
 
 /* ── Copy the prompt ──────────────────────────────────────────────
  * Copies the FULL prompt from the <template>, not the visible excerpt. The

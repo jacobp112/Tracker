@@ -41,10 +41,21 @@
 .ring-track { fill: none; stroke: var(--track); stroke-width: 12; }
 .ring-arc {
   fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
-  transition: stroke-dasharray 0.05s linear;
-  stroke-dasharray: 0 100; /* Starts empty until JS runs */
-  /* Adds a subtle drop shadow to the SVG ring itself */
+  /* pathLength=100 makes dash units read as percent. Default (incl. no-JS):
+   * show the final arc so the ring is never empty. --arc is set on .ring. */
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 - var(--arc, 0));
+  /* Subtle drop shadow on the SVG ring itself. */
   filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent));
+}
+/* JS present, before scroll-in: start empty, ready to draw. */
+.js .ring:not(.is-drawn) .ring-arc { stroke-dashoffset: 100; }
+/* On trigger, animate.ts sets --offset (=100-arc) and adds .is-drawn; animate
+ * to it. tokens.css collapses transition-duration to 0.01ms under reduced
+ * motion, so it snaps to the final arc instead of drawing. */
+.js .ring.is-drawn .ring-arc {
+  stroke-dashoffset: var(--offset);
+  transition: stroke-dashoffset var(--dur-draw) var(--ease);
 }
 .ring-center {
   position: absolute; inset: 0; display: flex; flex-direction: column;
