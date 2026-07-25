@@ -1,0 +1,15 @@
+/* Self-hosted variable fonts — no CDN. Fontsource ships woff2 inside the npm
+   package; Vite fingerprints them and serves them from our own origin. */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* Fallback metrics so the -apple-system stack occupies the same space as Inter
+   while the variable font loads (kills layout shift; font-display: swap default). */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('-apple-system'), local('BlinkMacSystemFont'), local('Segoe UI'), local('Arial');
+  size-adjust: 107%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}

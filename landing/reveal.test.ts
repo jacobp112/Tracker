@@ -34,7 +34,7 @@ describe('reveal', () => {
     const e = el();
     const observer = { unobserve: vi.fn() } as unknown as IntersectionObserver;
     makeRevealHandler()(
-      [{ isIntersecting: true, target: e } as IntersectionObserverEntry],
+      [{ isIntersecting: true, target: e } as unknown as IntersectionObserverEntry],
       observer,
     );
     expect(e.classList.contains('is-visible')).toBe(true);
@@ -45,7 +45,7 @@ describe('reveal', () => {
     const e = el();
     const observer = { unobserve: vi.fn() } as unknown as IntersectionObserver;
     makeRevealHandler()(
-      [{ isIntersecting: false, target: e } as IntersectionObserverEntry],
+      [{ isIntersecting: false, target: e } as unknown as IntersectionObserverEntry],
       observer,
     );
     expect(e.classList.contains('is-visible')).toBe(false);
