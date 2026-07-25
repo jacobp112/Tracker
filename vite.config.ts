@@ -10,10 +10,22 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        app: fileURLToPath(new URL('./index.html', import.meta.url)),
+        landing: fileURLToPath(new URL('./landing/index.html', import.meta.url)),
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
-    include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'tests/**/*.{test,spec}.{ts,tsx}',
+      'src/**/*.{test,spec}.{ts,tsx}',
+      'landing/**/*.{test,spec}.ts',
+    ],
   },
 });
