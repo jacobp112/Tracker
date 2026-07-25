@@ -36,6 +36,13 @@ Element.prototype.scrollIntoView = vi.fn();
  */
 document.execCommand = vi.fn(() => false);
 
+/**
+ * jsdom does not implement SVGGeometryElement.getTotalLength. Sparkline's draw
+ * animation reads it to seed stroke-dasharray/dashoffset; nothing renders in
+ * jsdom, so a constant finite length is a faithful stand-in.
+ */
+(SVGElement.prototype as unknown as { getTotalLength: () => number }).getTotalLength = () => 100;
+
 beforeEach(() => {
   listeners.clear();
   setMedia({});
