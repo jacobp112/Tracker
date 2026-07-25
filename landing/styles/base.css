@@ -1,0 +1,59 @@
+/* The app's design tokens are the single source of truth for colour, type,
+   spacing, radius, elevation and motion. tokens.css holds every custom property
+   the page needs; we never restate a raw value. (src/styles/palette.css is the
+   ⌘K command-palette component, not a colour palette, so it is NOT imported.) */
+@import '../../src/styles/tokens.css';
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(1000px 520px at 12% -8%, var(--wash-1), transparent 60%),
+    radial-gradient(820px 520px at 102% 4%, var(--wash-2), transparent 55%),
+    var(--bg-page);
+  background-attachment: fixed;
+  min-height: 100vh;
+  font-family: 'Inter Variable', 'Inter Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -0.006em;
+  font-feature-settings: 'cv05', 'cv08', 'ss01', 'tnum' 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin: 0; }
+
+.eyebrow {
+  font-size: var(--fs-eyebrow); text-transform: uppercase; font-weight: 700;
+  letter-spacing: 0.07em; color: var(--ink-muted);
+}
+
+.mono-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+/* Buttons — mirror the app's .btn-primary / .btn-secondary. */
+.btn-primary, .btn-secondary {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-5) var(--space-8); border-radius: var(--radius-pill);
+  font-size: var(--fs-body); font-weight: 600; cursor: pointer;
+  border: 1px solid transparent; text-decoration: none;
+  transition: box-shadow var(--dur-standard) var(--ease), background-color var(--dur-standard) var(--ease);
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface); border-color: var(--border-strong); color: var(--ink); }
+:where(a, button):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Progressive-enhancement reveal: visible by default; only hidden when JS is present. */
+.reveal { opacity: 1; transform: none; }
+.js .reveal { opacity: 0; transform: translateY(14px); }
+.js .reveal.is-visible {
+  opacity: 1; transform: none;
+  transition: opacity var(--dur-reveal) var(--ease), transform var(--dur-reveal) var(--ease);
+  transition-delay: calc(var(--i, 0) * var(--reveal-step));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  .reveal, .js .reveal { opacity: 1 !important; transform: none !important; }
+}
