@@ -207,16 +207,16 @@ Here is the syllabus:
           <article class="card step reveal" style="--i:1">
             <span class="step-num mono-num">02</span>
             <h3>Paste the result back</h3>
-            <div class="mock mock-validation" id="mock-schema-check" role="img" aria-label="A validation preview checking JSON structure against schema rules: title and sections verified.">
+            <div class="mock mock-validation" id="mock-schema-check" role="img" aria-label="A validation error: the field topics 3 difficulty is not allowed by the schema. Cairn names the field and the fix instead of failing silently.">
               <div class="val-head">
-                <span class="val-file mono-num">JSON Schema</span>
-                <span class="tag tag-success">validated</span>
+                <span class="val-file mono-num">paste.json</span>
+                <span class="tag tag-danger">rejected</span>
               </div>
-              <div class="val-counts">
-                <span class="val-count"><span class="check" aria-hidden="true">✓</span>Strict structure</span>
-                <span class="val-count"><span class="check" aria-hidden="true">✓</span>0 extra fields</span>
+              <div class="val-error">
+                <span class="val-error-field mono-num">topics[3].difficulty</span>
+                <span class="val-error-msg">is not an allowed field. Remove it — difficulty is measured, not declared.</span>
               </div>
-              <p class="val-note">Checked in your browser before saving.</p>
+              <p class="val-note">Nothing is saved when a paste doesn't fit.</p>
             </div>
             <p>Paste the AI's JSON into Cairn. It's checked against a strict schema — no extra fields, no invented dates. If something's wrong, you get a plain-English message naming the field and the fix.</p>
           </article>

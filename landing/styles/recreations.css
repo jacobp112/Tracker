@@ -180,6 +180,13 @@
   border-radius: var(--radius-chip); white-space: nowrap;
 }
 .tag-success { color: var(--success); background: var(--success-soft); }
+.tag-danger { color: var(--danger); background: var(--danger-soft); }
+
+/* Validation FAILURE preview (Step 2): the page asserts strictness; this shows
+ * it — a named field + the fix, calm not alarming (research §d: no shake). */
+.val-error { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-5); }
+.val-error-field { font-size: var(--fs-secondary); color: var(--danger); }
+.val-error-msg { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.45; }
 .tag-error {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 12%, transparent);
