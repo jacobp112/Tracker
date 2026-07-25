@@ -259,13 +259,11 @@
   background-color: var(--surface-sunken);
 }
 
-/* Hero Headline Highlight Accent */
-.hero-headline {
-  background: linear-gradient(135deg, var(--ink) 65%, color-mix(in srgb, var(--ink) 35%, var(--accent)));
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+/* Hero headline is solid --ink ("the ink is the brand", research reference:
+ * Vercel/Geist). The previous gradient-text clip read as a generic AI-landing
+ * tell and fought the line-mask reveal (background-clip:text + overflow:hidden +
+ * translateY is fragile). The headline's one effect is now the mask reveal in
+ * base.css. */
 
 /* ── Small screens ───────────────────────────────────────────────── */
 @media (max-width: 560px) {

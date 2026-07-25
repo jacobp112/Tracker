@@ -218,8 +218,21 @@ a { color: var(--accent); text-decoration: none; }
  * stroke-dashoffset, and .bar-fill carries no transition. If either ever
  * gains one, it needs the same escape hatch .bar-fill already has in
  * tokens.css. */
+/* Hero headline line-mask reveal (research §c pattern 2, §j.5): each line sits
+ * in an overflow:hidden clip and slides up once, when the hero copy reveals.
+ * Line-level (not per-word/char), which reads editorial rather than templated. */
+.hero-headline .line { display: block; overflow: hidden; }
+.hero-headline .line-in { display: inline-block; will-change: transform; }
+.js .hero-headline .line-in { transform: translateY(110%); }
+.js .hero-copy.is-visible .hero-headline .line-in {
+  transform: none;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.js .hero-headline .line:nth-child(2) .line-in { transition-delay: 80ms; }
+
 @media (prefers-reduced-motion: reduce) {
   .reveal, .js .reveal { opacity: 1 !important; transform: none !important; }
+  .js .hero-headline .line-in { transform: none !important; }
 }
 
 /* ── Depth grain ─────────────────────────────────────────────────
