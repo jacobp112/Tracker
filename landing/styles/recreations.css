@@ -1,0 +1,92 @@
+/* Token-built, theme-aware product recreations. Honest values, not captures.
+   Every measured number is .mono-num. Exactly ONE --shadow-hero on the page:
+   the Overview mock below. Everything else uses --shadow-card. */
+
+.mock {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge);
+  padding: var(--space-9);
+}
+
+/* ── Overview hero (the page's single hero shadow) ─────────────────── */
+.mock-hero {
+  box-shadow: var(--shadow-hero), inset 0 1px 0 var(--edge);
+}
+.mock-greeting { font-size: var(--fs-prop); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 var(--space-8); }
+.mock-hero-body { display: grid; grid-template-columns: auto 1fr; gap: var(--space-9); align-items: center; }
+
+.ring { position: relative; width: 168px; height: 168px; flex-shrink: 0; }
+.ring-svg { width: 168px; height: 168px; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--track); stroke-width: 12; }
+.ring-arc {
+  fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
+  /* pathLength=100 → the dash values read as percentages. Arc = 82. */
+  stroke-dasharray: 82 100;
+}
+.ring-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--space-1);
+}
+.ring-num { font-size: clamp(40px, 12vw, 52px); font-weight: 700; color: var(--ink); line-height: 1; }
+.ring-cap { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); }
+
+.mock-due { min-width: 0; }
+.mock-due .eyebrow { margin: 0 0 var(--space-5); }
+.mock-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.mock-row:first-of-type { border-top: none; }
+.mock-topic { font-size: var(--fs-row); color: var(--ink); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mock-pct { font-size: var(--fs-row); color: var(--ink-secondary); }
+
+.mock-dot { width: 8px; height: 8px; border-radius: var(--radius-pill); flex-shrink: 0; background: var(--accent); }
+.mock-dot.low { background: var(--danger); }
+.mock-dot.mid { background: var(--warning); }
+.mock-dot.high { background: var(--success); }
+
+/* ── Retention matrix ─────────────────────────────────────────────── */
+.mock-matrix { margin-top: var(--space-8); }
+.matrix-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-6); margin-bottom: var(--space-7); flex-wrap: wrap; }
+.matrix-stat { display: flex; flex-direction: column; gap: var(--space-2); }
+.matrix-stat-num { font-size: var(--fs-title); font-weight: 700; color: var(--ink); }
+.chips { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; font-size: var(--fs-caption); font-weight: 600;
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius-chip);
+}
+.chip-health { background: var(--accent-soft); color: var(--accent); }
+.chip-delta.up { background: var(--success-soft); color: var(--success); }
+.chip-sub { opacity: 0.7; }
+
+.matrix-rows { display: flex; flex-direction: column; }
+.matrix-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-5) 0; border-top: 1px solid var(--border); }
+.matrix-row:first-child { border-top: none; }
+.matrix-topic { font-size: var(--fs-row); color: var(--ink); white-space: nowrap; }
+.badge {
+  font-size: var(--fs-micro); font-weight: 600; padding: 1px var(--space-3);
+  border-radius: var(--radius-chip); white-space: nowrap;
+}
+.cat-conceptual { color: var(--cat-conceptual); background: color-mix(in srgb, var(--cat-conceptual) 14%, transparent); }
+.cat-procedural { color: var(--cat-procedural); background: color-mix(in srgb, var(--cat-procedural) 14%, transparent); }
+.cat-knowledge { color: var(--cat-knowledge_gap); background: color-mix(in srgb, var(--cat-knowledge_gap) 14%, transparent); }
+.bar { flex: 1; min-width: 40px; height: 6px; border-radius: var(--radius-pill); background: var(--track); overflow: hidden; }
+.bar-fill { display: block; height: 100%; width: var(--w); background: var(--accent); border-radius: inherit; }
+.matrix-pct { font-size: var(--fs-secondary); color: var(--ink-secondary); flex-shrink: 0; min-width: 34px; text-align: right; }
+
+/* ── Validation card ──────────────────────────────────────────────── */
+.mock-validation { margin-top: var(--space-6); padding: var(--space-7); }
+.val-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); margin-bottom: var(--space-5); }
+.val-file { font-size: var(--fs-secondary); color: var(--ink); }
+.tag {
+  font-size: var(--fs-micro); font-weight: 600; padding: 1px var(--space-4);
+  border-radius: var(--radius-chip); white-space: nowrap;
+}
+.tag-success { color: var(--success); background: var(--success-soft); }
+.val-counts { display: flex; gap: var(--space-6); margin-bottom: var(--space-5); }
+.val-count { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-secondary); color: var(--ink-secondary); }
+.val-count .check { color: var(--success); font-weight: 700; }
+.val-note { font-size: var(--fs-caption); color: var(--ink-muted); margin: 0; }
+
+@media (max-width: 480px) {
+  .mock-hero-body { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .mock-due { width: 100%; }
+}
