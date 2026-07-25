@@ -17,7 +17,17 @@ export function setupReveals(
   els: Iterable<Element>,
   opts: {
     reducedMotion: boolean;
-    createObserver?: (cb: IntersectionObserverCallback) => { observe(el: Element): void };
+    /*
+     * Must declare unobserve, not just observe: makeRevealHandler calls
+     * observer.unobserve() on every element it reveals. The old signature
+     * promised only observe(), so a test fake returning { observe } typechecked
+     * cleanly and then threw "unobserve is not a function" the moment the
+     * callback fired on an intersecting entry — a runtime failure the types
+     * were actively concealing.
+     */
+    createObserver?: (
+      cb: IntersectionObserverCallback,
+    ) => Pick<IntersectionObserver, 'observe' | 'unobserve'>;
   },
 ): void {
   const list = [...els];

@@ -1,9 +1,23 @@
-/* Layout only, token-driven. Content column --content-max (1180px). */
+/* Layout only, token-driven. Content column --content-max (1180px).
+   Card material lives in base.css (shared with .mock in recreations.css). */
+
+/* ── Page gutter ──────────────────────────────────────────────────
+ * ONE horizontal inset, set once per breakpoint, used by every full-width
+ * band. Previously .topbar, .hero and .closer hardcoded --space-9 while the
+ * ≤720px query moved only .band to --space-7 — so on a phone the headline,
+ * the section text and the footer sat on three different left edges as you
+ * scrolled. Anything that spans the page reads its inset from here. */
+:root { --page-gutter: var(--space-9); }
+@media (max-width: 720px) {
+  :root { --page-gutter: var(--space-7); }
+}
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  max-width: var(--content-max); margin: 0 auto; padding: var(--space-7) var(--space-9);
-  /* No backdrop-filter (global constraint). */
+  max-width: var(--content-max); margin: 0 auto; padding: var(--space-7) var(--page-gutter);
+  /* Not sticky, so no backdrop-filter question arises at all. The CTA is
+   * repeated in the hero, the choose band and the closer, so it is never more
+   * than a screen away. */
 }
 .topnav { display: flex; align-items: center; gap: var(--space-7); }
 .topnav a:not(.btn-primary) {
@@ -11,7 +25,8 @@
   transition: color var(--dur-standard) var(--ease);
 }
 .topnav a:not(.btn-primary):hover { color: var(--ink); }
-.brand { font-size: var(--fs-brand); font-weight: 700; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+.brand { font-size: 18px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); text-decoration: none; transition: opacity var(--dur-standard) var(--ease); }
+.brand:hover { opacity: 0.8; }
 
 #theme-toggle {
   display: inline-flex; align-items: center; justify-content: center;
@@ -21,47 +36,86 @@
 }
 #theme-toggle:hover { box-shadow: var(--shadow-card); }
 #theme-toggle svg { width: 17px; height: 17px; }
+/* The toggle's icon and label are painted by main.ts, and it does nothing
+ * without them. Don't show a control that can't work — the head script adds .js
+ * before first paint, so this only ever matches with JS genuinely disabled. */
+html:not(.js) #theme-toggle { display: none; }
 
 .hero {
-  max-width: var(--content-max); margin: 0 auto; padding: var(--space-14) var(--space-9) var(--space-13);
-  display: grid; grid-template-columns: 5fr 7fr; gap: var(--space-9); align-items: center;
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--space-12) var(--page-gutter) var(--space-13);
+  display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-10); align-items: center;
 }
-.hero-headline { font-size: clamp(40px, 8vw, var(--fs-hero)); }
-.hero-sub { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 46ch; margin-top: var(--space-7); line-height: 1.55; }
-.cta-row { display: flex; gap: var(--space-4); margin-top: var(--space-9); flex-wrap: wrap; }
-.cta-micro { font-size: var(--fs-secondary); color: var(--ink-muted); margin-top: var(--space-5); }
-.is-disabled { opacity: 0.55; pointer-events: none; }
+.hero-headline {
+  font-size: clamp(32px, 3.8vw, 48px);
+  letter-spacing: -0.03em;
+  line-height: 1.18;
+}
+.hero-sub { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 48ch; margin-top: var(--space-6); line-height: 1.55; }
+.cta-row { display: flex; gap: var(--space-4); margin-top: var(--space-7); flex-wrap: wrap; align-items: center; }
+.cta-micro { font-size: var(--fs-secondary); color: var(--ink-muted); margin-top: var(--space-4); }
 
-.band { max-width: var(--content-max); margin: 0 auto; padding: var(--space-13) var(--space-9); }
+/* .is-disabled deleted. It styled an <a aria-disabled="true" href="#">, which
+ * pointer-events:none does not remove from the tab order — the control stayed
+ * focusable and still fired on Enter. The markup is now <button disabled>, and
+ * base.css styles [disabled] directly. */
+
+.band { max-width: var(--content-max); margin: 0 auto; padding: var(--space-13) var(--page-gutter); }
 .band > .eyebrow { margin-bottom: var(--space-4); }
 .band-title { font-size: var(--fs-title); max-width: 30ch; }
 .band-lead { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 60ch; margin-top: var(--space-6); line-height: 1.55; }
 
-.card {
-  background: var(--surface); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge); padding: var(--space-9);
-  transition: box-shadow var(--dur-standard) var(--ease);
-}
-.card:hover { box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--edge); }
+/* Hover-raise only where there is something to click. .step lifts nothing —
+ * a card that responds to the cursor and then does nothing is a small lie,
+ * and this page's whole argument is that it doesn't tell them. */
+.card { transition: box-shadow var(--dur-standard) var(--ease); }
+.choose-cards .card:hover { box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--edge); }
 
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-7); margin-top: var(--space-9); }
 .step { display: flex; flex-direction: column; gap: var(--space-5); }
 .step-num { font-size: var(--fs-prop); color: var(--accent); }
 .step h3 { font-size: var(--fs-section); }
 .step p { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.5; margin: 0; }
+/* Steps 1 and 3 carry a visual; step 2 carries only prose, so in an
+ * equal-height row it ended up as a heading followed by a large empty gap.
+ * Pinning the trailing description to the bottom aligns all three across a
+ * common baseline, which reads as intentional rather than as a hole.
+ *
+ * The real fix is content, not CSS: step 2 wants a recreation of the FAILURE
+ * state — the plain-English validation message naming the field and the fix.
+ * That is the app's own stated principle ("no silent failures"), it is the
+ * most persuasive thing in the whole flow, and it would balance the row
+ * honestly. Worth building before launch. */
+.step > p:last-of-type { margin-top: auto; }
 
+/* Two columns: content + button on row 1, note + status on row 2. Was a
+ * single flex row, which would have laid the excerpt note and the copy-status
+ * live region out sideways alongside the code and the button. */
 .prompt-block {
-  display: flex; align-items: flex-start; gap: var(--space-4);
+  display: grid; grid-template-columns: 1fr auto;
+  gap: var(--space-4);
+  align-items: start;
   background: var(--surface-sunken); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: var(--space-5);
 }
 .prompt-block code {
   font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-secondary);
-  line-height: 1.5; flex: 1; min-width: 0;
+  line-height: 1.5; min-width: 0;
   display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
+.prompt-note { grid-column: 1; font-size: var(--fs-micro); color: var(--ink-muted); margin: 0; }
+.copy-status { grid-column: 2; font-size: var(--fs-micro); font-weight: 600; color: var(--success); text-align: right; }
+/* The failure message names the manual fallback, so it needs room to wrap
+ * rather than being squeezed into the button's column. */
+.copy-status.is-error {
+  grid-column: 1 / -1;
+  text-align: left;
+  color: var(--danger);
+  font-weight: 500;
+}
 #copy-prompt {
-  flex-shrink: 0; font-size: var(--fs-caption); font-weight: 600; cursor: pointer;
+  grid-column: 2; grid-row: 1;
+  font-size: var(--fs-caption); font-weight: 600; cursor: pointer;
   color: var(--accent); background: none; border: 1px solid var(--border-strong);
   border-radius: var(--radius-chip); padding: var(--space-2) var(--space-4);
   transition: background-color var(--dur-standard) var(--ease);
@@ -73,19 +127,36 @@
 .choose-cards h3 { font-size: var(--fs-section); }
 .choose-cards p { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.5; margin: 0; flex: 1; }
 
-.closer { max-width: var(--content-max); margin: 0 auto; padding: var(--space-13) var(--space-9); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-6); }
+.closer {
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--space-13) var(--page-gutter);
+  text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-6);
+}
 .closer .cta-row { justify-content: center; }
 .foot-note { font-size: var(--fs-caption); color: var(--ink-muted); margin: 0; }
 
-/* Give the recreation containers room while Task 8 fills them. */
-.hero-visual { min-height: 0; }
+/* .hero-visual { min-height: 0 } removed — a no-op whose comment claimed the
+ * opposite ("give the recreation containers room"). The mock sizes itself. */
 
 @media (max-width: 768px) {
   .hero { grid-template-columns: 1fr; }
   .steps, .choose-cards { grid-template-columns: 1fr; }
+  /* Stacked, the description no longer needs to reach a shared baseline. */
+  .step > p:last-of-type { margin-top: 0; }
 }
+
+/* The top bar ran out of room long before this: brand + two links + toggle +
+ * pill CTA needs ~370px of content inside a ~320px viewport, with no wrap. The
+ * anchor links are the expendable part — both destinations are a scroll away
+ * and repeat further down the page. Brand, theme and the primary CTA stay. */
+@media (max-width: 600px) {
+  .topnav a:not(.btn-primary) { display: none; }
+  .topnav { gap: var(--space-5); }
+}
+
 @media (max-width: 720px) {
   .hero { padding-top: var(--space-12); }
-  .band { padding: var(--space-12) var(--space-7); }
+  .band { padding: var(--space-12) var(--page-gutter); }
+  .closer { padding: var(--space-12) var(--page-gutter); }
   .topnav { gap: var(--space-5); }
 }

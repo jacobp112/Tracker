@@ -24,7 +24,8 @@ describe('reveal', () => {
   it('observes each element when motion is allowed', () => {
     const a = el(), b = el();
     const observe = vi.fn();
-    const createObserver = vi.fn(() => ({ observe }));
+    const unobserve = vi.fn();
+    const createObserver = vi.fn(() => ({ observe, unobserve }));
     setupReveals([a, b], { reducedMotion: false, createObserver });
     expect(createObserver).toHaveBeenCalledOnce();
     expect(observe).toHaveBeenCalledTimes(2);

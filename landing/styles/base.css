@@ -1,9 +1,17 @@
 /* The app's design tokens are the single source of truth for colour, type,
    spacing, radius, elevation and motion. tokens.css holds every custom property
    the page needs; we never restate a raw value. (src/styles/palette.css is the
-   ⌘K command-palette component, not a colour palette, so it is NOT imported.) */
+   ⌘K command-palette component, not a colour palette, so it is NOT imported.)
+
+   The one documented exception lives in fonts.css, which narrows --font-sans
+   and --font-mono so the self-hosted faces actually resolve. It must load
+   after this file. */
 @import '../../src/styles/tokens.css';
 
+/* ── Reset ───────────────────────────────────────────────────────
+ * Deliberately lighter than the app's global.css: paragraphs keep a margin
+ * here (prose page, not a dense dashboard), but it comes from the spacing
+ * scale rather than the browser's 1em default. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 
@@ -14,23 +22,95 @@ body {
     radial-gradient(820px 520px at 102% 4%, var(--wash-2), transparent 55%),
     var(--bg-page);
   background-attachment: fixed;
+  /* dvh so mobile browser chrome collapsing doesn't leave a gap; vh first as
+   * the fallback for anything that doesn't know dvh. */
   min-height: 100vh;
-  font-family: 'Inter Variable', 'Inter Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100dvh;
+  /* var(--font-sans) rather than a hand-restated Inter stack — fonts.css has
+   * made the token resolve to the self-hosted face. */
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.5;
   letter-spacing: -0.006em;
   font-feature-settings: 'cv05', 'cv08', 'ss01', 'tnum' 0;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin: 0; }
+p { margin: 0 0 var(--space-6); }
+p:last-child { margin-bottom: 0; }
+ul, ol { list-style: none; }
+
+/* In-page anchors, natively. This replaces a JS click handler that called
+ * preventDefault() and then scrollIntoView(): the hash never updated (nothing
+ * linkable, no history entry, dead back button) and focus stayed on the nav
+ * link, so a keyboard user's next Tab resumed from the top bar rather than the
+ * section they had just jumped to. The native path gets all three right.
+ *
+ * No reduced-motion guard needed here — tokens.css already forces
+ * scroll-behavior: auto !important under that query. */
+html { scroll-behavior: smooth; }
+/* Keep a jumped-to heading clear of the viewport edge. */
+[id] { scroll-margin-top: var(--space-11); }
+
+/* Without this, #theme-toggle and #copy-prompt render in the browser's UI
+ * font at ~13px — the only two places on the page not set in Inter. */
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+a { color: var(--accent); text-decoration: none; }
 
 .eyebrow {
+  /* margin:0 because this class lands on <p> as often as <div>, and an
+   * eyebrow inheriting a paragraph's bottom margin breaks the 4/8pt rhythm
+   * between it and the heading it labels. */
+  margin: 0;
   font-size: var(--fs-eyebrow); text-transform: uppercase; font-weight: 700;
   letter-spacing: 0.07em; color: var(--ink-muted);
 }
 
-.mono-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  /* Per CSS Fonts 4, font-feature-settings overrides font-variant-*. body sets
+   * 'tnum' 0 and it inherits, so without re-enabling tnum here the line above
+   * is silently cancelled. Moot while the face is monospaced, wrong regardless.
+   * (Same latent bug exists in the app's global.css.) */
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: 0;
+}
 
-/* Buttons — mirror the app's .btn-primary / .btn-secondary. */
+/* ── Card material ───────────────────────────────────────────────
+ * The app's liquid-glass surface (Doc 3 §3). The inset top edge is the
+ * material cue and is not optional.
+ *
+ * Lives here, once, because TWO files need it: .card for real page furniture
+ * (sections.css) and .mock for the product recreations (recreations.css).
+ * They previously carried byte-for-byte identical copies of this block in
+ * separate files — two definitions of one material, free to drift apart.
+ * Both have had their copies deleted; only their deltas remain.
+ *
+ * No backdrop-filter, ever. Re-blurring the page background every scroll
+ * frame took the app from ~53 FPS to ~13. The 0.75-alpha --surface reads as
+ * glass on its own.
+ *
+ * Nesting rule: anything placed INSIDE one of these steps down a radius
+ * (--radius-md) and drops the shadow for --surface-sunken + a border. Outer
+ * radius is always larger than inner. */
+.card, .mock {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge);
+  padding: var(--space-9);
+}
+
+/* ── Buttons — mirror the app's .btn-primary / .btn-secondary. ──── */
 .btn-primary, .btn-secondary {
   display: inline-flex; align-items: center; gap: var(--space-3);
   padding: var(--space-5) var(--space-8); border-radius: var(--radius-pill);
@@ -40,11 +120,81 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; ma
 }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-secondary { background: var(--surface); border-color: var(--border-strong); color: var(--ink); }
-:where(a, button):focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-soft);
+
+/* The transition above previously had nothing to transition to. Hover raises
+ * on the same shadow language as the app's cards. */
+.btn-primary:hover { box-shadow: var(--shadow-card-hover); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Disabled state, for the desktop CTA while the build is unreleased. Note the
+ * markup is now <button disabled>, not <a aria-disabled> — aria-disabled is an
+ * announcement, not a behaviour: it left the control focusable and clickable,
+ * and clicking href="#" jumped to the top of the page. */
+.btn-primary[disabled], .btn-secondary[disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+  background: var(--surface-sunken);
+  border-color: var(--border);
+  color: var(--ink-muted);
+}
+.btn-primary[disabled]:hover, .btn-secondary[disabled]:hover {
+  box-shadow: none;
+  border-color: var(--border);
+  color: var(--ink-muted);
 }
 
-/* Progressive-enhancement reveal: visible by default; only hidden when JS is present. */
+/* Bare, universal — matching the app. The previous :where(a, button) wrapper
+ * carried zero specificity, so any later box-shadow (a hover raise, a card
+ * elevation) silently outranked the focus ring; and it missed inputs,
+ * [tabindex] and <summary> entirely. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-chip);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* ── Utilities ───────────────────────────────────────────────────
+ * .sr-only is lifted verbatim from the app's global.css so the two agree. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: visually hidden until focused, then a real, visible target. */
+.skip-link {
+  position: absolute;
+  top: var(--space-5); left: var(--space-5);
+  z-index: 200;
+  padding: var(--space-4) var(--space-7);
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-secondary); font-weight: 600;
+  color: var(--ink);
+  transform: translateY(calc(-100% - var(--space-8)));
+  transition: transform var(--dur-micro) var(--ease);
+}
+.skip-link:focus-visible { transform: none; }
+
+/* ── Reveal ──────────────────────────────────────────────────────
+ * Progressive enhancement: visible by default, hidden only once JS is known
+ * to be present, then revealed per-element on intersection.
+ *
+ * The .js flag is now set by the blocking inline script in <head>, NOT by
+ * main.ts. As a deferred module, main.ts ran after first paint — so content
+ * painted visible, snapped to opacity 0 when .js landed, then faded back in.
+ * A flash on every load. Same reasoning as the no-FOUC theme script.
+ *
+ * Diverges from the app's `body.loaded .reveal` on purpose: the app reveals
+ * once on load, a long marketing page reveals on scroll. The token vocabulary
+ * (--dur-reveal, --ease, --reveal-step, translateY(14px)) is identical. */
 .reveal { opacity: 1; transform: none; }
 .js .reveal { opacity: 0; transform: translateY(14px); }
 .js .reveal.is-visible {
@@ -53,7 +203,15 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; ma
   transition-delay: calc(var(--i, 0) * var(--reveal-step));
 }
 
+/* tokens.css already zeroes durations, forces .reveal visible and snaps
+ * .bar-fill to var(--w). This adds only what it cannot know about: the .js
+ * variant of .reveal. Reduced motion must never leave content hidden.
+ *
+ * Resolved from pass 1: nothing on this page animates toward a final value.
+ * The hero ring's arc is a static stroke-dasharray, not an animated
+ * stroke-dashoffset, and .bar-fill carries no transition. If either ever
+ * gains one, it needs the same escape hatch .bar-fill already has in
+ * tokens.css. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
   .reveal, .js .reveal { opacity: 1 !important; transform: none !important; }
 }

@@ -1,15 +1,103 @@
-/* Self-hosted variable fonts — no CDN. Fontsource ships woff2 inside the npm
-   package; Vite fingerprints them and serves them from our own origin. */
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/jetbrains-mono';
+/*
+ * Self-hosted variable fonts — no CDN, no third-party runtime calls.
+ * Fontsource ships the woff2 files inside the npm package; Vite fingerprints
+ * them and serves them from our own origin.
+ *
+ * LOAD ORDER MATTERS. This file must be imported AFTER tokens.css, because the
+ * block at the bottom narrows --font-sans / --font-mono. In main.ts:
+ *
+ *   import '@fontsource-variable/inter';
+ *   import '@fontsource-variable/jetbrains-mono';
+ *   import './styles/base.css';   // @imports tokens.css
+ *   import './fonts.css';         // must come after
+ *
+ * The two Fontsource packages moved OUT of this file and into main.ts on
+ * purpose. A CSS `@import` of a bare specifier costs a serial round trip:
+ * the browser must fetch and parse this file before it even discovers the
+ * @font-face rules, let alone the woff2 behind them. Importing from the TS
+ * entry lets Vite hoist them into the same emitted stylesheet.
+ */
 
-/* Fallback metrics so the -apple-system stack occupies the same space as Inter
-   while the variable font loads (kills layout shift; font-display: swap default). */
+/* ── Family aliasing ──────────────────────────────────────────────
+ * Fontsource's variable packages register 'Inter Variable' and
+ * 'JetBrains Mono Variable'. The app's tokens ask for 'Inter' and
+ * 'JetBrains Mono' — names that nothing on this page provides. The
+ * result is silent: --font-mono falls through to ui-monospace, so every
+ * measured number renders in SF Mono on macOS and looks fine while being
+ * wrong. Tabular mono numerals are the one typographic rule Document 3
+ * calls non-negotiable, so this is not cosmetic.
+ *
+ * VERIFY the exact family names your installed version registers before
+ * trusting this file:
+ *   grep font-family node_modules/@fontsource-variable/inter/index.css
+ *   grep font-family node_modules/@fontsource-variable/jetbrains-mono/index.css
+ *
+ * Two ways to fix it. This file takes the second.
+ *
+ *   (a) Copy the woff2 into public/fonts/ and hand-write @font-face rules
+ *       named exactly 'Inter' and 'JetBrains Mono'. Tokens then need no
+ *       change at all, and you control subsetting and unicode-range. Costs
+ *       a build step and manual cache-busting (public/ is not fingerprinted).
+ *
+ *   (b) Narrow the two font tokens for this page only, below. One
+ *       restatement, in one place, documented. Chosen because it works
+ *       today with zero build changes and cannot drift silently — if the
+ *       Variable faces ever fail to load, the fallback chain still holds.
+ */
+
+/* ── Fallback metrics ─────────────────────────────────────────────
+ * Sized so the fallback occupies the same box as Inter while the variable
+ * font loads, which is what actually kills the layout shift (font-display:
+ * swap is Fontsource's default and we keep it).
+ *
+ * The previous version listed local('-apple-system') and
+ * local('BlinkMacSystemFont'). Neither can ever resolve: those are CSS
+ * font-family KEYWORDS, not installed font names, so local() always misses
+ * and the face quietly landed on Arial. The overrides below are in fact
+ * Arial-derived — so make that explicit rather than accidental.
+ *
+ * Numbers are Inter-over-Arial, computed the way fontaine/capsize does.
+ * If you want per-platform accuracy (Segoe UI on Windows has different
+ * metrics and would need its own face), add the `fontaine` Vite plugin and
+ * let it generate these instead of maintaining them by hand.
+ */
 @font-face {
   font-family: 'Inter Fallback';
-  src: local('-apple-system'), local('BlinkMacSystemFont'), local('Segoe UI'), local('Arial');
+  src: local('Arial'), local('Helvetica');
   size-adjust: 107%;
   ascent-override: 90%;
   descent-override: 22%;
   line-gap-override: 0%;
+}
+
+/* The mono had no fallback face at all. It carries every number on the page,
+ * and numbers are exactly where a metric mismatch is most visible — columns
+ * of percentages reflowing as the face swaps in.
+ *
+ * JetBrains Mono and Courier New share a 0.6em advance width, so size-adjust
+ * stays at 100%; only the vertical metrics need correcting. Verify with
+ * capsize if you change either face. */
+@font-face {
+  font-family: 'JetBrains Mono Fallback';
+  src: local('Courier New'), local('Courier');
+  size-adjust: 100%;
+  ascent-override: 102%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+
+/* ── Token narrowing ──────────────────────────────────────────────
+ * The ONE sanctioned restatement of a token value on this page. Each stack
+ * prepends the real self-hosted family and its metric-matched fallback,
+ * then preserves the app's original chain verbatim so behaviour degrades
+ * exactly as the app does.
+ *
+ * If you ever take route (a) above, delete this whole block — that is the
+ * point of keeping it isolated and commented.
+ */
+:root {
+  --font-sans: 'Inter Variable', 'Inter Fallback', 'Inter', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono Fallback', 'JetBrains Mono',
+    ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
 }
