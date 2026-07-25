@@ -1,0 +1,91 @@
+/* Layout only, token-driven. Content column --content-max (1180px). */
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: var(--content-max); margin: 0 auto; padding: var(--space-7) var(--space-9);
+  /* No backdrop-filter (global constraint). */
+}
+.topnav { display: flex; align-items: center; gap: var(--space-7); }
+.topnav a:not(.btn-primary) {
+  font-size: var(--fs-nav); color: var(--ink-secondary); text-decoration: none;
+  transition: color var(--dur-standard) var(--ease);
+}
+.topnav a:not(.btn-primary):hover { color: var(--ink); }
+.brand { font-size: var(--fs-brand); font-weight: 700; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+
+#theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0; border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--border-strong); color: var(--ink);
+  cursor: pointer; transition: box-shadow var(--dur-standard) var(--ease);
+}
+#theme-toggle:hover { box-shadow: var(--shadow-card); }
+#theme-toggle svg { width: 17px; height: 17px; }
+
+.hero {
+  max-width: var(--content-max); margin: 0 auto; padding: var(--space-14) var(--space-9) var(--space-13);
+  display: grid; grid-template-columns: 5fr 7fr; gap: var(--space-9); align-items: center;
+}
+.hero-headline { font-size: clamp(40px, 8vw, var(--fs-hero)); }
+.hero-sub { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 46ch; margin-top: var(--space-7); line-height: 1.55; }
+.cta-row { display: flex; gap: var(--space-4); margin-top: var(--space-9); flex-wrap: wrap; }
+.cta-micro { font-size: var(--fs-secondary); color: var(--ink-muted); margin-top: var(--space-5); }
+.is-disabled { opacity: 0.55; pointer-events: none; }
+
+.band { max-width: var(--content-max); margin: 0 auto; padding: var(--space-13) var(--space-9); }
+.band > .eyebrow { margin-bottom: var(--space-4); }
+.band-title { font-size: var(--fs-title); max-width: 30ch; }
+.band-lead { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 60ch; margin-top: var(--space-6); line-height: 1.55; }
+
+.card {
+  background: var(--surface); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge); padding: var(--space-9);
+  transition: box-shadow var(--dur-standard) var(--ease);
+}
+.card:hover { box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--edge); }
+
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-7); margin-top: var(--space-9); }
+.step { display: flex; flex-direction: column; gap: var(--space-5); }
+.step-num { font-size: var(--fs-prop); color: var(--accent); }
+.step h3 { font-size: var(--fs-section); }
+.step p { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.5; margin: 0; }
+
+.prompt-block {
+  display: flex; align-items: flex-start; gap: var(--space-4);
+  background: var(--surface-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-5);
+}
+.prompt-block code {
+  font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-secondary);
+  line-height: 1.5; flex: 1; min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+#copy-prompt {
+  flex-shrink: 0; font-size: var(--fs-caption); font-weight: 600; cursor: pointer;
+  color: var(--accent); background: none; border: 1px solid var(--border-strong);
+  border-radius: var(--radius-chip); padding: var(--space-2) var(--space-4);
+  transition: background-color var(--dur-standard) var(--ease);
+}
+#copy-prompt:hover { background: var(--accent-soft); }
+
+.choose-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-7); margin-top: var(--space-9); }
+.choose-cards .card { display: flex; flex-direction: column; gap: var(--space-5); align-items: flex-start; }
+.choose-cards h3 { font-size: var(--fs-section); }
+.choose-cards p { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.5; margin: 0; flex: 1; }
+
+.closer { max-width: var(--content-max); margin: 0 auto; padding: var(--space-13) var(--space-9); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-6); }
+.closer .cta-row { justify-content: center; }
+.foot-note { font-size: var(--fs-caption); color: var(--ink-muted); margin: 0; }
+
+/* Give the recreation containers room while Task 8 fills them. */
+.hero-visual { min-height: 0; }
+
+@media (max-width: 768px) {
+  .hero { grid-template-columns: 1fr; }
+  .steps, .choose-cards { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .hero { padding-top: var(--space-12); }
+  .band { padding: var(--space-12) var(--space-7); }
+  .topnav { gap: var(--space-5); }
+}

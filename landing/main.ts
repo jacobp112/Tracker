@@ -1,5 +1,6 @@
 import './fonts.css';
 import './styles/base.css';
+import './styles/sections.css';
 
 // Preload only the two above-the-fold faces. Static <link rel="preload"> in the
 // HTML can't reference the fingerprinted node_modules woff2, so we resolve the

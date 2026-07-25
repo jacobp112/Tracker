@@ -19,7 +19,105 @@
     </script>
   </head>
   <body>
-    <main id="page"><!-- sections added in later tasks --></main>
+    <main id="page">
+      <header class="topbar reveal">
+        <a class="brand" href="/landing/">Cairn</a>
+        <nav class="topnav">
+          <a href="#how">How it works</a>
+          <a href="#privacy">Privacy</a>
+          <button id="theme-toggle" aria-label="Toggle theme" type="button"></button>
+          <a class="btn-primary" href="/">Open the app</a>
+        </nav>
+      </header>
+
+      <section class="hero">
+        <div class="hero-copy reveal" style="--i:0">
+          <p class="eyebrow">A memory for self-study</p>
+          <h1 class="hero-headline">Your AI can teach you anything. It just can't remember you learned it.</h1>
+          <p class="hero-sub">Cairn tracks your courses, sections, and topics on a real retention curve — so you always know what's fading and what's due. It runs on your machine, stores everything in one file you own, and never calls an AI itself. You bring the AI; Cairn keeps the memory.</p>
+          <div class="cta-row">
+            <a class="btn-primary" href="/">Open the app</a>
+            <a class="btn-secondary is-disabled" aria-disabled="true" href="#">Download for desktop</a>
+          </div>
+          <p class="cta-micro">No account — nothing to log into. Runs in your browser. Desktop build coming.</p>
+        </div>
+        <div class="hero-visual reveal" style="--i:1" id="mock-overview"><!-- Task 8 --></div>
+      </section>
+
+      <section class="band problem reveal">
+        <h2 class="band-title">Studying with AI has no memory.</h2>
+        <p class="band-lead">You study a topic with your AI. A week later, nothing remembers you did.</p>
+      </section>
+
+      <section class="band" id="how">
+        <p class="eyebrow reveal">How it works</p>
+        <h2 class="band-title reveal">You bring the AI. Cairn brings the memory.</h2>
+        <div class="steps">
+          <article class="card step reveal" style="--i:0">
+            <span class="step-num mono-num">01</span>
+            <h3>Copy the prompt</h3>
+            <div class="prompt-block">
+              <code id="prompt-text">You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields. … Here is the syllabus: [PASTE SYLLABUS HERE]</code>
+              <button id="copy-prompt" type="button">Copy</button>
+            </div>
+            <p>Cairn hands you a ready-made prompt. Paste it into whatever AI you already use, along with your syllabus, session notes, or exam paper.</p>
+          </article>
+          <article class="card step reveal" style="--i:1">
+            <span class="step-num mono-num">02</span>
+            <h3>Paste the result back</h3>
+            <p>Paste the AI's JSON into Cairn. It's checked against a strict schema — no extra fields, no invented dates. If something's wrong, you get a plain-English message naming the field and the fix.</p>
+          </article>
+          <article class="card step reveal" style="--i:2">
+            <span class="step-num mono-num">03</span>
+            <h3>Preview, then commit</h3>
+            <div id="mock-validation"><!-- Task 8 --></div>
+            <p>See exactly what will change. Nothing is saved until you say so — then it's written in one atomic step. Cairn verifies; it never generates.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="band memory reveal">
+        <p class="eyebrow">The memory model</p>
+        <h2 class="band-title">It tracks how well you know things — and how that fades.</h2>
+        <div id="mock-matrix"><!-- Task 8 --></div>
+      </section>
+
+      <section class="band exams reveal">
+        <h2 class="band-title">Exams don't count more because we say so. They count more because they're evidence.</h2>
+        <p class="band-lead">Test events tune each topic's decay rate, so exams outweigh study sessions by evidence — not arbitrary weights.</p>
+      </section>
+
+      <section class="band privacy reveal" id="privacy">
+        <h2 class="band-title">No accounts. No backend. No network. Just your file.</h2>
+        <p class="band-lead">Cairn makes no network requests. There are no accounts, no telemetry, no backend to breach. Everything you track is a single JSON document in your browser's storage. Settings → Export gives you the whole thing; import validates it just as strictly as a fresh paste. The only outside party that ever sees your material is the AI you choose to paste into — and that's your call, not ours.</p>
+      </section>
+
+      <section class="band choose reveal">
+        <h2 class="band-title">Two ways in. Same app. Your data stays where you put it.</h2>
+        <div class="choose-cards">
+          <article class="card">
+            <h3>Open the app</h3>
+            <p>Runs in your browser. No account — there's nothing to log into, by design. Your data lives in this browser.</p>
+            <a class="btn-primary" href="/">Open the app</a>
+          </article>
+          <article class="card">
+            <h3>Download for desktop</h3>
+            <p>A native build for macOS/Windows. Your data lives in a file on your disk. Works fully offline.</p>
+            <a class="btn-secondary is-disabled" aria-disabled="true" href="#">Coming soon</a>
+          </article>
+        </div>
+        <p class="cta-micro">The two don't sync — there's no server between them. Export a JSON bundle from one and import it into the other whenever you like.</p>
+      </section>
+
+      <footer class="closer reveal">
+        <a class="brand" href="/landing/">Cairn</a>
+        <div class="cta-row">
+          <a class="btn-primary" href="/">Open the app</a>
+          <a class="btn-secondary is-disabled" aria-disabled="true" href="#">Download for desktop</a>
+        </div>
+        <p class="foot-note">No trackers on this page either.</p>
+      </footer>
+    </main>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
