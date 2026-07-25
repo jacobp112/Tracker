@@ -29,6 +29,22 @@ const DOMAIN_MAX = 85;
 const FALLBACK_W = 320;
 const FALLBACK_H = 100;
 
+/**
+ * Load-in reveal timing. One orchestrated moment rather than several
+ * competing effects: the goal line settles in first as a quiet backdrop,
+ * the curve draws itself over a slow, symmetric ease, the fill washes in
+ * just behind it, and the endpoint lands right as the line arrives.
+ */
+const DRAW_MS = 2000;
+const DRAW_EASE = 'cubic-bezier(0.65, 0, 0.35, 1)'; // slow-in, slow-out — no rush at either end
+const FADE_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)'; // gentle deceleration for things fading into place
+const GOAL_FADE_MS = 900;
+const GOAL_FADE_DELAY = 0;
+const FILL_FADE_MS = 1700;
+const FILL_FADE_DELAY = 200;
+const END_FADE_MS = 550;
+const END_FADE_DELAY = DRAW_MS - 350; // lands just as the stroke reaches it
+
 export interface SparkPoint {
   value: number;
   date: Date;
@@ -71,10 +87,14 @@ function formatValue(v: number): string {
 /** Measures the wrapper so the SVG can draw in 1:1 pixel space. */
 function useBoxSize(ref: React.RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ w: FALLBACK_W, h: FALLBACK_H });
+  const [measured, setMeasured] = useState(false);
 
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      setMeasured(true);
+      return;
+    }
 
     const ro = new ResizeObserver((entries) => {
       const box = entries[0]?.contentRect;
@@ -84,19 +104,22 @@ function useBoxSize(ref: React.RefObject<HTMLElement | null>) {
         const h = Math.max(1, Math.round(box.height));
         return prev.w === w && prev.h === h ? prev : { w, h };
       });
+      setMeasured(true);
     });
 
     ro.observe(el);
     return () => ro.disconnect();
   }, [ref]);
 
-  return size;
+  return { ...size, measured };
 }
 
 /**
  * The hero's interactive retention sparkline (Document 3 §5.2):
  * gradient stroke, fade fill, dashed goal line, pulsing endpoint, and a
- * pointer/keyboard crosshair with a value+date readout.
+ * pointer/keyboard crosshair with a value+date readout. On first mount it
+ * plays a single, calm reveal: the curve draws itself in rather than
+ * appearing all at once.
  */
 export function Sparkline({
   data,
@@ -120,6 +143,7 @@ export function Sparkline({
   const reduced = useReducedMotion();
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const pathRef = useRef<SVGPathElement>(null);
   const frame = useRef(0);
 
   const autoId = useId().replace(/:/g, '');
@@ -127,10 +151,15 @@ export function Sparkline({
   const lineId = `${prefix}-line`;
   const fillId = `${prefix}-fill`;
 
-  const { w, h } = useBoxSize(wrapRef);
+  const { w, h, measured } = useBoxSize(wrapRef);
 
   /** Index rather than the point itself, so redundant moves don't re-render. */
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
+
+  /** Flips true once, right as the load-in reveal begins. Drives every fade. */
+  const [ready, setReady] = useState(false);
+  const hasRevealed = useRef(false);
+  const hasDrawn = useRef(false);
 
   const dateFmt = useMemo(
     () => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }),
@@ -171,6 +200,45 @@ export function Sparkline({
 
   const end = pts[pts.length - 1];
   const active = activeIdx == null ? null : (pts[activeIdx] ?? null);
+
+  // Load-in reveal: waits for a real measurement so nothing snaps from a
+  // fallback size, then waits one more frame so the "before" state actually
+  // paints — otherwise the browser has nothing to transition from and the
+  // fade just appears instantly instead of playing.
+  useEffect(() => {
+    if (!measured || hasRevealed.current) return;
+    hasRevealed.current = true;
+
+    if (reduced) {
+      setReady(true);
+      return;
+    }
+
+    const raf = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(raf);
+  }, [measured, reduced]);
+
+  // Draws the curve on: set the dash to the path's own length so it starts
+  // fully hidden, force a reflow, then transition the offset to 0. Runs once
+  // per mount — resizes reflow the same path without replaying the draw.
+  useLayoutEffect(() => {
+    if (!measured || !line || reduced || hasDrawn.current) return;
+    const el = pathRef.current;
+    if (!el) return;
+    hasDrawn.current = true;
+
+    const length = el.getTotalLength();
+    el.style.transition = 'none';
+    el.style.strokeDasharray = `${length}`;
+    el.style.strokeDashoffset = `${length}`;
+    el.getBoundingClientRect(); // force the browser to register the hidden state
+
+    const raf = requestAnimationFrame(() => {
+      el.style.transition = `stroke-dashoffset ${DRAW_MS}ms ${DRAW_EASE}`;
+      el.style.strokeDashoffset = '0';
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [measured, line, reduced]);
 
   const pick = useCallback(
     (clientX: number) => {
@@ -235,6 +303,16 @@ export function Sparkline({
 
   const describe = (p: Pt) => `${formatValue(p.v)}${unit} on ${dateFmt.format(p.date)}`;
 
+  // Fade helpers — a no-op transition (and instant visibility) when motion
+  // is reduced, otherwise opacity settles in on its own schedule per element.
+  const fadeStyle = (delayMs: number, durationMs: number): React.CSSProperties =>
+    reduced
+      ? { opacity: 1 }
+      : {
+          opacity: ready ? 1 : 0,
+          transition: `opacity ${durationMs}ms ${FADE_EASE} ${delayMs}ms`,
+        };
+
   return (
     <div className="hero-chart" ref={wrapRef}>
       {goal !== undefined && <span className="goal-label">Goal {goal}{unit}</span>}
@@ -269,75 +347,77 @@ export function Sparkline({
           </linearGradient>
         </defs>
 
-        {goalY !== null && (
-          <line
-            x1={PAD_X}
-            x2={w - PAD_X}
-            y1={goalY}
-            y2={goalY}
-            stroke="var(--border-strong)"
-            strokeWidth="1"
-            strokeDasharray="3 4"
-          />
-        )}
-
-        {fill && <path d={fill} fill={`url(#${fillId})`} stroke="none" />}
-        {line && (
-          <path
-            // Restarts the draw-on animation when the series changes.
-            key={reduced ? 'static' : `${data.length}-${w}`}
-            d={line}
-            fill="none"
-            stroke={`url(#${lineId})`}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={reduced ? undefined : 'spark-draw'}
-          />
-        )}
-
-        {active && (
+        {/* Nothing below renders until the box has a real measurement, so the
+            very first paint is already the "about to reveal" state — never a
+            flash of the fully-drawn chart at fallback dimensions. */}
+        {measured && (
           <>
-            <line
-              x1={active.x}
-              x2={active.x}
-              y1={BASELINE_INSET}
-              y2={h - BASELINE_INSET}
-              stroke="var(--accent)"
-              strokeWidth="1"
-              opacity="0.5"
-            />
-            <circle
-              cx={active.x}
-              cy={active.y}
-              r="4"
-              fill="var(--surface)"
-              stroke="var(--accent)"
-              strokeWidth="2.5"
-            />
-          </>
-        )}
-
-        {end && (
-          <>
-            {!reduced && (
-              <circle
-                className="pulse-dot"
-                cx={end.x}
-                cy={end.y}
-                r="4"
-                fill="var(--accent)"
-                opacity="0.5"
+            {goalY !== null && (
+              <line
+                x1={PAD_X}
+                x2={w - PAD_X}
+                y1={goalY}
+                y2={goalY}
+                stroke="var(--border-strong)"
+                strokeWidth="1"
+                strokeDasharray="3 4"
+                style={fadeStyle(GOAL_FADE_DELAY, GOAL_FADE_MS)}
               />
             )}
-            <circle
-              cx={end.x}
-              cy={end.y}
-              r="4"
-              fill="var(--surface)"
-              stroke="var(--accent-2)"
-              strokeWidth="2.5"
-            />
+
+            {fill && (
+              <path d={fill} fill={`url(#${fillId})`} stroke="none" style={fadeStyle(FILL_FADE_DELAY, FILL_FADE_MS)} />
+            )}
+
+            {line && (
+              <path
+                ref={pathRef}
+                d={line}
+                fill="none"
+                stroke={`url(#${lineId})`}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+
+            {active && (
+              <>
+                <line
+                  x1={active.x}
+                  x2={active.x}
+                  y1={BASELINE_INSET}
+                  y2={h - BASELINE_INSET}
+                  stroke="var(--accent)"
+                  strokeWidth="1"
+                  opacity="0.5"
+                />
+                <circle
+                  cx={active.x}
+                  cy={active.y}
+                  r="4"
+                  fill="var(--surface)"
+                  stroke="var(--accent)"
+                  strokeWidth="2.5"
+                />
+              </>
+            )}
+
+            {end && (
+              <g
+                style={{
+                  ...fadeStyle(END_FADE_DELAY, END_FADE_MS),
+                  transformBox: 'fill-box',
+                  transformOrigin: 'center',
+                  transform: !reduced && !ready ? 'scale(0.4)' : 'scale(1)',
+                  transition: reduced
+                    ? undefined
+                    : `opacity ${END_FADE_MS}ms ${FADE_EASE} ${END_FADE_DELAY}ms, transform ${END_FADE_MS}ms ${FADE_EASE} ${END_FADE_DELAY}ms`,
+                }}
+              >
+                <circle cx={end.x} cy={end.y} r="4" fill="var(--surface)" stroke="var(--accent-2)" strokeWidth="2.5" />
+              </g>
+            )}
           </>
         )}
       </svg>

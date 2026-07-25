@@ -60,7 +60,7 @@ function nextAction(
   const top = due[0];
   if (top) {
     return {
-      label: `Review ${top.topic.title} — ${retentionPct(top.topic, now)}%`,
+      label: `Review ${top.topic.title} — ${Math.round(retentionPct(top.topic, now) ?? 0)}%`,
       onClick: () => navigate(`/course/${courseIdOf(store, top.topic.topic_id)}`),
     };
   }
@@ -228,7 +228,7 @@ export function Overview({ store }: { store: Store }) {
 
       {exp.ceiling > 0 && (
         <div className="section reveal" style={{ ['--i' as string]: 3 }}>
-          <Card>
+          <Card className="exp-card">
             <div className="eyebrow-row">
               <Eyebrow>Retrievable now</Eyebrow>
               <Hint
@@ -236,8 +236,9 @@ export function Overview({ store }: { store: Store }) {
                 text="How much you could recall across every started topic right now — the sum of each topic's current retention. It falls when you don't study and recovers when you review; that's the point."
               />
             </div>
-            <div className="hero-number mono-num">
-              {exp.exp.toFixed(1)} <span className="hero-sub">/ {exp.ceiling} topics</span>
+            <div className="exp-figure">
+              <span className="exp-number mono-num">{exp.exp.toFixed(1)}</span>
+              <span className="exp-of">/ {exp.ceiling} topics</span>
             </div>
             <Sparkline
               data={trend}

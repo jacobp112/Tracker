@@ -89,8 +89,11 @@ ol {
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  /* No backdrop-filter: re-blurring the page background on every scroll frame
+   * across all cards dropped scrolling to ~13 FPS (paint-bound, not JS). The
+   * page canvas is a near-flat wash, so blurring it was visually almost a no-op
+   * — removing it restores ~53 FPS at no perceptible cost. The 0.75-alpha
+   * --surface still reads as a distinct glass-like surface on its own. */
   transition: box-shadow var(--dur-standard) var(--ease),
     transform var(--dur-standard) var(--ease),
     background-color var(--dur-standard) var(--ease);

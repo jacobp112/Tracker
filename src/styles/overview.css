@@ -6,7 +6,14 @@
  */
 
 /* ── Hero: the course-health ring ──────────────────────────────── */
+
+/*
+ * --ring-size is a copy of a number owned elsewhere (the ring SVG's rendered
+ * box). Naming it here makes the copy checkable in one place instead of
+ * asserted in a comment, so resizing the ring carries the empty state with it.
+ */
 .hero-ring {
+  --ring-size: 168px;
   align-items: center;
   text-align: center;
 }
@@ -14,22 +21,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: var(--space-10) 0 var(--space-8);
+  margin-block: var(--space-10) var(--space-8);
   position: relative;
 }
 
 /*
- * The empty hero — stacked, not side-by-side.
+ * The empty hero — stacked, not side-by-side. A modifier on .hero-ring-body,
+ * never standalone: it inherits that rule's flex context and cross-axis
+ * centring and only overrides the axis.
  *
- * Keeps the ring's 168px footprint so the card holds its hero proportions
- * whether or not there's a number to show; without it the tallest card on the
- * screen collapses to a sliver and the layout jumps once data arrives.
+ * Keeps the ring's footprint so the card holds its hero proportions whether or
+ * not there's a number to show; without it the tallest card on the screen
+ * collapses to a sliver and the layout jumps once data arrives.
  */
 .hero-ring-empty {
   flex-direction: column;
   gap: var(--space-9);
-  min-height: 168px;
-  padding: 0 var(--space-6);
+  min-height: var(--ring-size);
+  padding-inline: var(--space-6);
 }
 .hero-empty-copy {
   font-size: var(--fs-secondary);
@@ -37,9 +46,14 @@
   line-height: 1.55;
   max-width: 30ch;
 }
-/* The label is a sentence, not a word — it must never wrap into a blob. */
+/*
+ * The label is a sentence, not a word — it must never wrap into a blob. Balance
+ * evens the lines out instead of forbidding the break outright, which is what
+ * nowrap did: on a 320px viewport a nowrap sentence runs straight out past the
+ * card's edge and takes the horizontal scrollbar with it.
+ */
 .hero-ring-empty .btn-primary {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 /* The figure inside the ring is the hero number, so it takes hero tracking —
  * but not the full 76px, which would crowd the arc. */
@@ -58,7 +72,11 @@
 }
 
 /* ── Due for review ────────────────────────────────────────────── */
+
+/* --due-row-inset is the side margin the rows float on; .due-row should read
+ * the same variable rather than restate 8px. */
 .due-card {
+  --due-row-inset: var(--space-4);
   padding: var(--space-11) var(--space-12) var(--space-10);
   display: flex;
   flex-direction: column;
@@ -75,11 +93,15 @@
   color: var(--accent);
   letter-spacing: -0.01em;
 }
+/* Shared type, separate spacing — the two states sit differently in the card,
+ * so neither one sets a margin the other has to undo. */
 .due-sub,
 .due-clear {
   font-size: var(--fs-secondary);
   color: var(--ink-secondary);
-  margin: var(--space-4) 0 var(--space-5);
+}
+.due-sub {
+  margin-block: var(--space-4) var(--space-5);
 }
 /* All-clear reads as a status line, not a boxed empty state (§9 v0.6):
  * a green dot and one sentence. */
@@ -87,7 +109,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin-bottom: 0;
+  margin-block: var(--space-4) 0;
 }
 .due-clear p {
   margin: 0;
@@ -96,10 +118,59 @@
  * their own hover raise — hierarchy from type and space, not line ink. */
 .due-list {
   margin-top: auto;
-  /* Rows carry 8px side margins for their float; pull the list back out so
-   * their text still aligns with the card's own padding. */
-  margin-left: -8px;
-  margin-right: -8px;
+  /* Pull the list out by the rows' float inset so their text still aligns with
+   * the card's own padding. */
+  margin-inline: calc(var(--due-row-inset) * -1);
+}
+
+/* ── Retrievable now ───────────────────────────────────────────── */
+
+/*
+ * A plain Card carries no padding of its own (base .card sets none — every card
+ * supplies it), so the exp card sets its own to match the due-card's language.
+ */
+.exp-card {
+  padding: var(--space-11) var(--space-12) var(--space-10);
+}
+
+/*
+ * The figure is a supporting stat here, not the screen's hero (that's the
+ * course-health ring above), so the number takes a calmer size than --fs-hero
+ * and the "/ N topics" sits inline on the same baseline rather than nested in
+ * the number as a wrapped flex block.
+ */
+.exp-figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+.exp-number {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.exp-of {
+  font-size: var(--fs-secondary);
+  color: var(--ink-secondary);
+}
+
+/*
+ * The exp card is a plain Card, not the dashboard's flex hero, so .hero-chart
+ * has no bounded slot to fill: its `height: auto` SVG (dashboard.css) renders
+ * at the 320×100 fallback aspect ratio and, on a full-width card, balloons to
+ * ~250px — the ResizeObserver then measures that and settles large. Pin the
+ * chart to a fixed footprint so the measured box is stable and the SVG draws at
+ * chart height, not hero height.
+ */
+.exp-card .hero-chart {
+  height: 72px;
+  padding-top: var(--space-7);
+}
+.exp-card .hero-chart svg {
+  height: 100%;
 }
 
 /* ── Recent activity feed ──────────────────────────────────────── */
@@ -123,9 +194,20 @@
   white-space: nowrap;
 }
 
+/*
+ * The feed's secondary detail is the first thing to go when the row can no
+ * longer hold title + detail + date without wrapping. That limit belongs to the
+ * row, not the window: the feed in a narrow dashboard column hits it on a
+ * desktop that no viewport query will ever catch. The container query is the
+ * real rule and needs `container-type: inline-size` on the feed card; the
+ * viewport query below stays until every caller has it, and can go after that.
+ */
+@container (max-width: 26rem) {
+  .feed-detail {
+    display: none;
+  }
+}
 @media (max-width: 720px) {
-  /* The feed's secondary detail is the first thing to go when the row can no
-   * longer hold title + detail + date without wrapping. */
   .feed-detail {
     display: none;
   }

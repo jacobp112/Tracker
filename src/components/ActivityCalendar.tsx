@@ -14,8 +14,7 @@ const LEVELS = [0, 1, 2, 3, 4] as const;
 /** Days rendered in the window. 13 columns × 7 rows, week-aligned. */
 export const ACTIVITY_WINDOW_DAYS = COLUMNS * ROWS;
 
-/** Floor for the intensity ceiling. Without it a single one-session day is the
- *  window maximum and burns at full accent, which reads as a heavy week. */
+/** Floor for the intensity ceiling to prevent single-session spikes from maxing contrast. */
 const MIN_CEILING = 4;
 
 export interface ActivityDay {
@@ -24,8 +23,10 @@ export interface ActivityDay {
   count: number;
 }
 
-/** Local-time YYYY-MM-DD. Deliberately not toISOString(), which shifts to UTC
- *  and can land a late-evening session on the wrong day. */
+/**
+ * Local-time YYYY-MM-DD formatter.
+ * Avoids UTC shifts from `toISOString()` that misattribute late-night sessions.
+ */
 export function toLocalDateKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -40,11 +41,14 @@ interface Cell {
   future: boolean;
 }
 
+function formatSessionCount(count: number): string {
+  if (count === 0) return 'No study activity';
+  return `${count} ${count === 1 ? 'review session' : 'review sessions'}`;
+}
+
 /**
- * 90-day study-activity calendar (Document 3 §5.2, ramp §2.2(b)).
- *
- * Encodes *session volume*, not retention — which is why it is the one place
- * the accent hue is used as data.
+ * 90-day study-activity calendar heatmap.
+ * Encodes session volume using accent hue intensity.
  */
 export function ActivityCalendar({
   days,
@@ -53,17 +57,14 @@ export function ActivityCalendar({
   days: readonly ActivityDay[];
   today?: Date;
 }) {
-  /* A bare `new Date()` default is a fresh identity every render, so memoising
-   * on `today` never memoises anything. Key on the calendar day instead. */
   const todayKey = toLocalDateKey(today);
 
   const { cells, monthLabels, todayIdx, ceiling } = useMemo(() => {
     const [y, m, d] = todayKey.split('-').map(Number) as [number, number, number];
-    const anchor = new Date(y, m - 1, d); // local midnight
+    // Anchor to local noon to safeguard against DST boundary shifts during day arithmetic
+    const anchor = new Date(y, m - 1, d, 12, 0, 0);
 
-    /* Anchor the last column to the current week so every row is one weekday.
-     * Counting back a flat 91 days puts an arbitrary weekday in row 0 and the
-     * grid stops meaning anything. */
+    // Align row 0 to Sunday of the starting week
     const start = new Date(anchor);
     start.setDate(start.getDate() - ((COLUMNS - 1) * ROWS + anchor.getDay()));
 
@@ -73,28 +74,36 @@ export function ActivityCalendar({
     for (let i = 0; i < ACTIVITY_WINDOW_DAYS; i++) {
       const day = new Date(start);
       day.setDate(day.getDate() + i);
+
       const key = toLocalDateKey(day);
       const future = day > anchor;
       const count = future ? 0 : (byDate.get(key) ?? 0);
       const when = `${DAY_NAMES[day.getDay()]}, ${MONTH_NAMES[day.getMonth()]} ${day.getDate()}`;
-      const what = future
-        ? 'Upcoming'
-        : count === 0
-          ? 'No study activity'
-          : `${count} ${count === 1 ? 'review session' : 'review sessions'}`;
+      const what = future ? 'Upcoming' : formatSessionCount(count);
+
       out.push({ key, date: day, count, label: `${when} — ${what}`, future });
     }
 
-    /* Label a column when it opens a new month, rather than pinning three
-     * labels to fixed offsets — which drifts out of step with the columns. */
+    // Dynamic month labels dynamically anchored to column shifts
     const labels: Array<{ text: string; column: number }> = [];
     for (let c = 0; c < COLUMNS; c++) {
-      const month = out[c * ROWS]!.date.getMonth();
-      const prev = c === 0 ? -1 : out[(c - 1) * ROWS]!.date.getMonth();
-      if (month !== prev) labels.push({ text: MONTH_NAMES[month]!, column: c + 1 });
+      const currentCell = out[c * ROWS];
+      if (!currentCell) continue;
+
+      const month = currentCell.date.getMonth();
+      const prevCell = c === 0 ? null : out[(c - 1) * ROWS];
+      const prevMonth = prevCell ? prevCell.date.getMonth() : -1;
+
+      if (month !== prevMonth) {
+        const monthName = MONTH_NAMES[month];
+        if (monthName) labels.push({ text: monthName, column: c + 1 });
+      }
     }
-    // Drop a leading label with no room to sit under its own column.
-    if (labels.length > 1 && labels[1]!.column - labels[0]!.column < 2) labels.shift();
+
+    // Drop leading label if space is insufficient under column 1
+    if (labels.length > 1 && (labels[1]?.column ?? 0) - (labels[0]?.column ?? 0) < 2) {
+      labels.shift();
+    }
 
     const observed = out.reduce((mx, c) => Math.max(mx, c.count), 0);
 
@@ -103,28 +112,33 @@ export function ActivityCalendar({
       monthLabels: labels,
       todayIdx: out.findIndex((c) => c.key === todayKey),
       ceiling: Math.max(observed, MIN_CEILING),
-      observed,
     };
   }, [days, todayKey]);
 
-  const hasActivity = cells.some((c) => c.count > 0);
+  const isEmpty = !cells.some((c) => c.count > 0);
+  const maxNavigableIdx = todayIdx >= 0 ? todayIdx : ACTIVITY_WINDOW_DAYS - 1;
 
-  /* Nothing logged in the whole window. A full-strength grid of level-0 cells
-   * is visually indistinguishable from a grid that failed to load, so the empty
-   * case says so in words and drops the grid back to scenery. */
-  const isEmpty = !hasActivity;
-
-  /* One tab stop, not 91. Arrows walk the grid: up/down is the next weekday,
-   * left/right is the same weekday a week either side. */
   const gridRef = useRef<HTMLDivElement>(null);
   const [focusIdx, setFocusIdx] = useState<number | null>(null);
   const roving = focusIdx ?? Math.max(todayIdx, 0);
 
+  // Sync DOM focus if set externally or during initialization
   useEffect(() => {
     if (focusIdx == null) return;
     const el = gridRef.current?.children[focusIdx];
     if (el instanceof HTMLElement) el.focus();
   }, [focusIdx]);
+
+  const moveFocus = (nextIdx: number) => {
+    const clamped = Math.max(0, Math.min(maxNavigableIdx, nextIdx));
+    setFocusIdx(clamped);
+
+    // Direct synchronous focus for immediate feedback
+    const target = gridRef.current?.children[clamped];
+    if (target instanceof HTMLElement) {
+      target.focus();
+    }
+  };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const step =
@@ -135,9 +149,10 @@ export function ActivityCalendar({
       : e.key === 'Home' ? -ACTIVITY_WINDOW_DAYS
       : e.key === 'End' ? ACTIVITY_WINDOW_DAYS
       : null;
+
     if (step == null) return;
     e.preventDefault();
-    setFocusIdx(Math.max(0, Math.min(ACTIVITY_WINDOW_DAYS - 1, roving + step)));
+    moveFocus(roving + step);
   };
 
   return (
@@ -146,26 +161,31 @@ export function ActivityCalendar({
         <div
           ref={gridRef}
           className={`heatmap ${isEmpty ? 'is-empty' : ''}`}
-          role={isEmpty ? undefined : 'group'}
+          role={isEmpty ? undefined : 'grid'}
           aria-label={isEmpty ? undefined : 'Study activity, last 13 weeks'}
           onKeyDown={isEmpty ? undefined : onKeyDown}
-          /* With no activity, 91 cells each announcing "No study activity" is
-           * noise, not information — the caption below carries the meaning. */
           aria-hidden={isEmpty || undefined}
         >
-          {cells.map((c, i) => (
-            <div
-              key={c.key}
-              className={`cell l${c.future ? 0 : activityStep(c.count, ceiling)}${
-                c.future ? ' is-future' : ''
-              }`}
-              title={isEmpty ? undefined : c.label}
-              tabIndex={isEmpty || c.future ? -1 : i === roving ? 0 : -1}
-              onFocus={() => setFocusIdx(i)}
-              role="img"
-              aria-label={c.label}
-            />
-          ))}
+          {cells.map((c, i) => {
+            const isNavigable = !isEmpty && !c.future;
+            const isFocused = i === roving;
+
+            return (
+              <button
+                type="button"
+                key={c.key}
+                className={`cell l${c.future ? 0 : activityStep(c.count, ceiling)}${
+                  c.future ? ' is-future' : ''
+                }`}
+                title={isEmpty ? undefined : c.label}
+                tabIndex={isNavigable && isFocused ? 0 : -1}
+                onFocus={() => setFocusIdx(i)}
+                role="gridcell"
+                aria-label={c.label}
+                aria-disabled={c.future || undefined}
+              />
+            );
+          })}
         </div>
         {isEmpty && <p className="heatmap-empty-note">No study activity in the last 90 days.</p>}
       </div>
