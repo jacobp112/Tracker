@@ -57,7 +57,10 @@ function driveRing(ring: HTMLElement): void {
 export function animateGroup(group: Element, deps: AnimateDeps): void {
   group.querySelectorAll<HTMLElement>('[data-countup]').forEach((el) => driveCountUp(el, deps));
   group.querySelectorAll<HTMLElement>('.ring').forEach(driveRing);
-  group.querySelectorAll('.bars').forEach((b) => b.classList.add('is-filled'));
+  // The bars container can be the group root itself (e.g. #mock-matrix.bars) or
+  // a descendant; querySelectorAll never matches the root, so handle both.
+  const bars = group.matches('.bars') ? [group, ...group.querySelectorAll('.bars')] : [...group.querySelectorAll('.bars')];
+  bars.forEach((b) => b.classList.add('is-filled'));
 }
 
 export function setupDataAnimations(groups: Iterable<Element>, deps: AnimateDeps): void {

@@ -37,7 +37,9 @@
 .mock-hero-body { display: grid; grid-template-columns: auto 1fr; gap: var(--space-9); align-items: center; }
 
 .ring { position: relative; width: 168px; height: 168px; flex-shrink: 0; }
-.ring-svg { width: 168px; height: 168px; transform: rotate(-90deg); }
+/* overflow:visible so the arc's drop-shadow glow isn't clipped to the square
+ * SVG viewport — the arc's outer edge sits right at the 168×168 boundary. */
+.ring-svg { width: 168px; height: 168px; transform: rotate(-90deg); overflow: visible; }
 .ring-track { fill: none; stroke: var(--track); stroke-width: 12; }
 .ring-arc {
   fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
@@ -136,6 +138,24 @@
 .cat-knowledge { color: var(--cat-knowledge_gap); background: color-mix(in srgb, var(--cat-knowledge_gap) 14%, transparent); }
 .bar { flex: 1; min-width: 40px; height: 6px; border-radius: var(--radius-pill); background: var(--track); overflow: hidden; }
 .bar-fill { display: block; height: 100%; width: var(--w); background: var(--accent); border-radius: inherit; }
+
+/* Matrix data animates once on scroll-in (research §d): bars fill, then the
+ * delta chip + diagnostic badges settle in. animate.ts adds .is-filled to the
+ * .bars group root (#mock-matrix). No-JS shows the final width via the base
+ * rule above; reduced motion snaps (tokens.css zeroes the durations, and the
+ * @media block below forces the final state even before the class lands). */
+.js .bars .bar-fill { width: 0; }
+.js .bars.is-filled .bar-fill { width: var(--w); transition: width var(--dur-data) var(--ease); }
+.js .bars .chip-delta, .js .bars .badge { opacity: 0; transform: translateY(2px); }
+.js .bars.is-filled .chip-delta,
+.js .bars.is-filled .badge {
+  opacity: 1; transform: none;
+  transition: opacity var(--dur-standard) var(--ease) 0.25s, transform var(--dur-standard) var(--ease) 0.25s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .bars .bar-fill { width: var(--w); }
+  .js .bars .chip-delta, .js .bars .badge { opacity: 1; transform: none; }
+}
 .matrix-pct { font-size: var(--fs-secondary); color: var(--ink-secondary); flex-shrink: 0; min-width: 34px; text-align: right; }
 
 /* ── Validation card ──────────────────────────────────────────────

@@ -51,6 +51,13 @@ describe('animateGroup — reduced motion snaps to final', () => {
     expect(g.querySelector('.bars')!.classList.contains('is-filled')).toBe(true);
     expect(raf).not.toHaveBeenCalled();
   });
+
+  it('fills a group that IS the bars container (root), not just descendants', () => {
+    const g = group('<span class="bar-fill"></span>');
+    g.classList.add('bars');
+    animateGroup(g, { reducedMotion: true });
+    expect(g.classList.contains('is-filled')).toBe(true);
+  });
 });
 
 describe('setupDataAnimations', () => {
