@@ -28,6 +28,14 @@ export function setMedia(matches: Record<string, boolean>) {
  */
 Element.prototype.scrollIntoView = vi.fn();
 
+/**
+ * jsdom does not implement document.execCommand. The landing page's clipboard
+ * fallback (landing/clipboard.ts) calls it when the async Clipboard API is
+ * unavailable. Provide a spy-able no-op that returns false by default — the
+ * truthful jsdom behaviour — so tests can spy and drive either outcome.
+ */
+document.execCommand = vi.fn(() => false);
+
 beforeEach(() => {
   listeners.clear();
   setMedia({});
