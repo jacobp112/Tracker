@@ -16,3 +16,8 @@ Thumbs.db
 
 # Local mock-data seeder (regenerable, dev-only)
 seed.html
+
+# Stray uploads / binaries that don't belong in source control
+*.xlsx
+docs/Landing/AutoClicker.exe
+docs/Landing/ACLib/
