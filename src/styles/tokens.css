@@ -68,6 +68,7 @@
   /* ── Layout parameters ───────────────────────────────────────── */
   --sidebar-width: 264px;
   --content-max: 1180px;
+  --noise-alpha: 0.04; /* landing depth grain (research §e); composite-only overlay */
   
   /* Height of the <768px bottom tab bar. Consumed both by .tab's min-height and
    * by the content padding that keeps the last row clear of it, so the two can

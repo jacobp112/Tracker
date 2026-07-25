@@ -68,8 +68,14 @@ html:not(.js) #theme-toggle { display: none; }
 /* Hover-raise only where there is something to click. .step lifts nothing —
  * a card that responds to the cursor and then does nothing is a small lie,
  * and this page's whole argument is that it doesn't tell them. */
-.card { transition: box-shadow var(--dur-standard) var(--ease); }
-.choose-cards .card:hover { box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--edge); }
+.card { transition: box-shadow var(--dur-standard) var(--ease), transform var(--dur-standard) var(--ease); }
+/* Hover-lift stays scoped to the cards that DO something — the choose-cards
+ * carry a CTA. Research §c pattern 7 upgrades the existing shadow raise with a
+ * compositor-only translate. The .step cards still lift nothing, on purpose
+ * (see the note above). hover:hover so touch never gets a stuck lifted state. */
+@media (hover: hover) {
+  .choose-cards .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--edge); }
+}
 
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-7); margin-top: var(--space-9); }
 .step { display: flex; flex-direction: column; gap: var(--space-5); }

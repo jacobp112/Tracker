@@ -116,10 +116,16 @@ a { color: var(--accent); text-decoration: none; }
   padding: var(--space-5) var(--space-8); border-radius: var(--radius-pill);
   font-size: var(--fs-body); font-weight: 600; cursor: pointer;
   border: 1px solid transparent; text-decoration: none;
-  transition: box-shadow var(--dur-standard) var(--ease), background-color var(--dur-standard) var(--ease);
+  transition: box-shadow var(--dur-standard) var(--ease), background-color var(--dur-standard) var(--ease),
+    transform var(--dur-micro) var(--ease);
 }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-secondary { background: var(--surface); border-color: var(--border-strong); color: var(--ink); }
+
+/* Press micro-interaction (research §c pattern 6): never scale from 0; ≥0.9.
+ * Skips disabled buttons. Reduced motion collapses --dur-micro to 0.01ms. */
+.btn-primary:not([disabled]):active,
+.btn-secondary:not([disabled]):active { transform: scale(0.97); }
 
 /* The transition above previously had nothing to transition to. Hover raises
  * on the same shadow language as the app's cards. */
@@ -214,4 +220,21 @@ a { color: var(--accent); text-decoration: none; }
  * tokens.css. */
 @media (prefers-reduced-motion: reduce) {
   .reveal, .js .reveal { opacity: 1 !important; transform: none !important; }
+}
+
+/* ── Depth grain ─────────────────────────────────────────────────
+ * One static SVG turbulence (research §e: fractalNoise, baseFrequency 0.8,
+ * 3 octaves, stitched), tiled and fixed. Paints ONCE — never animated, so it
+ * costs nothing on scroll. pointer-events:none so it never eats a click; low
+ * opacity + overlay blend so it's felt, not seen. No backdrop-filter anywhere. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: var(--noise-alpha);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
 }
