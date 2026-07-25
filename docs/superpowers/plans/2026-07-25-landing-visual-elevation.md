@@ -731,7 +731,120 @@ git commit -m "feat(landing): top-bar hairline firms on scroll; exams decay-curv
 
 ---
 
-### Task 9: Final verification pass (Definition of Done)
+### Task 9: Cairn logomark + favicon (author addition)
+
+**Not in the research's list** — but the single biggest missing "this is a real, finished product" signal. The page currently renders the wordmark as plain text "Cairn" and the head has TODOs for a favicon/OG that don't exist, so browser tabs show a blank/default icon. A cairn *is* a stack of balanced stones, so the name hands us a literal, restrained mark. Static, monochrome (`currentColor`), no animation — pure identity craft.
+
+**Files:**
+- Create: `public/favicon.svg`
+- Modify: `landing/index.html` (both `.brand` lockups — top bar + closer; the favicon `<link>` already points at `/favicon.svg`)
+- Modify: `landing/styles/sections.css` (`.brand` lockup layout + `.brand-mark`)
+
+- [ ] **Step 1: Create the stone mark — `public/favicon.svg`**
+
+Three stones (wider gaps survive small sizes, per the head comment), theme-aware via an embedded `prefers-color-scheme`:
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    :root { color-scheme: light dark; }
+    .stone { fill: #1d1d1f; }
+    @media (prefers-color-scheme: dark) { .stone { fill: #f5f5f7; } }
+  </style>
+  <ellipse class="stone" cx="16" cy="25" rx="11" ry="3.4"/>
+  <ellipse class="stone" cx="16" cy="16.5" rx="8.5" ry="3.1"/>
+  <ellipse class="stone" cx="16" cy="8.5" rx="6" ry="2.8"/>
+</svg>
+```
+
+- [ ] **Step 2: Put the mark into both `.brand` lockups in `landing/index.html`**
+
+Replace each `<a class="brand" href="/landing/">Cairn</a>` (top bar and closer) with a four-stone inline mark + wordmark; `currentColor` makes it inherit `--ink` and flip with the theme for free:
+```html
+<a class="brand" href="/landing/" aria-label="Cairn — home">
+  <svg class="brand-mark" viewBox="0 0 24 28" width="18" height="21" aria-hidden="true">
+    <ellipse cx="12" cy="24" rx="9" ry="2.6"/>
+    <ellipse cx="12" cy="18" rx="7.5" ry="2.4"/>
+    <ellipse cx="12" cy="12.5" rx="6" ry="2.2"/>
+    <ellipse cx="12" cy="7.5" rx="4.2" ry="2"/>
+  </svg>
+  <span class="brand-word">Cairn</span>
+</a>
+```
+
+- [ ] **Step 3: Lockup styles in `landing/styles/sections.css`**
+
+Replace the existing `.brand { … }` rule with:
+```css
+.brand {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  font-size: var(--fs-brand); font-weight: 700; letter-spacing: -0.02em;
+  color: var(--ink); text-decoration: none;
+}
+.brand-mark { fill: currentColor; flex-shrink: 0; }
+```
+
+- [ ] **Step 4: Verify build + favicon serves + both themes**
+
+Run: `npm run build`, confirm `dist/favicon.svg` exists. `npm run preview`: the tab icon shows the stones (light and dark), and both wordmark lockups show the mark aligned to the text baseline. Toggle the theme — mark flips with the ink via `currentColor`.
+Expected: build PASS; icon present; mark aligned in both bands and themes.
+
+- [ ] **Step 5: Commit**
+```bash
+git add public/favicon.svg landing/index.html landing/styles/sections.css
+git commit -m "feat(landing): cairn stone logomark + theme-aware SVG favicon"
+```
+
+---
+
+### Task 10: Editorial typography + spatial rhythm pass (author addition)
+
+**Not in the research's numbered list** (though it calls broadly for "advanced editorial type"). After the recreations move, type is the next-biggest "less basic" lever: a fluid scale, balanced/pretty wrapping, tighter optical leading on the hero, and honest measure. Pure craft, zero motion, zero new markup beyond wrapping already done in Task 6.
+
+**Files:**
+- Modify: `landing/styles/base.css` (fluid type scale + wrapping)
+- Modify: `landing/styles/sections.css` (measure + inter-band rhythm)
+
+- [ ] **Step 1: Fluid type + wrapping in `landing/styles/base.css`**
+
+Refine the hero/title/lead type. `text-wrap: balance` keeps headings from leaving orphans; `pretty` fixes body last-line runts. Values stay within the token ramp's intent (hero tops out near `--fs-hero` 76px):
+```css
+.hero-headline {
+  font-size: clamp(2.6rem, 6vw + 0.4rem, 4.75rem);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.band-title { font-size: clamp(1.65rem, 2.6vw + 0.5rem, 2rem); text-wrap: balance; }
+.hero-sub, .band-lead { text-wrap: pretty; }
+.eyebrow { letter-spacing: 0.08em; }
+```
+(Task 6 wrapped the headline in `.line`/`.line-in` spans; `text-wrap: balance` on the `<h1>` still applies to each masked line's inline content.)
+
+- [ ] **Step 2: Measure + rhythm in `landing/styles/sections.css`**
+
+Tighten reading measure and even out the vertical rhythm between bands:
+```css
+.hero-sub { max-width: 44ch; }
+.band-lead { max-width: 62ch; }
+.band-title { max-width: 24ch; }
+/* Even inter-band rhythm: the problem/exams one-liners get a touch more air. */
+.band.problem, .band.exams { padding-block: var(--space-14); }
+```
+
+- [ ] **Step 3: Verify build + both themes + no overflow**
+
+Run: `npm run build && npm run preview`. Check the hero headline balances across two lines without an orphan, body paragraphs have no single-word last lines, and no band introduces horizontal scroll at 1180 / 768 / 720px.
+Expected: build PASS; balanced headline; no h-scroll.
+
+- [ ] **Step 4: Commit**
+```bash
+git add landing/styles/base.css landing/styles/sections.css
+git commit -m "feat(landing): editorial type scale, balanced wrapping, tuned measure"
+```
+
+---
+
+### Task 11: Final verification pass (Definition of Done)
 
 Verify the whole elevated page against the research's constraints. Fix anything that fails, then commit.
 
@@ -787,15 +900,19 @@ git commit -m "test(landing): final verification — perf, reduced-motion, theme
 - §j.4 tabular-mono + tnum:0 fix → Task 1 (Step 2). ✓
 - §j.5 line-masked hero reveal → Task 6. ✓
 - §j.6 vanilla + native CSS/WAAPI → whole plan; no new deps (Global Constraints). ✓
-- §j.7 ban backdrop-filter + noise overlay → Task 1 (Step 4), verified Task 9. ✓
-- §j.8 reveal system on tokens + compositor check → existing `reveal.ts` reused; verified Task 9 (Step 1). ✓
+- §j.7 ban backdrop-filter + noise overlay → Task 1 (Step 4), verified Task 11. ✓
+- §j.8 reveal system on tokens + compositor check → existing `reveal.ts` reused; verified Task 11 (Step 1). ✓
 - §j.9 press + hover-lift → Task 1 (Step 3). ✓
 - §j.10 native scroll-behavior (no Lenis) → already in `base.css`; no task needed. ✓
 - §j.11 no GSAP → Global Constraints. ✓
 - §j.12 cursor-aware hero light → Task 7. ✓
-- §j.13 per-effect reduced-motion → every task's CSS + Task 9 (Step 2). ✓
+- §j.13 per-effect reduced-motion → every task's CSS + Task 11 (Step 2). ✓
 - §j.14 exams decay-curve redraw → Task 8. ✓
 - §j.15 top-bar hairline + disabled desktop CTA → Task 8 (hairline); the disabled CTA already shipped in the WIP. ✓
+
+**Author additions (beyond the research's list):**
+- Task 9 — Cairn stone logomark + theme-aware SVG favicon (resolves the head's favicon TODO; biggest missing identity signal). Restrained, static, `currentColor`.
+- Task 10 — editorial type scale, balanced/pretty wrapping, tuned measure (the next-biggest "less basic" lever after the recreations move). Pure craft, no motion.
 
 **Placeholder scan:** No TBD/TODO. `animateGroup`/`setupDataAnimations`/`countUpValue`/`ringOffset`/`lerp`/`relativePosition`/`setupCursorLight` are fully specified with code and tests. Values (0.04 noise alpha, 6% cursor alpha, 0.8s expo-out headline, 0.9s count, 1.1s draw) are pinned from the research.
 
