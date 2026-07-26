@@ -28,9 +28,32 @@
 }
 
 .hero-visual:hover .mock-hero {
-  box-shadow: 
+  box-shadow:
     0 20px 40px -15px rgba(0, 0, 0, 0.12),
     0 0 0 1px var(--border-strong);
+}
+
+/* Cursor-aware light (research §c pattern 8, §j.12): a faint highlight follows
+ * the pointer via --x/--y set by cursor-light.ts. Alpha ≤6% — felt, not seen.
+ * border-radius:inherit clips it to the card's rounded corners without adding
+ * overflow:hidden (which could clip the ring's glow). Desktop-pointer only;
+ * disabled under reduced motion. */
+.mock-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(220px circle at var(--x, 50%) var(--y, 50%),
+    color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--dur-standard) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mock-hero:hover::before { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mock-hero::before { display: none; }
 }
 
 .mock-greeting { font-size: var(--fs-prop); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 var(--space-8); }

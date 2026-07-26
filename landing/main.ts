@@ -27,6 +27,7 @@ import './styles/recreations.css';
 import { createElement, Sun, Moon } from 'lucide';
 import { setupReveals } from './reveal';
 import { setupDataAnimations } from './animate';
+import { setupCursorLight } from './cursor-light';
 import { copyText } from './clipboard';
 import { currentTheme, setupThemeToggle } from './theme-toggle';
 
@@ -83,6 +84,13 @@ setupReveals(document.querySelectorAll('.reveal'), { reducedMotion });
  * scroll-into-view. Reduced motion snaps them to final; no-JS shows final via
  * the CSS fallbacks. Each group opts in with [data-animate]. */
 setupDataAnimations(document.querySelectorAll('[data-animate]'), { reducedMotion });
+
+/* Cursor-aware light on the hero recreation. Desktop fine-pointer only, and off
+ * under reduced motion — setupCursorLight is a no-op when disabled, so touch
+ * devices never wire pointer listeners. */
+const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+const heroMock = document.getElementById('mock-overview');
+if (heroMock) setupCursorLight(heroMock, { enabled: finePointer && !reducedMotion });
 
 /* ── Copy the prompt ──────────────────────────────────────────────
  * Copies the FULL prompt from the <template>, not the visible excerpt. The
