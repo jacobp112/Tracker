@@ -58,6 +58,17 @@ describe('animateGroup — reduced motion snaps to final', () => {
     animateGroup(g, { reducedMotion: true });
     expect(g.classList.contains('is-filled')).toBe(true);
   });
+
+  it('draws a decay-curve group (root and descendant)', () => {
+    const root = group('');
+    root.classList.add('decay-curve');
+    animateGroup(root, { reducedMotion: true });
+    expect(root.classList.contains('is-drawn')).toBe(true);
+
+    const parent = group('<div class="decay-curve"></div>');
+    animateGroup(parent, { reducedMotion: true });
+    expect(parent.querySelector('.decay-curve')!.classList.contains('is-drawn')).toBe(true);
+  });
 });
 
 describe('setupDataAnimations', () => {

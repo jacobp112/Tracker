@@ -61,6 +61,10 @@ export function animateGroup(group: Element, deps: AnimateDeps): void {
   // a descendant; querySelectorAll never matches the root, so handle both.
   const bars = group.matches('.bars') ? [group, ...group.querySelectorAll('.bars')] : [...group.querySelectorAll('.bars')];
   bars.forEach((b) => b.classList.add('is-filled'));
+  // Decay curve can be the group root or a descendant; draw it (CSS transitions
+  // stroke-dashoffset to 0).
+  group.querySelectorAll('.decay-curve').forEach((c) => c.classList.add('is-drawn'));
+  if (group.matches('.decay-curve')) group.classList.add('is-drawn');
 }
 
 export function setupDataAnimations(groups: Iterable<Element>, deps: AnimateDeps): void {

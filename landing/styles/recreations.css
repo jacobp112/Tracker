@@ -205,6 +205,21 @@
 .tag-success { color: var(--success); background: var(--success-soft); }
 .tag-danger { color: var(--danger); background: var(--danger-soft); }
 
+/* Exams decay curve (research §h.6, §j.14): a retention-decay line that draws on
+ * scroll-into-view. Default (incl. no-JS) shows it drawn; JS empties it first,
+ * then animate.ts adds .is-drawn to redraw. tokens.css snaps under reduced motion. */
+.decay-curve { margin-top: var(--space-9); max-width: 360px; }
+.decay-svg { width: 100%; height: auto; overflow: visible; }
+.decay-base { stroke: var(--border-strong); stroke-width: 1; fill: none; }
+.decay-path {
+  stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; fill: none;
+  stroke-dasharray: 100; stroke-dashoffset: 0;
+}
+.js .decay-curve:not(.is-drawn) .decay-path { stroke-dashoffset: 100; }
+.decay-curve.is-drawn .decay-path {
+  stroke-dashoffset: 0; transition: stroke-dashoffset var(--dur-draw) var(--ease);
+}
+
 /* Validation FAILURE preview (Step 2): the page asserts strictness; this shows
  * it — a named field + the fix, calm not alarming (research §d: no shake). */
 .val-error { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-5); }
