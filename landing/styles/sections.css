@@ -25,8 +25,14 @@
   transition: color var(--dur-standard) var(--ease);
 }
 .topnav a:not(.btn-primary):hover { color: var(--ink); }
-.brand { font-size: 18px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); text-decoration: none; transition: opacity var(--dur-standard) var(--ease); }
+.brand {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  font-size: 18px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink);
+  text-decoration: none; transition: opacity var(--dur-standard) var(--ease);
+}
 .brand:hover { opacity: 0.8; }
+/* Stones inherit the wordmark's --ink via currentColor, so they flip with the theme. */
+.brand-mark { fill: currentColor; flex-shrink: 0; }
 
 #theme-toggle {
   display: inline-flex; align-items: center; justify-content: center;
