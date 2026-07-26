@@ -53,11 +53,13 @@ html:not(.js) #theme-toggle { display: none; }
   display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-10); align-items: center;
 }
 .hero-headline {
-  font-size: clamp(32px, 3.8vw, 48px);
+  /* Larger, tighter display setting for more editorial presence. */
+  font-size: clamp(2.25rem, 3.4vw + 0.6rem, 3.5rem);
   letter-spacing: -0.03em;
-  line-height: 1.18;
+  line-height: 1.1;
+  text-wrap: balance; /* no orphan words across the masked lines */
 }
-.hero-sub { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 48ch; margin-top: var(--space-6); line-height: 1.55; }
+.hero-sub { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 46ch; margin-top: var(--space-6); line-height: 1.55; text-wrap: pretty; }
 .cta-row { display: flex; gap: var(--space-4); margin-top: var(--space-7); flex-wrap: wrap; align-items: center; }
 .cta-micro { font-size: var(--fs-secondary); color: var(--ink-muted); margin-top: var(--space-4); }
 
@@ -68,8 +70,10 @@ html:not(.js) #theme-toggle { display: none; }
 
 .band { max-width: var(--content-max); margin: 0 auto; padding: var(--space-13) var(--page-gutter); }
 .band > .eyebrow { margin-bottom: var(--space-4); }
-.band-title { font-size: var(--fs-title); max-width: 30ch; }
-.band-lead { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 60ch; margin-top: var(--space-6); line-height: 1.55; }
+.band-title { font-size: var(--fs-title); max-width: 30ch; text-wrap: balance; }
+.band-lead { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 62ch; margin-top: var(--space-6); line-height: 1.55; text-wrap: pretty; }
+/* The one-line problem/exams bands get more air so they read as a beat, not a row. */
+.band.problem, .band.exams { padding-block: var(--space-14); }
 
 /* Hover-raise only where there is something to click. .step lifts nothing —
  * a card that responds to the cursor and then does nothing is a small lie,

@@ -72,7 +72,7 @@ a { color: var(--accent); text-decoration: none; }
    * between it and the heading it labels. */
   margin: 0;
   font-size: var(--fs-eyebrow); text-transform: uppercase; font-weight: 700;
-  letter-spacing: 0.07em; color: var(--ink-muted);
+  letter-spacing: 0.08em; color: var(--ink-muted);
 }
 
 .mono-num {
