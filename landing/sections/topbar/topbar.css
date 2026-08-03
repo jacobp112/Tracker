@@ -18,6 +18,13 @@
   transition: color var(--dur-standard) var(--ease);
 }
 .topnav a:not(.btn-primary):hover { color: var(--ink); }
+/* Hover was the only affordance here — keyboard users got no indication at all.
+ * Drop this pair if a global :focus-visible rule already covers links. */
+.topbar :focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: var(--radius-lg, 4px);
+}
 
 .brand {
   display: inline-flex; align-items: center; gap: var(--space-3);
@@ -30,9 +37,14 @@
 
 /* ── Cairn stones settle in ────────────────────────────────────────
  * The mark is a cairn: four stones, largest at the bottom, settling into place
- * from the ground up. DOM order of the ellipses is bottom-to-top, so nth-child
- * IS the stacking order. fill-box scopes each transform to its own bounding box
- * (SVG shapes transform around the viewport origin by default). */
+ * from the ground up. DOM order of the ellipses is bottom-to-top, so their
+ * order IS the stacking order. fill-box scopes each transform to its own
+ * bounding box (SVG shapes transform around the viewport origin by default).
+ *
+ * nth-OF-TYPE, not nth-child: nth-child counts every element sibling. The day
+ * someone adds a <title> to <svg class="brand-mark"> for accessibility, every
+ * ellipse shifts one index, the bottom stone silently loses its 0ms delay and
+ * the top one animates first — the stack would settle upside down. */
 .brand-mark ellipse {
   transform-box: fill-box;
   transform-origin: center;
@@ -41,9 +53,9 @@
   /* `backwards` holds each stone at keyframe-0 through its delay. */
   animation: cairn-stone 420ms var(--ease) backwards;
 }
-.js .reveal.is-visible .brand-mark ellipse:nth-child(2) { animation-delay: 70ms; }
-.js .reveal.is-visible .brand-mark ellipse:nth-child(3) { animation-delay: 140ms; }
-.js .reveal.is-visible .brand-mark ellipse:nth-child(4) { animation-delay: 210ms; }
+.js .reveal.is-visible .brand-mark ellipse:nth-of-type(2) { animation-delay: 70ms; }
+.js .reveal.is-visible .brand-mark ellipse:nth-of-type(3) { animation-delay: 140ms; }
+.js .reveal.is-visible .brand-mark ellipse:nth-of-type(4) { animation-delay: 210ms; }
 
 @keyframes cairn-stone {
   from { opacity: 0; transform: translateY(-5px) scaleX(0.55); }
@@ -64,6 +76,14 @@
 }
 #theme-toggle:hover { background: var(--surface-sunken); }
 #theme-toggle svg { width: 17px; height: 17px; }
+/* The button reads at 34px but 34px is under the 44px touch minimum, and it sits
+ * right beside the CTA — a near miss on mobile hits the wrong control. This
+ * grows the tappable box only; the visible pill stays 34px. */
+#theme-toggle { position: relative; }
+#theme-toggle::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 44px; height: 44px; transform: translate(-50%, -50%);
+}
 /* The toggle's icon/label are painted by main.ts; it does nothing without them,
  * and the head script adds .js before first paint — so this only matches with
  * JS genuinely off. */
@@ -72,10 +92,15 @@ html:not(.js) #theme-toggle { display: none; }
 /* The top bar runs out of room on a narrow viewport: the anchor links are the
  * expendable part (both destinations repeat further down and are a scroll away).
  * Brand, theme and the primary CTA stay. */
-@media (max-width: 600px) {
-  .topnav a:not(.btn-primary) { display: none; }
-  .topnav { gap: var(--space-5); }
-}
+/* Widest breakpoint first. Both of these match at 500px and they have equal
+ * specificity, so source order decides — with 600px written first, its gap was
+ * overridden by the 720px rule below it and never applied. Identical values
+ * hid that today; the next time these differ, the narrow rule would lose. */
 @media (max-width: 720px) {
   .topnav { gap: var(--space-5); }
+}
+@media (max-width: 600px) {
+  .topnav a:not(.btn-primary) { display: none; }
+  /* Only brand, toggle and CTA are left — reclaim the generous left inset. */
+  .topbar { padding-left: var(--space-4); }
 }

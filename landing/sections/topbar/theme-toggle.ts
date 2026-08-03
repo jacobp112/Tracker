@@ -19,6 +19,8 @@ export function currentTheme(): Theme {
   return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 }
 
+const asTheme = (value: string | null): Theme => (value === 'dark' ? 'dark' : 'light');
+
 /**
  * Wire a button to flip the theme.
  *
@@ -31,25 +33,53 @@ export function currentTheme(): Theme {
  *
  * The options argument is optional, so existing setupThemeToggle(button) calls
  * keep working unchanged.
+ *
+ * Returns a teardown function. Two of the three listeners live on `window`, so
+ * they outlive the button and nothing else can reach them: under Vite HMR, or
+ * in a test file that calls this once per case, every call used to leave its
+ * predecessors attached and each external theme change fanned out to all of
+ * them. Callers that never unmount can ignore the return value.
  */
 export function setupThemeToggle(
   button: HTMLElement,
   opts: { onChange?: (theme: Theme) => void } = {},
-): void {
-  button.addEventListener('click', () => {
-    const theme = nextTheme(currentTheme());
+): () => void {
+  const change = (theme: Theme): void => {
     applyTheme(theme);
     opts.onChange?.(theme);
-  });
+  };
+
+  const onClick = (): void => change(nextTheme(currentTheme()));
 
   // The theme key is shared with the app on the same origin (see index.html's
   // pre-paint script). Without this, flipping the theme in the app tab and
   // returning here leaves the two disagreeing. The storage event fires only in
   // OTHER tabs, so this never re-fires from our own applyTheme — no loop.
-  window.addEventListener('storage', (e) => {
+  const onStorage = (e: StorageEvent): void => {
     if (e.key !== THEME_STORAGE_KEY || !e.newValue) return;
-    const theme: Theme = e.newValue === 'dark' ? 'dark' : 'light';
-    applyTheme(theme);
-    opts.onChange?.(theme);
-  });
+    change(asTheme(e.newValue));
+  };
+
+  // Someone who has never touched the toggle booted into their OS preference,
+  // and until now stayed frozen there for the life of the tab — flipping the OS
+  // to dark at sunset left this page bright. A stored value means the user made
+  // an explicit choice, and an explicit choice outranks the system.
+  const media =
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-color-scheme: dark)')
+      : null;
+  const onSystemChange = (e: MediaQueryListEvent): void => {
+    if (localStorage.getItem(THEME_STORAGE_KEY)) return;
+    change(e.matches ? 'dark' : 'light');
+  };
+
+  button.addEventListener('click', onClick);
+  window.addEventListener('storage', onStorage);
+  media?.addEventListener('change', onSystemChange);
+
+  return () => {
+    button.removeEventListener('click', onClick);
+    window.removeEventListener('storage', onStorage);
+    media?.removeEventListener('change', onSystemChange);
+  };
 }

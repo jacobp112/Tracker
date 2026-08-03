@@ -1,0 +1,50 @@
+      <section class="hero" aria-labelledby="hero-headline">
+        <div class="hero-copy reveal" style="--i:0">
+          <p class="eyebrow">A memory for self-study</p>
+          <h1 class="hero-headline" id="hero-headline"><span class="line"><span class="line-in">Your AI can teach you anything.</span></span> <span class="line"><span class="line-in">It just can't remember you learned it.</span></span></h1>
+          <p class="hero-sub">Cairn tracks your courses, sections, and topics on a real retention curve — so you always know what's fading and what's due. It runs on your machine, stores everything in one file you own, and never calls an AI itself. You bring the AI; Cairn keeps the memory.</p>
+          <div class="cta-row">
+            <a class="btn-primary" href="/">Open the app</a>
+            <!--
+              DESKTOP CTA — decide and make consistent.
+
+              If the desktop build has NOT shipped: leave as-is. A real
+              <button disabled> is unfocusable and unclickable, unlike the
+              previous <a aria-disabled="true" href="#">, which was both and
+              jumped to the top of the page when clicked.
+
+              If it HAS shipped: replace with
+                <a class="btn-secondary" href="/download/">Download for desktop</a>
+              and update (a) .cta-micro below, (b) the second .choose-cards
+              article, which already describes the build in present tense.
+            -->
+            <button class="btn-secondary" type="button" disabled>Download for desktop</button>
+          </div>
+          <p class="cta-micro">No account — nothing to log into. Runs in your browser. A desktop build isn't released yet.</p>
+        </div>
+        <div class="hero-visual reveal" style="--i:1">
+          <div class="mock mock-hero" id="mock-overview" data-animate role="img" aria-label="Cairn's Overview screen: course health 82 out of 100, with three topics due for review — Bayes' theorem at 41 percent, Eigenvectors at 53 percent, Krebs cycle at 58 percent.">
+            <p class="mock-greeting">Good morning.</p>
+            <div class="mock-hero-body">
+              <!-- --arc must agree with the number below it; recreations.css
+                   reads it instead of hardcoding 82 a second time. -->
+              <div class="ring" style="--arc:82">
+                <svg class="ring-svg" viewBox="0 0 168 168" aria-hidden="true">
+                  <circle class="ring-track" cx="84" cy="84" r="78" />
+                  <circle class="ring-arc" cx="84" cy="84" r="78" pathLength="100" />
+                </svg>
+                <div class="ring-center">
+                  <span class="ring-num mono-num" data-countup="82" data-countup-dur="900">82</span>
+                  <span class="ring-cap">course health</span>
+                </div>
+              </div>
+              <div class="mock-due">
+                <p class="eyebrow">Due for review</p>
+                <div class="mock-row"><span class="mock-dot low" aria-hidden="true"></span><span class="mock-topic">Bayes' theorem</span><span class="mono-num mock-pct">41%</span></div>
+                <div class="mock-row"><span class="mock-dot mid" aria-hidden="true"></span><span class="mock-topic">Eigenvectors</span><span class="mono-num mock-pct">53%</span></div>
+                <div class="mock-row"><span class="mock-dot mid" aria-hidden="true"></span><span class="mock-topic">Krebs cycle</span><span class="mono-num mock-pct">58%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>

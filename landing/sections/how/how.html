@@ -1,0 +1,151 @@
+      <section class="how-track" id="how" aria-labelledby="how-title">
+        <div class="how-stage">
+          <div class="stage-head">
+            <p class="eyebrow reveal">How it works</p>
+            <h2 class="reveal" id="how-title">You bring the AI. Cairn brings the <span class="ul-accent">memory</span>.</h2>
+          </div>
+
+          <div class="stage-body">
+
+            <!-- ── CAIRN ── -->
+            <div class="panel" data-panel="cairn" data-active="1">
+              <div class="mock-window-bar">
+                <div class="window-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <span class="window-title">cairn — new course</span>
+              </div>
+              <div class="panel-body">
+
+                <div class="view view-static" data-view="prompt" data-on="1">
+                  <div class="prompt-block">
+                    <!-- The visible block is an EXCERPT; the Copy button copies
+                         the FULL prompt from the <template> below via main.ts /
+                         clipboard.ts. Same ids the wiring already expects, so the
+                         real copy feature survives the section's redesign. -->
+                    <code>You are converting a course syllabus into a
+structured JSON object for a study tracker.
+Output only valid JSON. Do not invent dates,
+scores, or difficulty values…</code>
+                    <button class="copy-btn" id="copy-prompt" type="button" data-hit="0">Copy</button>
+                    <span class="copy-status" id="copy-status" role="status" aria-live="polite"></span>
+                  </div>
+                  <template id="prompt-full">You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields. Unknown values must be omitted rather than guessed.
+
+{
+  "title": string,
+  "sections": [
+    {
+      "title": string,
+      "topics": [ { "title": string } ]
+    }
+  ]
+}
+
+Rules:
+- Preserve the syllabus's own section and topic wording; do not rename, merge or invent.
+- Do not add fields that are not in the schema above. Extra fields are rejected.
+- Do not include dates, scores, difficulty ratings or confidence values. Those are measured later, not assumed.
+- If the syllabus has no explicit sections, emit a single section titled "Course".
+
+Here is the syllabus:
+[PASTE SYLLABUS HERE]</template>
+                </div>
+
+                <div class="view" data-view="reject">
+                  <div class="val is-bad" role="img" aria-label="A validation error: the field topics 3 difficulty is not allowed by the schema. Cairn names the field and the fix instead of failing silently.">
+                    <div class="val-head">
+                      <span class="val-file">paste.json</span>
+                      <span class="tag tag-danger">rejected</span>
+                    </div>
+                    <div class="val-field">topics[3].difficulty</div>
+                    <p class="val-msg">is not an allowed field. Remove it — difficulty is measured, not declared. Nothing is saved when a paste doesn't fit.</p>
+                  </div>
+                </div>
+
+                <div class="view" data-view="commit">
+                  <div class="val is-good" role="img" aria-label="A validation preview of syllabus.json, marked committed: 4 sections and 22 topics accepted. Nothing saved until you say so.">
+                    <div class="val-head">
+                      <span class="val-file">syllabus.json</span>
+                      <span class="tag tag-success">committed</span>
+                    </div>
+                    <div class="checks">
+                      <div class="check" style="--i:0"><i aria-hidden="true">✓</i>schema shape</div>
+                      <div class="check" style="--i:1"><i aria-hidden="true">✓</i>no invented dates</div>
+                      <div class="check" style="--i:2"><i aria-hidden="true">✓</i>no extra fields</div>
+                    </div>
+                    <div class="val-counts">
+                      <span class="val-count"><b>4</b>&nbsp;sections</span>
+                      <span class="val-count"><b>22</b>&nbsp;topics</span>
+                    </div>
+                    <p class="val-msg">Written in one atomic step. Nothing saved until you said so.</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ── ANY AI ── -->
+            <div class="panel" data-panel="ai" data-active="0">
+              <div class="mock-window-bar">
+                <div class="window-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <span class="window-title">whichever ai you already use</span>
+              </div>
+              <div class="panel-body">
+                <div class="ai-input"><span class="ai-text"></span><i class="ai-caret" aria-hidden="true"></i></div>
+
+                <div class="view view-static" data-view="stream" data-on="1" aria-hidden="true">
+                  <div class="stream">
+                    <div class="sq" style="--i:0; --w:96%"></div>
+                    <div class="sq" style="--i:1; --w:88%"></div>
+                    <div class="sq is-accent" style="--i:2; --w:64%"></div>
+                    <div class="sq" style="--i:3; --w:92%"></div>
+                    <div class="sq" style="--i:4; --w:71%"></div>
+                    <div class="sq is-accent" style="--i:5; --w:83%"></div>
+                    <div class="sq" style="--i:6; --w:58%"></div>
+                  </div>
+                </div>
+
+                <div class="view" data-view="json" aria-hidden="true">
+<div class="json">{
+  <b>"course"</b>: "Linear Algebra",
+  <b>"sections"</b>: [ … 4 ],
+  <b>"topics"</b>: [ … 22 ]
+}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="cursor" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20">
+                <path d="M2 1 L2 15.5 L6 12 L8.6 18 L11.4 16.8 L8.8 11 L14 11 Z"
+                      fill="#fff" stroke="#16161a" stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="chip-fly" aria-hidden="true">prompt copied</div>
+          </div>
+
+          <div class="beats">
+            <div class="beat" data-on="1" data-b="0">
+              <span class="beat-n">01</span>
+              <h3>Copy the prompt</h3>
+              <p>Cairn hands you a ready-made prompt. Nothing has left your machine yet.</p>
+            </div>
+            <div class="beat" data-b="1">
+              <span class="beat-n">02</span>
+              <h3>Paste it into whichever AI you already use</h3>
+              <p>Along with your syllabus, session notes, or exam paper. Cairn never calls an AI — you do, in the tool you already trust.</p>
+            </div>
+            <div class="beat" data-b="2">
+              <span class="beat-n">03</span>
+              <h3>Paste the result back</h3>
+              <p>Checked against a strict schema. If something's wrong you get a plain-English message naming the field and the fix — and nothing is saved.</p>
+            </div>
+            <div class="beat" data-b="3">
+              <span class="beat-n">04</span>
+              <h3>Preview, then commit</h3>
+              <p>See exactly what will change. Written in one atomic step. Cairn verifies; it never generates.</p>
+            </div>
+          </div>
+
+          <div class="rail" aria-hidden="true"><i></i></div>
+        </div>
+      </section>
