@@ -1,0 +1,82 @@
+/* ── Memory / retention matrix ──────────────────────────────────────
+ * The "It tracks how well you know things" band's product recreation: an
+ * average-retention stat, health/delta chips, and per-topic bars with
+ * diagnostic badges. Scoped to .mock-matrix / .matrix-* / .chip* / .bar* /
+ * .badge / .cat-*. */
+
+.mock-matrix { margin-top: var(--space-8); }
+.matrix-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-6); margin-bottom: var(--space-7); flex-wrap: wrap; }
+.matrix-stat { display: flex; flex-direction: column; gap: var(--space-2); }
+.matrix-stat-num { font-size: var(--fs-title); font-weight: 700; color: var(--ink); }
+
+.chips { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; font-size: var(--fs-caption); font-weight: 600;
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius-chip);
+}
+.chip-health { background: var(--accent-soft); color: var(--accent); }
+.chip-delta.up { background: var(--success-soft); color: var(--success); }
+.chip-sub { opacity: 0.7; }
+
+.matrix-rows { display: flex; flex-direction: column; }
+.matrix-row {
+  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-5) 0;
+  padding-left: var(--space-3); padding-right: var(--space-3);
+  margin-left: calc(var(--space-3) * -1); margin-right: calc(var(--space-3) * -1);
+  border-radius: var(--radius-md);
+  transition: background-color var(--dur-micro) var(--ease);
+}
+.matrix-row + .matrix-row { border-top: 1px solid var(--border); }
+.matrix-row:hover { background-color: var(--surface-sunken); }
+
+/* A fixed diagnostic slot (present even when empty) keeps every bar track
+ * identical, so the fills — which are percentages OF THE TRACK — stay
+ * comparable. Comparing topics is the whole job of this chart. */
+.matrix-topic { font-size: var(--fs-row); color: var(--ink); flex: 0 1 260px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.matrix-diag { flex: 0 0 116px; display: flex; justify-content: flex-end; }
+.matrix-pct { font-size: var(--fs-secondary); color: var(--ink-secondary); flex-shrink: 0; min-width: 34px; text-align: right; }
+
+.badge {
+  font-size: var(--fs-micro); font-weight: 600; padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-chip); white-space: nowrap;
+}
+.cat-conceptual { color: var(--cat-conceptual); background: color-mix(in srgb, var(--cat-conceptual) 14%, transparent); }
+.cat-procedural { color: var(--cat-procedural); background: color-mix(in srgb, var(--cat-procedural) 14%, transparent); }
+.cat-knowledge { color: var(--cat-knowledge_gap); background: color-mix(in srgb, var(--cat-knowledge_gap) 14%, transparent); }
+
+.bar { flex: 1 1 auto; min-width: 40px; height: 6px; border-radius: var(--radius-pill); background: var(--track); overflow: hidden; }
+.bar-fill { display: block; height: 100%; width: var(--w); background: var(--accent); border-radius: inherit; }
+
+/* Data animates once on scroll-in: bars fill (transform: scaleX, composite-only),
+ * then the delta chip + diagnostic badges settle in. animate.ts adds .is-filled
+ * to #mock-matrix. No-JS shows the final width via the base .bar-fill rule. */
+.js .bars .bar-fill { transform: scaleX(0); transform-origin: left center; }
+.js .bars.is-filled .bar-fill { transform: scaleX(1); transition: transform var(--dur-data) var(--ease); }
+/* Row order is the stagger, on --reveal-step. nth-child, because the markup
+ * already encodes the order — one more row needs one more line here. */
+.js .bars.is-filled .matrix-row:nth-child(2) .bar-fill { transition-delay: var(--reveal-step); }
+.js .bars.is-filled .matrix-row:nth-child(3) .bar-fill { transition-delay: calc(var(--reveal-step) * 2); }
+.js .bars.is-filled .matrix-row:nth-child(4) .bar-fill { transition-delay: calc(var(--reveal-step) * 3); }
+.js .bars .chip-delta, .js .bars .badge { opacity: 0; transform: translateY(2px); }
+.js .bars.is-filled .chip-delta, .js .bars.is-filled .badge {
+  opacity: 1; transform: none;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--reveal-step) * 4),
+    transform var(--dur-standard) var(--ease) calc(var(--reveal-step) * 4);
+}
+/* tokens.css collapses transition-DURATION under reduced motion but not
+ * transition-DELAY — without this the bars sit blank through four steps then pop. */
+@media (prefers-reduced-motion: reduce) {
+  .js .bars .bar-fill { transform: scaleX(1); transition-delay: 0ms !important; }
+  .js .bars .chip-delta, .js .bars .badge { opacity: 1; transform: none; transition-delay: 0ms !important; }
+}
+
+@media (max-width: 720px) {
+  /* Below this the fixed diagnostic slot costs more than the alignment buys. */
+  .matrix-diag { display: none; }
+  .matrix-topic { flex: 1 1 auto; }
+}
+@media (max-width: 560px) {
+  /* Bar and dot both encode retention, so the bar is the redundant channel to
+   * shed when the row runs out of width; the label and number survive. */
+  .bar { display: none; }
+}

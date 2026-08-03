@@ -197,3 +197,10 @@ html:not(.js) .how-track .beats { min-height: 0; display: flex; flex-direction: 
 html:not(.js) .how-track .beat { position: static; opacity: 1; transform: none; }
 html:not(.js) .how-track .sq { transform: none; }
 html:not(.js) .how-track .check { opacity: 1; }
+
+/* ── Wispr reskin ─────────────────────────────────────────────────
+ * Two things a global token swap can't reach: the hard-coded cursor stroke,
+ * and the panel-recede treatment (drop the saturate() — nothing to desaturate
+ * in a flat palette — and lean on opacity alone). */
+.how-track .cursor path { fill: var(--bg-page); stroke: var(--ink); }
+.how-track .panel[data-active='0'] { filter: none; opacity: 0.4; }

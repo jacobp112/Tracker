@@ -1,0 +1,21 @@
+/* ── Problem band ────────────────────────────────────────────────────
+ * "Studying with AI has no memory." A dark velvet chamber with an oversized
+ * radius. In the dark theme it inverts to cream, so the cream↔dark section
+ * alternation survives in both. Scoped to .band.problem. */
+
+.band.problem {
+  background: var(--wf-ink);
+  color: var(--wf-cream);
+  border-radius: var(--radius-chamber);
+  padding: var(--space-14) var(--space-12);
+  margin-block: var(--space-12);
+}
+.band.problem .band-title { color: var(--wf-cream); }
+.band.problem .band-lead { color: rgba(255, 255, 236, 0.82); }
+
+[data-theme='dark'] .band.problem {
+  background: var(--wf-cream);
+  color: var(--wf-ink);
+}
+[data-theme='dark'] .band.problem .band-title { color: var(--wf-ink); }
+[data-theme='dark'] .band.problem .band-lead { color: #45463d; }

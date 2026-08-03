@@ -124,6 +124,25 @@ a { color: var(--accent); text-decoration: none; }
   box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge);
   padding: var(--space-9);
 }
+/* Card hover eases (the raise itself is per-section — only cards that DO
+ * something lift, see choose.css). */
+.card { transition: box-shadow var(--dur-standard) var(--ease), transform var(--dur-standard) var(--ease); }
+@media (max-width: 560px) { .mock { padding: var(--space-7); } }
+
+/* ── Page gutter & shared band layout ─────────────────────────────
+ * ONE horizontal inset per breakpoint, used by every full-width band and by
+ * the topbar / hero / closer, so everything spanning the page shares one edge.
+ * The .band wrapper + heading/lead type are shared by every band section
+ * (problem, memory, exams, privacy, choose); each section's own file owns its
+ * distinct treatment (the dark chambers, the comparison pair). */
+:root { --page-gutter: var(--space-9); }
+@media (max-width: 720px) { :root { --page-gutter: var(--space-7); } }
+
+.band { max-width: var(--content-max); margin: 0 auto; padding: var(--space-13) var(--page-gutter); }
+.band > .eyebrow { margin-bottom: var(--space-4); }
+.band-title { font-size: var(--fs-title); max-width: 30ch; text-wrap: balance; }
+.band-lead { font-size: var(--fs-section); color: var(--ink-secondary); max-width: 62ch; margin-top: var(--space-6); line-height: 1.55; text-wrap: pretty; }
+@media (max-width: 720px) { .band { padding: var(--space-12) var(--page-gutter); } }
 
 /* ── Buttons — mirror the app's .btn-primary / .btn-secondary. ──── */
 .btn-primary, .btn-secondary {

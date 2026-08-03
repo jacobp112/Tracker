@@ -18,11 +18,25 @@
  */
 import '@fontsource/eb-garamond';
 import '@fontsource-variable/figtree';
+/* Shared, cross-section styles: reset, tokens (via base), the page-gutter /
+ * band / .card / button primitives and reveal system (base), then the Wispr
+ * theme layer (typography, button + card treatment, underline util). */
 import './styles/base.css';
-import './styles/sections.css';
-import './styles/recreations.css';
-import './styles/how.css';
 import './styles/wispr.css';
+
+/* Per-section styles — one file per section, each scoped to its own root so a
+ * change to one section can't affect another, and a section's code is easy to
+ * find. Imported in DOM order, after the shared sheets, so a section's rules
+ * win over any shared default it overrides. */
+import './sections/topbar/topbar.css';
+import './sections/hero/hero.css';
+import './sections/problem/problem.css';
+import './sections/how/how.css';
+import './sections/memory/memory.css';
+import './sections/exams/exams.css';
+import './sections/privacy/privacy.css';
+import './sections/choose/choose.css';
+import './sections/footer/footer.css';
 
 import { createElement, Sun, Moon } from 'lucide';
 import { setupReveals } from './reveal';

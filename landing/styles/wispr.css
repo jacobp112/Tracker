@@ -1,20 +1,22 @@
 /* ══════════════════════════════════════════════════════════════════
-   WISPR FLOW — landing component layer
+   WISPR FLOW — shared theme layer (landing)
    ────────────────────────────────────────────────────────────────
-   The Wispr TOKEN system (palette, fonts, radii, no-shadow, raw
-   palette + --cta) now lives globally in src/styles/tokens.css, shared
-   by the app and this page. This file holds only the pieces a token
-   swap can't reach and that are specific to the marketing page: the
-   floating nav pill, the alternating cream/dark chambers, the
-   comparison card pair, the display-serif heading assignments, the
-   lavender underline accent, and the how-it-works surface recolour.
+   The Wispr TOKEN system (palette, fonts, radii, no-shadow, raw palette
+   + --cta) lives globally in src/styles/tokens.css, shared with the app.
+   This file holds only the CROSS-CUTTING component styling that applies
+   across sections: the display-serif heading assignment, the button
+   treatment, the flat card/mock border, and the lavender underline util.
 
-   Imported LAST in main.ts so equal-specificity rules win the cascade.
+   Section-specific styling lives in landing/sections/<name>/<name>.css
+   (nav pill → topbar, chambers → problem/privacy, comparison pair →
+   choose, the hero mock → hero, and so on), scoped so it can't leak.
+
+   Imported after base.css and before the section files.
    ══════════════════════════════════════════════════════════════════ */
 
 /* ══ TYPOGRAPHY ═══════════════════════════════════════════════════
-   Display serif (EB Garamond, weight 400) on the big editorial headings
-   and the big stat numbers only. Everything smaller stays Figtree. */
+   Display serif (EB Garamond, weight 400) on the big editorial headings and
+   the big stat numbers only; everything smaller stays Figtree. */
 .hero-headline,
 .band-title,
 .mock-greeting,
@@ -25,8 +27,7 @@
   font-weight: 400;
   letter-spacing: -0.02em;
 }
-
-/* Authority from scale: push the hero into true display territory. */
+/* Authority from scale. (Section files own layout; these are type sizes.) */
 .hero-headline {
   font-size: clamp(2.75rem, 5vw + 1rem, 5rem);
   letter-spacing: -0.025em;
@@ -36,7 +37,6 @@
   font-size: clamp(2rem, 2.6vw + 1rem, 3.25rem);
   line-height: 1.04;
 }
-
 /* Card / step / beat sub-headings: Figtree, medium weight. */
 .choose-cards h3,
 .step h3,
@@ -48,7 +48,7 @@
 }
 
 /* ══ BUTTONS ══════════════════════════════════════════════════════
-   2px ink border is non-negotiable; radius 12px; no shadow, ever. */
+   2px ink border, radius 12px, no shadow. */
 .btn-primary,
 .btn-secondary {
   border-width: var(--wf-border-w);
@@ -58,25 +58,10 @@
   font-family: var(--font-sans);
   font-weight: 500;
 }
-.btn-primary {
-  background: var(--cta);
-  color: var(--cta-ink);
-  border-color: var(--border-strong);
-}
-.btn-primary:hover {
-  background: var(--cta-hover);
-  box-shadow: none;
-}
-.btn-secondary {
-  background: var(--bg-page);
-  color: var(--ink);
-  border-color: var(--border-strong);
-}
-.btn-secondary:hover {
-  background: var(--surface-sunken);
-  border-color: var(--border-strong);
-  color: var(--ink);
-}
+.btn-primary { background: var(--cta); color: var(--cta-ink); border-color: var(--border-strong); }
+.btn-primary:hover { background: var(--cta-hover); box-shadow: none; }
+.btn-secondary { background: var(--bg-page); color: var(--ink); border-color: var(--border-strong); }
+.btn-secondary:hover { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--ink); }
 .btn-primary[disabled],
 .btn-secondary[disabled],
 .btn-primary[disabled]:hover,
@@ -87,26 +72,9 @@
   box-shadow: none;
 }
 
-/* ══ FLOATING NAV PILL ════════════════════════════════════════════ */
-.topbar {
-  margin-top: var(--space-6);
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
-  background: var(--bg-page);
-  border: var(--wf-border-w) solid var(--border-strong);
-  border-radius: var(--radius-pill);
-}
-.topnav a:not(.btn-primary):hover { color: var(--ink); }
-
-#theme-toggle {
-  background: transparent;
-  border: var(--wf-border-w) solid var(--border-strong);
-  border-radius: var(--radius-pill);
-}
-#theme-toggle:hover { box-shadow: none; background: var(--surface-sunken); }
-
 /* ══ CARDS & MOCKS ════════════════════════════════════════════════
-   Flat fill + 2px ink border, oversized radius, no shadow — including the
-   hero mock, which was the page's single shadowed element. */
+   Flat fill + 2px ink border, oversized radius, no shadow. Shared by real
+   cards (.card) and the product recreations (.mock). */
 .card,
 .mock {
   background: var(--surface);
@@ -114,118 +82,13 @@
   border-radius: var(--radius-lg);
   box-shadow: none;
 }
-.mock-hero,
-.hero-visual:hover .mock-hero {
-  background: var(--surface);
-  border: var(--wf-border-w) solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: none;
-}
-@media (hover: hover) {
-  .choose-cards .card:hover { box-shadow: none; }
-}
 
-/* ══ ALTERNATING CHAMBERS ═════════════════════════════════════════
-   The problem / privacy bands and the footer become dark velvet rooms with
-   oversized radii. In the dark theme they invert to cream, so the cream↔dark
-   alternation survives in both. */
-.band.problem,
-.band.privacy {
-  background: var(--wf-ink);
-  color: var(--wf-cream);
-  border-radius: var(--radius-chamber);
-  padding: var(--space-14) var(--space-12);
-  margin-block: var(--space-12);
-}
-.band.problem .band-title,
-.band.privacy .band-title { color: var(--wf-cream); }
-.band.problem .band-lead,
-.band.privacy .band-lead,
-.band.privacy .eyebrow { color: rgba(255, 255, 236, 0.82); }
-
-[data-theme='dark'] .band.problem,
-[data-theme='dark'] .band.privacy {
-  background: var(--wf-cream);
-  color: var(--wf-ink);
-}
-[data-theme='dark'] .band.problem .band-title,
-[data-theme='dark'] .band.privacy .band-title { color: var(--wf-ink); }
-[data-theme='dark'] .band.problem .band-lead,
-[data-theme='dark'] .band.privacy .band-lead,
-[data-theme='dark'] .band.privacy .eyebrow { color: #45463d; }
-
-/* ══ COMPARISON CARD PAIR ═════════════════════════════════════════ */
-.choose-cards .card:nth-child(2) {
-  background: var(--wf-ink);
-  color: var(--wf-cream);
-  border-color: var(--wf-ink);
-  border-radius: var(--radius-lg);
-}
-.choose-cards .card:nth-child(2) h3 { color: var(--wf-cream); }
-.choose-cards .card:nth-child(2) p { color: rgba(255, 255, 236, 0.8); }
-.choose-cards .card:nth-child(2) .btn-secondary {
-  background: transparent;
-  border-color: var(--wf-cream);
-  color: var(--wf-cream);
-}
-[data-theme='dark'] .choose-cards .card:nth-child(2) {
-  background: var(--wf-cream);
-  color: var(--wf-ink);
-  border-color: var(--wf-cream);
-}
-[data-theme='dark'] .choose-cards .card:nth-child(2) h3 { color: var(--wf-ink); }
-[data-theme='dark'] .choose-cards .card:nth-child(2) p { color: #45463d; }
-[data-theme='dark'] .choose-cards .card:nth-child(2) .btn-secondary {
-  border-color: var(--wf-ink);
-  color: var(--wf-ink);
-}
-
-/* ══ FOOTER · full-width dark band ════════════════════════════════ */
-.closer {
-  max-width: none;
-  margin-top: var(--space-14);
-  padding-inline: var(--page-gutter);
-  background: var(--wf-ink);
-  color: var(--wf-cream);
-  border-radius: var(--radius-chamber) var(--radius-chamber) 0 0;
-}
-.closer .brand { color: var(--wf-cream); }
-.closer .foot-note { color: rgba(255, 255, 236, 0.7); }
-.closer .btn-secondary {
-  background: transparent;
-  border-color: var(--wf-cream);
-  color: var(--wf-cream);
-}
-[data-theme='dark'] .closer {
-  background: var(--wf-cream);
-  color: var(--wf-ink);
-}
-[data-theme='dark'] .closer .brand { color: var(--wf-ink); }
-[data-theme='dark'] .closer .foot-note { color: #45463d; }
-[data-theme='dark'] .closer .btn-secondary {
-  border-color: var(--wf-ink);
-  color: var(--wf-ink);
-}
-
-/* ══ HAND-DRAWN LAVENDER UNDERLINE ════════════════════════════════ */
+/* ══ HAND-DRAWN LAVENDER UNDERLINE ════════════════════════════════
+   Editorial emphasis under one keyword, matching the CTA colour. */
 .ul-accent {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='10' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M2 6 Q 16 1 30 5 T 58 5 T 88 5 T 118 5' fill='none' stroke='%23f0d7ff' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: 0 100%;
   background-size: 100% 0.32em;
   padding-bottom: 0.12em;
-}
-
-/* ══ HOW-IT-WORKS · reskin only ═══════════════════════════════════
-   The scrub logic is untouched; only its surfaces recolour. These fix the two
-   things a token swap can't reach: the hard-coded cursor stroke, and the
-   panel-recede treatment (drop desaturate() — nothing to desaturate in a flat
-   palette — and lean on opacity alone). */
-.how-track .cursor path {
-  fill: var(--bg-page);
-  stroke: var(--ink);
-}
-.how-track .panel[data-active='0'] {
-  filter: none;
-  opacity: 0.4;
 }

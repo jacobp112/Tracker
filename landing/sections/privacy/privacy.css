@@ -1,0 +1,22 @@
+/* ── Privacy band ────────────────────────────────────────────────────
+ * "No accounts. No backend. No network. Just your file." A dark velvet
+ * chamber, inverting to cream in the dark theme. Scoped to .band.privacy. */
+
+.band.privacy {
+  background: var(--wf-ink);
+  color: var(--wf-cream);
+  border-radius: var(--radius-chamber);
+  padding: var(--space-14) var(--space-12);
+  margin-block: var(--space-12);
+}
+.band.privacy .band-title { color: var(--wf-cream); }
+.band.privacy .band-lead,
+.band.privacy .eyebrow { color: rgba(255, 255, 236, 0.82); }
+
+[data-theme='dark'] .band.privacy {
+  background: var(--wf-cream);
+  color: var(--wf-ink);
+}
+[data-theme='dark'] .band.privacy .band-title { color: var(--wf-ink); }
+[data-theme='dark'] .band.privacy .band-lead,
+[data-theme='dark'] .band.privacy .eyebrow { color: #45463d; }

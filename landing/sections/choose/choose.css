@@ -1,0 +1,35 @@
+/* ── Choose band ─────────────────────────────────────────────────────
+ * "Two ways in." The spec's comparison card pair: a cream card + a dark card,
+ * side by side. In the dark theme the dark card inverts to cream. Scoped to
+ * .choose-cards. */
+
+.choose-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-7); margin-top: var(--space-9); }
+.choose-cards .card { display: flex; flex-direction: column; gap: var(--space-5); align-items: flex-start; }
+.choose-cards h3 { font-size: var(--fs-section); }
+.choose-cards p { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.5; margin: 0; flex: 1; }
+/* Hover-lift stays scoped to the cards that DO something — these carry a CTA.
+ * hover:hover so touch never gets a stuck lifted state. */
+@media (hover: hover) {
+  .choose-cards .card:hover { transform: translateY(-2px); box-shadow: none; }
+}
+
+/* ── Comparison pair: second card is the dark chamber ── */
+.choose-cards .card:nth-child(2) {
+  background: var(--wf-ink); color: var(--wf-cream);
+  border-color: var(--wf-ink); border-radius: var(--radius-lg);
+}
+.choose-cards .card:nth-child(2) h3 { color: var(--wf-cream); }
+.choose-cards .card:nth-child(2) p { color: rgba(255, 255, 236, 0.8); }
+.choose-cards .card:nth-child(2) .btn-secondary {
+  background: transparent; border-color: var(--wf-cream); color: var(--wf-cream);
+}
+[data-theme='dark'] .choose-cards .card:nth-child(2) {
+  background: var(--wf-cream); color: var(--wf-ink); border-color: var(--wf-cream);
+}
+[data-theme='dark'] .choose-cards .card:nth-child(2) h3 { color: var(--wf-ink); }
+[data-theme='dark'] .choose-cards .card:nth-child(2) p { color: #45463d; }
+[data-theme='dark'] .choose-cards .card:nth-child(2) .btn-secondary {
+  border-color: var(--wf-ink); color: var(--wf-ink);
+}
+
+@media (max-width: 768px) { .choose-cards { grid-template-columns: 1fr; } }

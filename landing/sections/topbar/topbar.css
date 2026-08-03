@@ -1,0 +1,81 @@
+/* ── Topbar / floating nav pill ────────────────────────────────────
+ * The header: brand (animated cairn stones), nav links, theme toggle, CTA.
+ * Everything here is scoped to .topbar / .topnav / .brand / #theme-toggle,
+ * so it can't touch any other section. */
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: var(--content-max); margin: var(--space-6) auto 0;
+  /* Floating cream pill with the signature 2px ink edge. */
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
+  background: var(--bg-page);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+.topnav { display: flex; align-items: center; gap: var(--space-7); }
+.topnav a:not(.btn-primary) {
+  font-size: var(--fs-nav); color: var(--ink-secondary); text-decoration: none;
+  transition: color var(--dur-standard) var(--ease);
+}
+.topnav a:not(.btn-primary):hover { color: var(--ink); }
+
+.brand {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  font-size: 18px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink);
+  text-decoration: none; transition: opacity var(--dur-standard) var(--ease);
+}
+.brand:hover { opacity: 0.8; }
+/* Stones inherit the wordmark's --ink via currentColor, so they flip with the theme. */
+.brand-mark { fill: currentColor; flex-shrink: 0; }
+
+/* ── Cairn stones settle in ────────────────────────────────────────
+ * The mark is a cairn: four stones, largest at the bottom, settling into place
+ * from the ground up. DOM order of the ellipses is bottom-to-top, so nth-child
+ * IS the stacking order. fill-box scopes each transform to its own bounding box
+ * (SVG shapes transform around the viewport origin by default). */
+.brand-mark ellipse {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.js .reveal.is-visible .brand-mark ellipse {
+  /* `backwards` holds each stone at keyframe-0 through its delay. */
+  animation: cairn-stone 420ms var(--ease) backwards;
+}
+.js .reveal.is-visible .brand-mark ellipse:nth-child(2) { animation-delay: 70ms; }
+.js .reveal.is-visible .brand-mark ellipse:nth-child(3) { animation-delay: 140ms; }
+.js .reveal.is-visible .brand-mark ellipse:nth-child(4) { animation-delay: 210ms; }
+
+@keyframes cairn-stone {
+  from { opacity: 0; transform: translateY(-5px) scaleX(0.55); }
+  60%  { opacity: 1; transform: translateY(0)    scaleX(1.06); }
+  to   { opacity: 1; transform: none; }
+}
+/* tokens.css zeroes transition-duration, but this is an ANIMATION it doesn't
+ * touch — disable it explicitly under reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal.is-visible .brand-mark ellipse { animation: none; opacity: 1; transform: none; }
+}
+
+#theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0; border-radius: var(--radius-pill);
+  background: transparent; border: var(--wf-border-w) solid var(--border-strong); color: var(--ink);
+  cursor: pointer; transition: background var(--dur-standard) var(--ease);
+}
+#theme-toggle:hover { background: var(--surface-sunken); }
+#theme-toggle svg { width: 17px; height: 17px; }
+/* The toggle's icon/label are painted by main.ts; it does nothing without them,
+ * and the head script adds .js before first paint — so this only matches with
+ * JS genuinely off. */
+html:not(.js) #theme-toggle { display: none; }
+
+/* The top bar runs out of room on a narrow viewport: the anchor links are the
+ * expendable part (both destinations repeat further down and are a scroll away).
+ * Brand, theme and the primary CTA stay. */
+@media (max-width: 600px) {
+  .topnav a:not(.btn-primary) { display: none; }
+  .topnav { gap: var(--space-5); }
+}
+@media (max-width: 720px) {
+  .topnav { gap: var(--space-5); }
+}

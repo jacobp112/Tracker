@@ -1,0 +1,24 @@
+/* ── Footer / closer ─────────────────────────────────────────────────
+ * A full-width dark band with a rounded top, cream brand + CTAs. Inverts to
+ * cream in the dark theme. Scoped to .closer. */
+
+.closer {
+  max-width: none; margin-top: var(--space-14);
+  padding: var(--space-13) var(--page-gutter);
+  text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-6);
+  background: var(--wf-ink); color: var(--wf-cream);
+  border-radius: var(--radius-chamber) var(--radius-chamber) 0 0;
+}
+.closer .cta-row { justify-content: center; }
+.closer .brand { color: var(--wf-cream); }
+.closer .foot-note { font-size: var(--fs-caption); color: rgba(255, 255, 236, 0.7); margin: 0; }
+.closer .btn-secondary {
+  background: transparent; border-color: var(--wf-cream); color: var(--wf-cream);
+}
+
+[data-theme='dark'] .closer { background: var(--wf-cream); color: var(--wf-ink); }
+[data-theme='dark'] .closer .brand { color: var(--wf-ink); }
+[data-theme='dark'] .closer .foot-note { color: #45463d; }
+[data-theme='dark'] .closer .btn-secondary { border-color: var(--wf-ink); color: var(--wf-ink); }
+
+@media (max-width: 720px) { .closer { padding: var(--space-12) var(--page-gutter); } }
