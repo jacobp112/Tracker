@@ -1,0 +1,75 @@
+/* ══════════════════════════════════════════════════════════════════
+   WISPR FLOW — app component layer
+   ────────────────────────────────────────────────────────────────
+   The token system in tokens.css re-themes the app's palette, type and
+   radii automatically. This file fixes the component-level things a token
+   swap can't reach when the aesthetic goes flat: surfaces that relied on a
+   shadow (now removed) or a translucent-white fill for separation need a
+   2px ink border instead; a few components hard-code a blue accent or the
+   old gradient and must be re-pointed to the lavender/teal system.
+
+   Imported LAST in main.tsx so equal-specificity rules win the cascade.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Cards ────────────────────────────────────────────────────────
+   --surface is now cream (≈ the page), --shadow-card is none, and the inset
+   --edge highlight is transparent — so a card had nothing separating it from
+   the canvas. The ink border is the separation now. */
+.card {
+  border: var(--wf-border-w) solid var(--border-strong);
+  box-shadow: none;
+}
+.card:not(.hero-stat):hover {
+  box-shadow: none;
+}
+
+/* ── Primary button ───────────────────────────────────────────────
+   Was `background: var(--accent-gradient)` (now `none`) with white text and a
+   blue glow — i.e. invisible white-on-cream. Lavender fill, ink text, ink
+   border, no shadow. */
+.btn-primary {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border: var(--wf-border-w) solid var(--border-strong);
+  box-shadow: none;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--cta-hover);
+  filter: none;
+  box-shadow: none;
+}
+
+/* ── Course switcher icon ─────────────────────────────────────────
+   Hard-coded blue gradient + blue glow → flat lavender, ink glyph, ink edge. */
+.course-icon {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border: var(--wf-border-w) solid var(--border-strong);
+  box-shadow: none;
+}
+
+/* ── Floating surfaces: separation from an ink border, not a shadow ──
+   The ⌘K palette, toasts, and the spark tooltip all leaned on a drop shadow
+   over the page. Flat palette has none — give the palette a real ink edge and
+   drop the blur (a no-op over the opaque cream surface anyway). The dark
+   tooltip/toast fills read on their own; just shed the shadow. */
+.palette {
+  background: var(--surface);
+  border: var(--wf-border-w) solid var(--border-strong);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.toast,
+.spark-readout {
+  box-shadow: none;
+}
+
+/* ── Display serif on page titles ─────────────────────────────────
+   The editorial voice: big page-level headings in EB Garamond. Kept to h1 so
+   dense UI labels (h3/h4 in cards) stay in Figtree. */
+h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}

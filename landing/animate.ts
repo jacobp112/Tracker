@@ -24,8 +24,23 @@ export type AnimateDeps = {
   createObserver?: (cb: IntersectionObserverCallback) => { observe(el: Element): void };
 };
 
+/** The target number for a count-up, tolerant of a textContent fallback like
+ * "74%". data-countup is always set today, so the fallback is unreachable — but
+ * a bare Number("74%") is NaN, a trap for whoever adds the fourth count-up. */
+export function countUpTarget(el: HTMLElement): number {
+  const raw = el.dataset.countup ?? el.textContent ?? '0';
+  return Number(String(raw).replace(/[^\d.-]/g, ''));
+}
+
+/** The value a count-up should paint before it starts animating: its start (0)
+ * with the suffix, so the pre-animation frame never shows the final markup value
+ * and then snaps back to 0. */
+function renderCountUpStart(el: HTMLElement): void {
+  el.textContent = `0${el.dataset.countupSuffix ?? ''}`;
+}
+
 function driveCountUp(el: HTMLElement, deps: AnimateDeps): void {
-  const to = Number(el.dataset.countup ?? el.textContent ?? '0');
+  const to = countUpTarget(el);
   const suffix = el.dataset.countupSuffix ?? '';
   const dur = Number(el.dataset.countupDur ?? 900);
   const render = (n: number) => {
@@ -91,5 +106,12 @@ export function setupDataAnimations(groups: Iterable<Element>, deps: AnimateDeps
       }
     }
   });
-  list.forEach((g) => observer.observe(g));
+  list.forEach((g) => {
+    // Paint the start value in the same tick we register the observer. Otherwise
+    // a group already in view (the hero ring) sits at its markup value until the
+    // observer fires, then jumps to 0 to begin counting — a visible flash
+    // backwards. Setting 0 now makes it count up from 0 cleanly instead.
+    g.querySelectorAll<HTMLElement>('[data-countup]').forEach(renderCountUpStart);
+    observer.observe(g);
+  });
 }

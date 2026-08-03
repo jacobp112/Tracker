@@ -6,10 +6,13 @@
    were byte-for-byte identical. Only deltas below. */
 
 /* ── Overview hero (the page's single hero shadow) ─────────────────── */
-.hero-visual {
-  perspective: 1000px;
-}
-
+/* The tilt is back: cursor-light.ts eases --tilt-x/--tilt-y once per frame and
+ * this card rotates to them. `perspective` lives on .hero-visual (the parent),
+ * `transform-style: preserve-3d` here so the ring can float off the face. The
+ * transform transition is deliberately absent — the JS already smooths the
+ * rotation, and a CSS transition on top of that reads as drag. Only box-shadow
+ * animates in CSS (on .hero-visual:hover below), so that's all it keeps. */
+.hero-visual { perspective: 1000px; }
 .mock-hero {
   position: relative;
   z-index: 1;
@@ -17,14 +20,39 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   /* Layered elevation shadow: soft blur + sharp outline */
-  box-shadow: 
+  box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 12px 32px -8px rgba(0, 0, 0, 0.08),
     0 0 0 1px color-mix(in srgb, var(--ink) 4%, transparent);
   padding: var(--space-7) var(--space-8);
-  will-change: transform;
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease;
   transform-style: preserve-3d;
+  /* Order matters: X then Y. Defaults to 0deg, so no-JS, touch and
+     reduced-motion all get a flat card with no rule of their own. */
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+}
+
+/* Promote a layer only while the pointer is actually over the card.
+   cursor-light.ts adds .is-live on pointerenter and removes it once the
+   card has eased back to flat. */
+.mock-hero.is-live {
+  will-change: transform;
+}
+
+/* Floats the ring a little off the card face so it parallaxes slightly more
+   than the surface it sits on — the one thing preserve-3d above is for.
+   Everything else on the card stays in-plane deliberately: translateZ on the
+   small row text is visibly blurry. */
+.mock-hero .ring {
+  transform: translateZ(18px);
+}
+
+/* Belt and braces. setupCursorLight is already a no-op under reduced motion so
+   --tilt-x/y never get written, but a flat card should not depend on a JS gate
+   holding. */
+@media (prefers-reduced-motion: reduce) {
+  .mock-hero { transform: none; }
+  .mock-hero .ring { transform: none; }
 }
 
 .hero-visual:hover .mock-hero {
@@ -96,7 +124,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  cursor: pointer;
+  /* No cursor:pointer. These rows live inside a role="img" element, they hover
+   * and translate, and they do nothing — a pointer cursor promised a click that
+   * isn't there. The hover tint stays for liveliness; the false affordance goes.
+   * (sections.css: "a card that responds and then does nothing is a small lie".) */
   padding: var(--space-3) var(--space-3);
   margin-left: calc(var(--space-3) * -1);
   margin-right: calc(var(--space-3) * -1);
@@ -115,7 +146,10 @@
 }
 
 .mock-topic { font-size: var(--fs-row); color: var(--ink); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mock-pct { font-size: var(--fs-row); color: var(--ink-secondary); }
+/* min-width + right-align match .matrix-pct. The three hero percentages line up
+ * today only because they're all 3 characters; a two-digit value would jump the
+ * column. Pin it like the matrix does. */
+.mock-pct { font-size: var(--fs-row); color: var(--ink-secondary); min-width: 34px; text-align: right; flex-shrink: 0; }
 
 .mock-dot {
   width: 8px;
@@ -167,19 +201,89 @@
  * .bars group root (#mock-matrix). No-JS shows the final width via the base
  * rule above; reduced motion snaps (tokens.css zeroes the durations, and the
  * @media block below forces the final state even before the class lands). */
-.js .bars .bar-fill { width: 0; }
-.js .bars.is-filled .bar-fill { width: var(--w); transition: width var(--dur-data) var(--ease); }
-.js .bars .chip-delta, .js .bars .badge { opacity: 0; transform: translateY(2px); }
+/* width -> transform: scaleX(). Animating `width` runs layout every frame, for
+   four bars on the widest card on the page; scaleX runs on the compositor. The
+   base `.bar-fill { width: var(--w) }` rule above is untouched, so no-JS still
+   renders the final bar. */
+.js .bars .bar-fill {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.js .bars.is-filled .bar-fill {
+  transform: scaleX(1);
+  transition: transform var(--dur-data) var(--ease);
+}
+
+/* Row order is the stagger, on --reveal-step (the page's reveal-stagger token,
+   so the whole sequence retimes from one value). nth-child on .matrix-row
+   rather than an --i per bar: the markup already encodes the order. Adding a
+   fifth row needs one more line here and nothing else. */
+.js .bars.is-filled .matrix-row:nth-child(2) .bar-fill { transition-delay: var(--reveal-step); }
+.js .bars.is-filled .matrix-row:nth-child(3) .bar-fill { transition-delay: calc(var(--reveal-step) * 2); }
+.js .bars.is-filled .matrix-row:nth-child(4) .bar-fill { transition-delay: calc(var(--reveal-step) * 3); }
+
+/* The delta chip and diagnostic badges are a conclusion, so they land after the
+   last bar rather than on a hardcoded 0.25s that no longer relates to anything. */
+.js .bars .chip-delta,
+.js .bars .badge {
+  opacity: 0;
+  transform: translateY(2px);
+}
 .js .bars.is-filled .chip-delta,
 .js .bars.is-filled .badge {
-  opacity: 1; transform: none;
-  transition: opacity var(--dur-standard) var(--ease) 0.25s, transform var(--dur-standard) var(--ease) 0.25s;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-standard) var(--ease) calc(var(--reveal-step) * 4),
+    transform var(--dur-standard) var(--ease) calc(var(--reveal-step) * 4);
 }
+
+/* tokens.css collapses transition-DURATION under reduced motion but not
+   transition-DELAY — the same trap the decay curve hit. Without this the bars
+   would sit blank through four steps of dead time and then pop. */
 @media (prefers-reduced-motion: reduce) {
-  .js .bars .bar-fill { width: var(--w); }
-  .js .bars .chip-delta, .js .bars .badge { opacity: 1; transform: none; }
+  .js .bars .bar-fill {
+    transform: scaleX(1);
+    transition-delay: 0ms !important;
+  }
+  .js .bars .chip-delta,
+  .js .bars .badge {
+    opacity: 1;
+    transform: none;
+    transition-delay: 0ms !important;
+  }
 }
 .matrix-pct { font-size: var(--fs-secondary); color: var(--ink-secondary); flex-shrink: 0; min-width: 34px; text-align: right; }
+
+/* Bar-track alignment — a correctness fix, not a style one. .bar was flex:1 and
+   the diagnostic badge is optional, so a badge-less row's track absorbed the
+   badge's width (~505px vs ~450px). The fills are percentages OF THE TRACK, so
+   mismatched tracks make the percentages incomparable — and comparing topics is
+   the whole job of this chart. A fixed .matrix-diag slot (present even when
+   empty) keeps every track identical; the bar becomes the only flexing element,
+   so its length is the only thing carrying meaning. */
+.matrix-diag {
+  /* Wide enough for "knowledge gap", the longest label. */
+  flex: 0 0 116px;
+  display: flex;
+  justify-content: flex-end;
+}
+.matrix-topic {
+  flex: 0 1 260px;
+  min-width: 0;
+}
+.bar {
+  flex: 1 1 auto;
+  min-width: 40px;
+}
+@media (max-width: 720px) {
+  /* Below this the fixed slot costs more than the alignment buys. Shed the
+     diagnostic entirely rather than shrink it — same reasoning as dropping the
+     bar at 560px. */
+  .matrix-diag { display: none; }
+  .matrix-topic { flex: 1 1 auto; }
+}
 
 /* ── Validation card ──────────────────────────────────────────────
  * This sits INSIDE .step, which is a .card. It was wearing the full card
@@ -205,19 +309,219 @@
 .tag-success { color: var(--success); background: var(--success-soft); }
 .tag-danger { color: var(--danger); background: var(--danger-soft); }
 
-/* Exams decay curve (research §h.6, §j.14): a retention-decay line that draws on
- * scroll-into-view. Default (incl. no-JS) shows it drawn; JS empties it first,
- * then animate.ts adds .is-drawn to redraw. tokens.css snaps under reduced motion. */
-.decay-curve { margin-top: var(--space-9); max-width: 360px; }
-.decay-svg { width: 100%; height: auto; overflow: visible; }
-.decay-base { stroke: var(--border-strong); stroke-width: 1; fill: none; }
-.decay-path {
-  stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; fill: none;
-  stroke-dasharray: 100; stroke-dashoffset: 0;
+/* ── Exams decay curve ─────────────────────────────────────────────
+ * Draw order is a sequence because the content is a sequence: decay, then
+ * the event, then the shallower decay it causes. The counterfactual fades
+ * in last so it reads as commentary on the solid line rather than a fourth
+ * competing stroke. */
+
+.decay-curve {
+  /* Was 360px, which made the page's most interesting idea its smallest
+     element. It is now the section's visual, not a footnote to it. */
+  max-width: 620px;
+  margin: var(--space-10) 0 0;
+  /* Positioning context for the replay control in the top-right corner. */
+  position: relative;
 }
-.js .decay-curve:not(.is-drawn) .decay-path { stroke-dashoffset: 100; }
-.decay-curve.is-drawn .decay-path {
-  stroke-dashoffset: 0; transition: stroke-dashoffset var(--dur-draw) var(--ease);
+
+/* Replay control — top-right corner, clear of the test-event label (top-centre)
+ * and the endpoint readouts (mid-right). Hidden without JS: it does nothing then.
+ * main.ts additionally hides it under reduced motion. */
+.decay-replay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: color var(--dur-standard) var(--ease), box-shadow var(--dur-standard) var(--ease);
+}
+.decay-replay:hover { color: var(--accent); box-shadow: var(--shadow-card); }
+.decay-replay svg { width: 15px; height: 15px; }
+html:not(.js) .decay-replay { display: none; }
+
+.decay-svg {
+  width: 100%;
+  height: auto;
+  /* Endpoint readouts sit outside the plot; keep the ring's glow unclipped. */
+  overflow: visible;
+}
+
+/* ── Frame ─────────────────────────────────────────────────────── */
+.decay-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.decay-axis {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+/* Every number on this page is mono and tabular; axis ticks are numbers. */
+.decay-tick,
+.decay-endpoint {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  /* body sets 'tnum' 0 and it inherits — same re-enable .mono-num needs. */
+  font-feature-settings: 'tnum' 1;
+  font-size: 9px;
+  fill: var(--ink-muted);
+}
+
+.decay-event-label,
+.decay-endpoint-cap {
+  font-family: var(--font-sans);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  fill: var(--ink-muted);
+}
+
+.decay-event {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* ── The curves ────────────────────────────────────────────────── */
+.decay-seg,
+.decay-jump {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0; /* default, incl. no-JS: fully drawn */
+}
+.decay-seg { stroke-width: 2.5; }
+.decay-jump { stroke-width: 2; }
+
+.decay-ghost {
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 4 4;
+  opacity: 0.45; /* default, incl. no-JS */
+}
+
+.decay-node {
+  fill: var(--accent);
+  /* Reads as a node on the line rather than a blob over it. */
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.decay-endpoint.is-tested {
+  fill: var(--accent);
+  font-weight: 700;
+  font-size: 11px;
+}
+.decay-endpoint.is-untested {
+  font-size: 11px;
+}
+
+.decay-caption {
+  margin: var(--space-5) 0 0;
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  max-width: 52ch;
+}
+.decay-caption em {
+  font-style: normal;
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+/* ── Draw sequence ─────────────────────────────────────────────────
+ * JS present, before scroll-in: empty the strokes and hide the annotation.
+ * animate.ts adds .is-drawn to the group root on intersection.
+ *
+ * Offsets are expressed against --dur-draw so the whole sequence retimes
+ * from one token. */
+.decay-curve { --step: var(--dur-draw); }
+
+.js .decay-curve:not(.is-drawn) .decay-seg,
+.js .decay-curve:not(.is-drawn) .decay-jump { stroke-dashoffset: 100; }
+
+.js .decay-curve:not(.is-drawn) .decay-ghost,
+.js .decay-curve:not(.is-drawn) .decay-node,
+.js .decay-curve:not(.is-drawn) .decay-event,
+.js .decay-curve:not(.is-drawn) .decay-event-label,
+.js .decay-curve:not(.is-drawn) .decay-endpoint,
+.js .decay-curve:not(.is-drawn) .decay-endpoint-cap { opacity: 0; }
+
+.js .decay-curve.is-drawn .decay-seg,
+.js .decay-curve.is-drawn .decay-jump {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--dur-draw) var(--ease);
+}
+/* 1. steep decay  2. the event rises  3. the shallower decay it caused */
+.js .decay-curve.is-drawn .decay-seg-a { transition-delay: 0ms; }
+.js .decay-curve.is-drawn .decay-jump  { transition-delay: calc(var(--step) * 0.9); }
+.js .decay-curve.is-drawn .decay-seg-b { transition-delay: calc(var(--step) * 1.3); }
+
+.js .decay-curve.is-drawn .decay-node {
+  opacity: 1;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 1.2);
+}
+.js .decay-curve.is-drawn .decay-event,
+.js .decay-curve.is-drawn .decay-event-label {
+  opacity: 1;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 0.8);
+}
+/* The counterfactual lands last — it is a comment on the solid line. */
+.js .decay-curve.is-drawn .decay-ghost {
+  opacity: 0.45;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 2.1);
+}
+.js .decay-curve.is-drawn .decay-endpoint,
+.js .decay-curve.is-drawn .decay-endpoint-cap {
+  opacity: 1;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 2.3);
+}
+
+/* tokens.css collapses transition-DURATION under reduced motion. It does not
+ * touch transition-DELAY, so without this block the sequence would still sit
+ * through ~2.3 × --dur-draw of dead time before snapping into place — a
+ * two-second blank chart. Zero the delays and assert the final state. */
+@media (prefers-reduced-motion: reduce) {
+  .js .decay-curve .decay-seg,
+  .js .decay-curve .decay-jump {
+    stroke-dashoffset: 0 !important;
+    transition-delay: 0ms !important;
+  }
+  .js .decay-curve .decay-node,
+  .js .decay-curve .decay-event,
+  .js .decay-curve .decay-event-label,
+  .js .decay-curve .decay-endpoint,
+  .js .decay-curve .decay-endpoint-cap {
+    opacity: 1 !important;
+    transition-delay: 0ms !important;
+  }
+  .js .decay-curve .decay-ghost {
+    opacity: 0.45 !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* ── Small screens ─────────────────────────────────────────────────
+ * The endpoint readouts sit in the 90px of viewBox to the right of the plot.
+ * That is a fixed share of the SVG, so it scales down with everything else —
+ * but below ~420px of rendered width the 8.5px caption type stops being
+ * legible. Drop the captions, keep the two percentages. */
+@media (max-width: 560px) {
+  .decay-endpoint-cap { display: none; }
+  .decay-curve { margin-top: var(--space-8); }
 }
 
 /* Validation FAILURE preview (Step 2): the page asserts strictness; this shows
@@ -283,8 +587,13 @@
   text-transform: lowercase;
 }
 
-/* Matrix & Due List Micro-Interactions */
-.mock-row, .matrix-row {
+/* Matrix row inset hover — the due-list (.mock-row) equivalent already lives
+ * above with its full transition (background-color AND transform). This block
+ * used to also list .mock-row, at equal specificity, re-declaring only a
+ * background-color transition — which silently dropped .mock-row's transform
+ * easing, so its translateX(4px) hover snapped instantly. Scoped to .matrix-row,
+ * which genuinely needs this (its base rule sets no horizontal inset or hover). */
+.matrix-row {
   padding-left: var(--space-3);
   padding-right: var(--space-3);
   margin-left: calc(var(--space-3) * -1);
@@ -293,7 +602,7 @@
   transition: background-color var(--dur-micro) var(--ease);
 }
 
-.mock-row:hover, .matrix-row:hover {
+.matrix-row:hover {
   background-color: var(--surface-sunken);
 }
 

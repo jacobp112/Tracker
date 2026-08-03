@@ -34,6 +34,55 @@
 /* Stones inherit the wordmark's --ink via currentColor, so they flip with the theme. */
 .brand-mark { fill: currentColor; flex-shrink: 0; }
 
+/* ── Cairn stones settle in ────────────────────────────────────────
+   The mark is a cairn: four stones, largest at the bottom. They settle into
+   place from the ground up. No markup change — both .brand-mark instances sit
+   inside a .reveal (.topbar.reveal, .closer.reveal), so the header stack plays
+   on load and the footer stack plays on scroll-in. The DOM order of the
+   ellipses is already bottom-to-top (cy 24, 18, 12.5, 7.5), so nth-child IS the
+   stacking order. */
+
+/* SVG shapes transform around the whole viewport origin by default, which would
+   swing the stones in an arc from the top-left. fill-box scopes each to its own
+   bounding box. Without these two lines the animation is nonsense, not subtle. */
+.brand-mark ellipse {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Under .js the parent .reveal is already opacity:0 before it is revealed, so
+   this only governs how the stones arrive, never whether the mark exists. No-JS
+   gets the finished mark with no rule of its own. */
+.js .reveal.is-visible .brand-mark ellipse {
+  /* `backwards` holds each stone at the keyframe-0 state through its delay;
+     without it, stones 2-4 flash their final position and then jump back. */
+  animation: cairn-stone 420ms var(--ease) backwards;
+}
+
+.js .reveal.is-visible .brand-mark ellipse:nth-child(2) { animation-delay: 70ms; }
+.js .reveal.is-visible .brand-mark ellipse:nth-child(3) { animation-delay: 140ms; }
+.js .reveal.is-visible .brand-mark ellipse:nth-child(4) { animation-delay: 210ms; }
+
+/* Drops in, spreads, and overshoots a hair horizontally before settling — a
+   stone landing and taking its weight. The overshoot is scaleX only; a vertical
+   bounce reads as cartoonish at 18px. */
+@keyframes cairn-stone {
+  from { opacity: 0; transform: translateY(-5px) scaleX(0.55); }
+  60%  { opacity: 1; transform: translateY(0)    scaleX(1.06); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* tokens.css zeroes transition-duration, but this is an ANIMATION — a property
+   it does not touch. Left alone, the full 420ms sequence would still play under
+   reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal.is-visible .brand-mark ellipse {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 #theme-toggle {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; padding: 0; border-radius: var(--radius-pill);
@@ -117,7 +166,7 @@ html:not(.js) #theme-toggle { display: none; }
 .prompt-block code {
   font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--ink-secondary);
   line-height: 1.5; min-width: 0;
-  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
 .prompt-note { grid-column: 1; font-size: var(--fs-micro); color: var(--ink-muted); margin: 0; }
 .copy-status { grid-column: 2; font-size: var(--fs-micro); font-weight: 600; color: var(--success); text-align: right; }

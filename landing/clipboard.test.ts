@@ -31,4 +31,13 @@ describe('copyText', () => {
     const ok = await copyText('x', {} as Pick<Navigator, 'clipboard'>);
     expect(ok).toBe(false);
   });
+
+  it('removes the throwaway textarea even when execCommand throws', async () => {
+    vi.spyOn(document, 'execCommand').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    const ok = await copyText('x', {} as Pick<Navigator, 'clipboard'>);
+    expect(ok).toBe(false);
+    expect(document.querySelector('textarea')).toBeNull(); // no leak on the throw path
+  });
 });

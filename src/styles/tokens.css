@@ -1,19 +1,59 @@
 /*
- * Design tokens — Document 3 v0.3 §2, re-based on the approved mockup.
- * Single source of truth for colour, type, spacing, radius, elevation and motion.
- * No component may hardcode a raw value; everything references these named custom properties.
+ * Design tokens — the single source of truth for colour, type, spacing,
+ * radius, elevation and motion. No component may hardcode a raw value;
+ * everything references these named custom properties. Shared by BOTH the
+ * app (src/main.tsx → global.css) and the landing (landing/styles/base.css),
+ * so a change here re-themes the whole product at once.
  *
- * Theme model: `:root` / [data-theme="light"] holds light, [data-theme="dark"]
- * overrides. The attribute is written before first paint by the inline script
- * in index.html, so there is no FOUC (§2.3).
+ * ── Wispr Flow theme ──────────────────────────────────────────────
+ * Cream broadsheet / warm-dim chambers. Authority from serif scale, not
+ * weight; flat fills + ink borders instead of shadows; oversized pebble
+ * radii. Two WARM variants keyed on [data-theme]: light is the cream
+ * broadsheet, dark is a warm espresso dim (not a stark black). The
+ * attribute is written before first paint by the inline script in each
+ * index.html, so there is no FOUC.
+ *
+ * Palette discipline note: the source system has no error colour. "Rejected"
+ * / danger states need to read as negative, so --danger is a warm brick red —
+ * the one deliberate off-palette concession, kept warm to sit with the cream.
  */
 
-:root {
-  /* ── 2.4 Typography ──────────────────────────────────────────── */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+/* ── Metric-matched fallback faces ────────────────────────────────
+ * Sized so the fallback occupies roughly the same box as the web font while
+ * it loads (font-display: swap). The real faces are registered by Fontsource
+ * (@fontsource/eb-garamond, @fontsource-variable/figtree), imported from each
+ * app entry. local() names installed faces only — CSS keywords never resolve
+ * via local(). Hand-approximated; verify with capsize if either face changes. */
+@font-face {
+  font-family: 'Figtree Fallback';
+  src: local('Arial'), local('Helvetica');
+  size-adjust: 100%;
+  ascent-override: 95%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'EB Garamond Fallback';
+  src: local('Georgia'), local('Times New Roman');
+  size-adjust: 93%;
+  ascent-override: 90%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
 
-  /* type scale (px, per §2.4 observed scale) */
+:root {
+  /* ── Typography ───────────────────────────────────────────────
+   * Figtree (geometric sans) carries body, UI, and every measured number —
+   * there is no monospace face; tabular alignment comes from Figtree's 'tnum'
+   * figures. EB Garamond (serif, weight 400) is the display face, reserved
+   * for large editorial headings and big stat numbers. */
+  --font-sans: 'Figtree Variable', 'Figtree Fallback', 'Figtree', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Figtree Variable', 'Figtree Fallback', 'Figtree', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'EB Garamond', 'EB Garamond Fallback', Georgia, 'Times New Roman', serif;
+
+  /* type scale (px) */
   --fs-hero: 76px;
   --fs-title: 32px;
   --fs-prop: 22px;
@@ -29,27 +69,28 @@
   --fs-micro: 11px;
   --fs-nano: 10px;
 
-  /* ── 2.6 Motion ──────────────────────────────────────────────── */
+  /* ── Motion ──────────────────────────────────────────────────── */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  
+
   --dur-micro: 0.15s;
   --dur-standard: 0.25s;
   --dur-theme: 0.4s;
   --dur-reveal: 0.6s;
   --dur-data: 0.9s;
   --dur-draw: 1.1s;
-  
+
   --reveal-step: 70ms;
 
-  /* ── 2.5 Radius — nested: outer always larger than inner ─────── */
-  --radius-pill: 980px;
-  --radius-lg: 20px;
-  --radius-md: 14px;
-  --radius-sm: 10px;
-  --radius-chip: 6px;
+  /* ── Radius — oversized pebble geometry, nested outer > inner ─── */
+  --radius-pill: 9999px;
+  --radius-lg: 32px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-chip: 8px;
+  --radius-chamber: 56px; /* dark/cream section chambers */
 
-  /* ── 2.5 Spacing — strict 4pt/8pt rhythm (Doc 3 §9 v0.6) ─────── */
+  /* ── Spacing — strict 4pt/8pt rhythm ─────────────────────────── */
   --space-1: 2px;
   --space-2: 4px;
   --space-3: 6px;
@@ -67,146 +108,156 @@
 
   /* ── Layout parameters ───────────────────────────────────────── */
   --sidebar-width: 264px;
-  --content-max: 1180px;
-  --noise-alpha: 0.04; /* landing depth grain (research §e); composite-only overlay */
-  
-  /* Height of the <768px bottom tab bar. Consumed both by .tab's min-height and
-   * by the content padding that keeps the last row clear of it, so the two can
-   * never drift apart. */
+  --content-max: 1200px;
+  --noise-alpha: 0.03;
   --bottom-tab-height: 56px;
+
+  /* ── Raw Wispr palette (theme-independent) ───────────────────── */
+  --wf-cream: #ffffeb;
+  --wf-ink: #1a1a1a;
+  --wf-stone: #e4e4d0;
+  --wf-fog: #8a8a80;
+  --wf-lavender: #f0d7ff;
+  --wf-teal: #034f46;
+  --wf-ember: #ffa946;
+  --wf-white: #ffffff;
+
+  /* Primary-action fill (lavender) is a FILL, never a text colour. Separate
+   * from --accent (the readable interactive/text accent). */
+  --cta: var(--wf-lavender);
+  --cta-ink: var(--wf-ink);
+  --cta-hover: #e6c6ff;
+
+  /* Signature border weight. One token so every 2px ink edge agrees. */
+  --wf-border-w: 2px;
 }
 
-/* ---------- LIGHT (default) ---------- */
+/* ---------- LIGHT · the cream broadsheet (default) ---------- */
 :root,
 [data-theme='light'] {
   color-scheme: light;
 
   /* Inks */
-  --ink: #1d1d1f;
-  --ink-secondary: #6e6e73;
-  --ink-muted: #696c73; /* Evaluated: clears AA on --surface and --bg-page */
+  --ink: #1a1a1a;
+  --ink-secondary: #45463d;
+  --ink-muted: #77776a;
 
   /* Surfaces & Backgrounds */
-  --bg-page: #f5f5f7;
-  /* Opaque: the sidebar/topbar dropped backdrop-filter for scroll performance,
-   * and the topbar is sticky with content scrolling behind it — a translucent
-   * chrome without blur would let that content ghost through. */
-  --bg-sidebar: #fbfbfa;
-  --surface: rgba(255, 255, 255, 0.75);
-  --surface-sunken: rgba(245, 245, 245, 0.6);
+  --bg-page: #ffffeb;
+  --bg-sidebar: #f7f6e2;
+  --surface: #ffffeb;
+  --surface-sunken: #f0efd9;
 
-  /* Borders & Edges */
-  --border: rgba(0, 0, 0, 0.05);
-  --border-strong: rgba(0, 0, 0, 0.1);
-  --edge: rgba(255, 255, 255, 0.95);
-  --edge-strong: #ffffff;
+  /* Borders & Edges — --border-strong is the signature ink edge; --edge is
+   * transparent because the flat palette has no glass inset highlight. */
+  --border: rgba(26, 26, 26, 0.14);
+  --border-strong: #1a1a1a;
+  --edge: transparent;
+  --edge-strong: transparent;
 
-  /* Brand Accents */
-  --accent: #0062c6;
-  --accent-2: #5e5ce6;
-  --accent-soft: #eaf2fe;
-  --accent-ring: rgba(0, 113, 227, 0.35);
-  --accent-gradient: linear-gradient(135deg, #0080ff, #5e5ce6);
+  /* Brand Accents — teal reads as the interactive/text accent on cream. */
+  --accent: #034f46;
+  --accent-2: #034f46;
+  --accent-soft: rgba(3, 79, 70, 0.10);
+  --accent-ring: rgba(3, 79, 70, 0.30);
+  --accent-gradient: none;
 
-  /* §2.2(a) Semantic states */
-  --success: #1d7a3a;
-  --success-soft: #e9f6ec;
-  --warning: #8f5a00;
-  --warning-soft: #fbf1de;
-  --danger: #c0362a;
-  --danger-soft: #fbebe9;
+  /* Semantic states */
+  --success: #034f46;
+  --success-soft: rgba(3, 79, 70, 0.10);
+  --warning: #8a5a12;
+  --warning-soft: rgba(239, 154, 48, 0.16);
+  --danger: #a83e2b;
+  --danger-soft: rgba(168, 62, 43, 0.10);
 
-  --track: #ececec;
+  --track: #e4e4d0;
 
-  /* Categorical error types (Doc 3 §5.4) */
-  --cat-conceptual: #6b6f8c;
-  --cat-procedural: #64748b;
-  --cat-careless: #9a8352;
-  --cat-knowledge_gap: #a06b78;
+  /* Categorical error types */
+  --cat-conceptual: #034f46;
+  --cat-procedural: #45463d;
+  --cat-careless: #a83e2b;
+  --cat-knowledge_gap: #8a5a12;
 
-  /* §2.2(b) Sequential ramp */
-  --cell-0: #eef0f2;
-  --cell-1: #cfe2fb;
-  --cell-2: #8ec0f6;
-  --cell-3: #4a97ef;
-  --cell-4: #0071e3;
+  /* Sequential ramp — cream → teal */
+  --cell-0: #eeeed6;
+  --cell-1: #d3e4d3;
+  --cell-2: #93c3b2;
+  --cell-3: #3f8e7d;
+  --cell-4: #034f46;
 
-  /* Elevation */
-  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03), 0 12px 32px rgba(0, 0, 0, 0.04);
-  --shadow-card-hover: 0 8px 16px rgba(0, 0, 0, 0.04), 0 24px 48px rgba(0, 0, 0, 0.08);
-  --shadow-hero: 0 1px 2px rgba(0, 113, 227, 0.06), 0 22px 46px rgba(0, 113, 227, 0.13),
-    0 4px 14px rgba(0, 0, 0, 0.04);
+  /* Elevation — deliberately shadowless; separation is fill + ink border. */
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-hero: none;
 
-  /* Wash layers */
-  --wash-1: rgba(0, 113, 227, 0.055);
-  --wash-2: rgba(94, 92, 230, 0.05);
+  /* Wash layers — no gradients in the editorial system. */
+  --wash-1: transparent;
+  --wash-2: transparent;
 }
 
-/* ---------- DARK ---------- */
+/* ---------- DARK · warm espresso dim ---------- */
 [data-theme='dark'] {
   color-scheme: dark;
 
   /* Inks */
-  --ink: #f5f5f7;
-  --ink-secondary: #a1a1a6;
-  --ink-muted: #9296a0;
+  --ink: #ffffeb;
+  --ink-secondary: #d4d1c0;
+  --ink-muted: #9a9589;
 
-  /* Surfaces & Backgrounds */
-  --bg-page: #000000;
-  /* Opaque — see the light-theme note; same reasoning in dark. */
-  --bg-sidebar: #1c1c1e;
-  --surface: rgba(30, 30, 32, 0.55);
-  --surface-sunken: rgba(20, 20, 22, 0.45);
+  /* Surfaces & Backgrounds — warm near-black, not stark #000. */
+  --bg-page: #1e1b15;
+  --bg-sidebar: #262219;
+  --surface: #262219;
+  --surface-sunken: #2e2a1f;
 
   /* Borders & Edges */
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
-  --edge: rgba(255, 255, 255, 0.08);
-  --edge-strong: rgba(255, 255, 255, 0.12);
+  --border: rgba(255, 255, 236, 0.14);
+  --border-strong: #ffffeb;
+  --edge: transparent;
+  --edge-strong: transparent;
 
-  /* Brand Accents */
-  --accent: #0a84ff;
-  --accent-2: #7d7aff;
-  --accent-soft: rgba(10, 132, 255, 0.16);
-  --accent-ring: rgba(10, 132, 255, 0.45);
-  --accent-gradient: linear-gradient(135deg, #0080ff, #5e5ce6);
+  /* Brand Accents — lavender reads as the accent on the dim canvas. */
+  --accent: #f0d7ff;
+  --accent-2: #f0d7ff;
+  --accent-soft: rgba(240, 215, 255, 0.14);
+  --accent-ring: rgba(240, 215, 255, 0.40);
+  --accent-gradient: none;
 
-  /* §2.2(a) Semantic states */
-  --success: #4fd07a;
-  --success-soft: rgba(48, 160, 90, 0.18);
-  --warning: #f0b03e;
-  --warning-soft: rgba(180, 120, 20, 0.2);
-  --danger: #ff6a5c;
-  --danger-soft: rgba(200, 60, 50, 0.2);
+  /* Semantic states */
+  --success: #7bd3a6;
+  --success-soft: rgba(123, 211, 166, 0.16);
+  --warning: #ffb454;
+  --warning-soft: rgba(255, 180, 84, 0.16);
+  --danger: #f0876a;
+  --danger-soft: rgba(240, 135, 106, 0.16);
 
-  --track: #3a3a3c;
+  --track: rgba(255, 255, 236, 0.12);
 
-  /* Categorical error types (Doc 3 §5.4) */
-  --cat-conceptual: #9aa0c4;
-  --cat-procedural: #94a3b8;
-  --cat-careless: #c4b088;
-  --cat-knowledge_gap: #c99caa;
+  /* Categorical error types */
+  --cat-conceptual: #7bd3a6;
+  --cat-procedural: #d4d1c0;
+  --cat-careless: #f0876a;
+  --cat-knowledge_gap: #ffb454;
 
-  /* §2.2(b) Sequential ramp */
-  --cell-0: #212123;
-  --cell-1: #1e3a5f;
-  --cell-2: #1f5aa8;
-  --cell-3: #1878e0;
-  --cell-4: #0a84ff;
+  /* Sequential ramp — warm dim → teal */
+  --cell-0: #2a251c;
+  --cell-1: #3a4a3f;
+  --cell-2: #4f7d6e;
+  --cell-3: #6fb39c;
+  --cell-4: #7bd3a6;
 
-  /* Elevation */
-  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.6), 0 12px 32px rgba(0, 0, 0, 0.5);
-  --shadow-card-hover: 0 8px 16px rgba(0, 0, 0, 0.7), 0 24px 48px rgba(0, 0, 0, 0.6);
-  --shadow-hero: 0 1px 2px rgba(0, 0, 0, 0.5), 0 22px 46px rgba(0, 0, 0, 0.5),
-    0 0 0 0.5px rgba(125, 122, 255, 0.12);
+  /* Elevation — shadowless in dark too. */
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-hero: none;
 
   /* Wash layers */
-  --wash-1: rgba(10, 132, 255, 0.1);
-  --wash-2: rgba(125, 122, 255, 0.09);
+  --wash-1: transparent;
+  --wash-2: transparent;
 }
 
 /*
- * prefers-reduced-motion (§2.6) — hard requirement.
+ * prefers-reduced-motion — hard requirement.
  * Reduced motion must never leave content hidden: .reveal is forced visible
  * and bars jump straight to their final width rather than animating there.
  */
@@ -214,22 +265,17 @@
   *,
   *::before,
   *::after {
-    /* 
-     * Using 0.01ms instead of 'none' ensures that JavaScript 'transitionend' 
-     * and 'animationend' events still fire for components relying on state engines,
-     * preventing UI freezes while fully satisfying reduced motion constraints.
-     */
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  
+
   .reveal {
     opacity: 1 !important;
     transform: none !important;
   }
-  
+
   .bar-fill {
     width: var(--w) !important;
   }

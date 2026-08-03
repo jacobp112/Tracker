@@ -19,8 +19,13 @@ function legacyCopy(text: string): boolean {
   // their place in the document entirely; restored in the finally block.
   const previouslyFocused = document.activeElement as HTMLElement | null;
 
+  // Declared out here so the finally can always remove it. Previously ta.remove()
+  // sat on the success path only, so a throw from execCommand left the 1px
+  // readonly textarea in the DOM permanently.
+  let ta: HTMLTextAreaElement | undefined;
+
   try {
-    const ta = document.createElement('textarea');
+    ta = document.createElement('textarea');
     ta.value = text;
 
     // readOnly keeps iOS from raising the software keyboard for a field the
@@ -46,12 +51,11 @@ function legacyCopy(text: string): boolean {
     ta.select();
     // iOS ignores select() on a readOnly field; an explicit range works.
     ta.setSelectionRange(0, text.length);
-    const ok = document.execCommand('copy');
-    ta.remove();
-    return ok;
+    return document.execCommand('copy');
   } catch {
     return false;
   } finally {
+    ta?.remove();
     previouslyFocused?.focus?.();
   }
 }

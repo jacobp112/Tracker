@@ -4,30 +4,31 @@
  * CSS IMPORT ORDER IS LOAD-BEARING. Do not reorder without reading this.
  *
  *   1. The two Fontsource packages register the @font-face rules for the
- *      self-hosted variable faces. Without these imports NOTHING declares a
- *      web font and the whole page renders in the fallback stack — silently,
- *      and convincingly, on macOS.
- *   2. base.css inlines tokens.css, which declares --font-sans / --font-mono
- *      pointing at the family names 'Inter' and 'JetBrains Mono'.
- *   3. fonts.css re-points those two tokens at the names Fontsource actually
- *      registers ('Inter Variable', 'JetBrains Mono Variable').
- *
- * Steps 2 and 3 both write :root, so specificity ties and the LAST declaration
- * wins. fonts.css after base.css, always — the other way round, tokens.css
- * overwrites the aliases and every .mono-num on the page (the hero ring, every
- * retention percentage) drops to SF Mono.
+ *      self-hosted variable faces (EB Garamond + Figtree). Without these
+ *      imports NOTHING declares a web font and the whole page renders in the
+ *      fallback stack — silently, and convincingly, on macOS. The app entry
+ *      (src/main.tsx) imports the same two packages.
+ *   2. base.css inlines the shared tokens.css, which declares --font-display /
+ *      --font-sans / --font-mono pointing at the registered family names, plus
+ *      the metric-matched @font-face fallbacks. tokens.css is the single source
+ *      of truth for the Wispr theme, shared with the app.
+ *   3. wispr.css (last) holds only the landing-specific component overrides
+ *      (nav pill, chambers, comparison pair, display-serif headings) and wins
+ *      the cascade over the section stylesheets by loading after them.
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/jetbrains-mono';
+import '@fontsource/eb-garamond';
+import '@fontsource-variable/figtree';
 import './styles/base.css';
-import './fonts.css';
 import './styles/sections.css';
 import './styles/recreations.css';
+import './styles/how.css';
+import './styles/wispr.css';
 
 import { createElement, Sun, Moon } from 'lucide';
 import { setupReveals } from './reveal';
 import { setupDataAnimations } from './animate';
 import { setupCursorLight } from './cursor-light';
+import { setupHowSequence } from './scrub';
 import { copyText } from './clipboard';
 import { currentTheme, setupThemeToggle } from './theme-toggle';
 
@@ -65,6 +66,11 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
  */
 const toggle = document.getElementById('theme-toggle');
 if (toggle) {
+  // The single, un-gated <meta name="theme-color">. render() keeps its content
+  // pointed at the live --bg-page, so the browser chrome follows the user's
+  // chosen theme rather than only their OS preference. Reading the computed
+  // token (rather than hardcoding #f5f5f7 / #000000) means the two can't drift.
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
   const render = (theme: 'light' | 'dark'): void => {
     // Name the outcome, not the widget: "Switch to dark theme", not "Toggle".
     const label = `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`;
@@ -73,6 +79,10 @@ if (toggle) {
     toggle.replaceChildren(icon);
     toggle.setAttribute('aria-label', label);
     toggle.setAttribute('title', label);
+    // applyTheme has already set data-theme by the time onChange fires, so the
+    // computed value reflects the theme being rendered.
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-page').trim();
+    if (themeMeta && bg) themeMeta.setAttribute('content', bg);
   };
   render(currentTheme());
   setupThemeToggle(toggle, { onChange: render });
@@ -85,12 +95,54 @@ setupReveals(document.querySelectorAll('.reveal'), { reducedMotion });
  * the CSS fallbacks. Each group opts in with [data-animate]. */
 setupDataAnimations(document.querySelectorAll('[data-animate]'), { reducedMotion });
 
+/* ── Replay the decay curve ───────────────────────────────────────
+ * The curve draws itself once when it first scrolls into view (animate.ts adds
+ * .is-drawn). This control runs that sequence again on demand. Two guards:
+ *  - reduced motion has nothing to replay — the sequence is snapped to its end
+ *    state — so the button is hidden rather than left as a dead control;
+ *  - it only replays while the figure is actually on screen: an Intersection
+ *    observer tracks visibility, so a click can't fire a draw the user can't see
+ *    (it would finish before they scrolled back to it).
+ */
+const decayCurve = document.querySelector('.decay-curve');
+const decayReplay = document.getElementById('decay-replay') as HTMLButtonElement | null;
+if (decayCurve && decayReplay) {
+  if (reducedMotion) {
+    decayReplay.hidden = true;
+  } else {
+    let inView = false;
+    if (typeof IntersectionObserver !== 'undefined') {
+      new IntersectionObserver((entries) => {
+        for (const e of entries) inView = e.isIntersecting;
+      }).observe(decayCurve);
+    } else {
+      inView = true; // no observer to gate on — don't disable the control
+    }
+    decayReplay.addEventListener('click', () => {
+      if (!inView) return;
+      decayCurve.classList.remove('is-drawn');
+      // Force a reflow so the class removal commits before it goes back on;
+      // otherwise the browser coalesces the two and the transitions never restart.
+      void (decayCurve as HTMLElement).offsetWidth;
+      decayCurve.classList.add('is-drawn');
+    });
+  }
+}
+
 /* Cursor-aware light on the hero recreation. Desktop fine-pointer only, and off
  * under reduced motion — setupCursorLight is a no-op when disabled, so touch
  * devices never wire pointer listeners. */
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 const heroMock = document.getElementById('mock-overview');
 if (heroMock) setupCursorLight(heroMock, { enabled: finePointer && !reducedMotion });
+
+/* ── How-it-works scrubbed sequence ───────────────────────────────
+ * The #how section is a tall track that pins its stage and scrubs a four-beat
+ * sequence on scroll. setupHowSequence unpins and paints the final frame under
+ * reduced motion or a narrow viewport, matching the CSS/no-JS fallback — so the
+ * story is always fully readable, scrub or not. */
+const howSection = document.getElementById('how');
+if (howSection) setupHowSequence(howSection, { reducedMotion });
 
 /* ── Copy the prompt ──────────────────────────────────────────────
  * Copies the FULL prompt from the <template>, not the visible excerpt. The

@@ -1,4 +1,4 @@
-import { applyTheme, type Theme } from '@/theme/theme';
+import { applyTheme, THEME_STORAGE_KEY, type Theme } from '@/theme/theme';
 
 export function nextTheme(current: Theme): Theme {
   return current === 'dark' ? 'light' : 'dark';
@@ -38,6 +38,17 @@ export function setupThemeToggle(
 ): void {
   button.addEventListener('click', () => {
     const theme = nextTheme(currentTheme());
+    applyTheme(theme);
+    opts.onChange?.(theme);
+  });
+
+  // The theme key is shared with the app on the same origin (see index.html's
+  // pre-paint script). Without this, flipping the theme in the app tab and
+  // returning here leaves the two disagreeing. The storage event fires only in
+  // OTHER tabs, so this never re-fires from our own applyTheme — no loop.
+  window.addEventListener('storage', (e) => {
+    if (e.key !== THEME_STORAGE_KEY || !e.newValue) return;
+    const theme: Theme = e.newValue === 'dark' ? 'dark' : 'light';
     applyTheme(theme);
     opts.onChange?.(theme);
   });

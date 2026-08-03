@@ -26,6 +26,8 @@ describe('setupCursorLight', () => {
     const el = document.createElement('div');
     const add = vi.spyOn(el, 'addEventListener');
     setupCursorLight(el, { enabled: true });
-    expect(add).toHaveBeenCalledWith('pointermove', expect.any(Function));
+    // cursor-light now registers its listeners passively, so a third options
+    // arg rides along with the handler.
+    expect(add).toHaveBeenCalledWith('pointermove', expect.any(Function), expect.anything());
   });
 });

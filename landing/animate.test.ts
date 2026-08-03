@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  clamp01, easeOutCubic, countUpValue, ringOffset, animateGroup, setupDataAnimations,
+  clamp01, easeOutCubic, countUpValue, ringOffset, animateGroup, setupDataAnimations, countUpTarget,
 } from './animate';
 
 describe('pure helpers', () => {
@@ -25,6 +25,16 @@ describe('pure helpers', () => {
     expect(ringOffset(82)).toBe(18);
     expect(ringOffset(100)).toBe(0);
     expect(ringOffset(120)).toBe(0); // clamps
+  });
+  it('countUpTarget prefers data-countup, tolerates a "74%" textContent fallback', () => {
+    const withData = document.createElement('span');
+    withData.dataset.countup = '82';
+    withData.textContent = 'ignored';
+    expect(countUpTarget(withData)).toBe(82);
+
+    const fallback = document.createElement('span'); // no data-countup
+    fallback.textContent = '74%';
+    expect(countUpTarget(fallback)).toBe(74); // not NaN
   });
 });
 
@@ -88,5 +98,13 @@ describe('setupDataAnimations', () => {
     setupDataAnimations([a], { reducedMotion: false, createObserver });
     expect(createObserver).toHaveBeenCalledOnce();
     expect(observe).toHaveBeenCalledWith(a);
+  });
+  it('paints the count-up start value at registration, before the observer fires', () => {
+    // Markup ships the final value ("74%"); a group already in view must not
+    // flash from that to 0 when the observer later fires.
+    const a = group('<span data-countup="74" data-countup-suffix="%">74%</span>');
+    const createObserver = vi.fn(() => ({ observe: vi.fn() }));
+    setupDataAnimations([a], { reducedMotion: false, createObserver });
+    expect(a.querySelector('[data-countup]')!.textContent).toBe('0%');
   });
 });

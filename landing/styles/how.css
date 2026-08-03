@@ -1,0 +1,199 @@
+/* ── How it works: pinned, scrubbed sequence ───────────────────────
+ * A tall track (.how-track) pins a stage (.how-stage). scrub.ts turns scroll
+ * position through the track into --p (0→1) on the stage; every moving part
+ * derives from --p. Nothing hijacks scroll — the stage just holds still while
+ * the page passes it.
+ *
+ * EVERY selector is scoped under .how-track. This section reuses generic class
+ * names that also exist globally (.prompt-block, .val-*, .tag*, .mock-window-bar,
+ * .copy-status), so scoping both stops it leaking outward AND lets it win over
+ * the lower-specificity global rules inside its own subtree — the section owns
+ * its own look regardless of what the rest of the page declares. */
+
+.how-track { position: relative; height: 420vh; }
+.how-stage {
+  position: sticky; top: 0; height: 100vh; min-height: 620px;
+  display: flex; flex-direction: column; justify-content: center;
+  max-width: var(--content-max); margin: 0 auto; padding: 0 var(--page-gutter);
+  overflow: hidden;
+}
+.how-track .stage-head { margin-bottom: var(--space-9); }
+.how-track .stage-head h2 { font-size: clamp(22px, 2.4vw, 30px); letter-spacing: -0.025em; margin: 0; }
+
+.how-track .stage-body {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--space-11); align-items: start;
+}
+
+/* ── Panels ── */
+.how-track .panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-card), inset 0 1px 0 var(--edge);
+  padding: var(--space-7) var(--space-8) var(--space-8);
+  transition: opacity 320ms var(--ease), filter 320ms var(--ease), transform 320ms var(--ease);
+}
+/* The panel not being acted on recedes — "greyed-out screens". */
+.how-track .panel[data-active='0'] { opacity: 0.34; filter: saturate(0.15); transform: scale(0.985); }
+.how-track .mock-window-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: var(--space-4); margin-bottom: var(--space-6); border-bottom: 1px solid var(--border);
+}
+.how-track .window-dots { display: flex; gap: 6px; }
+.how-track .window-dots .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border-strong); }
+.how-track .window-title {
+  font-size: var(--fs-micro); color: var(--ink-muted);
+  letter-spacing: 0.05em; text-transform: lowercase; font-family: var(--font-mono);
+}
+.how-track .panel-body { min-height: 232px; position: relative; }
+
+/* ── Cairn panel: prompt block, then the validation views ── */
+.how-track .prompt-block {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--space-4);
+  align-items: start; background: var(--surface-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-5);
+}
+.how-track .prompt-block code {
+  grid-column: 1; grid-row: 1;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.55;
+  color: var(--ink-secondary); min-width: 0; white-space: pre-wrap;
+}
+/* The Copy button is real here — the pointer presses it in the scrub, and a
+ * visitor can click it too; main.ts copies the full prompt from #prompt-full. */
+.how-track .copy-btn {
+  grid-column: 2; grid-row: 1;
+  font-size: 11.5px; font-weight: 600; color: var(--accent);
+  background: none; border: 1px solid var(--border-strong); border-radius: var(--radius-chip);
+  padding: 3px 9px; font-family: var(--font-sans); cursor: pointer;
+  transition: background 160ms, transform 120ms;
+}
+.how-track .copy-btn:hover { background: var(--accent-soft); }
+/* data-hit is the scrub's synthetic press; keep it distinct from :hover. */
+.how-track .copy-btn[data-hit='1'] { background: var(--accent-soft); transform: scale(0.94); }
+.how-track .copy-status {
+  grid-column: 1 / -1; margin: 0;
+  font-size: var(--fs-micro); font-weight: 600; color: var(--success);
+}
+.how-track .copy-status.is-error { color: var(--danger); font-weight: 500; }
+
+.how-track .view { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity 260ms var(--ease); }
+.how-track .view[data-on='1'] { opacity: 1; pointer-events: auto; }
+.how-track .view-static { position: static; opacity: 1; pointer-events: auto; }
+
+.how-track .val { padding: var(--space-7); border-radius: var(--radius-md); background: var(--surface-sunken); border: 1px solid var(--border); }
+.how-track .val.is-bad { border-left: 3px solid var(--danger); }
+.how-track .val.is-good { border-left: 3px solid var(--success); }
+.how-track .val-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); margin-bottom: var(--space-5); }
+.how-track .val-file { font-size: var(--fs-secondary); font-family: var(--font-mono); }
+.how-track .tag { font-size: var(--fs-micro); font-weight: 600; padding: 2px var(--space-4); border-radius: var(--radius-chip); white-space: nowrap; }
+.how-track .tag-danger { color: var(--danger); background: var(--danger-soft); }
+.how-track .tag-success { color: var(--success); background: var(--success-soft); }
+.how-track .val-field { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--danger); margin-bottom: var(--space-2); }
+.how-track .val-msg { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.45; margin: 0; }
+.how-track .val-counts { display: flex; gap: var(--space-6); margin-bottom: var(--space-5); }
+.how-track .val-count { font-size: var(--fs-secondary); color: var(--ink-secondary); }
+.how-track .val-count b { color: var(--success); }
+
+/* Checks tick through as the scrub advances. --lines is a float; each row
+ * compares its own --i against it, so one variable drives the whole list. */
+.how-track .checks { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6); }
+.how-track .check {
+  display: flex; align-items: center; gap: var(--space-4);
+  font-size: var(--fs-secondary); color: var(--ink-secondary);
+  opacity: clamp(0.18, calc((var(--lines, 0) - var(--i)) * 3), 1);
+}
+.how-track .check i {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  background: var(--track); display: grid; place-items: center;
+  font-size: 9px; font-style: normal; color: #fff; font-weight: 700; transition: background 200ms;
+}
+.how-track .checks[data-done='1'] i { background: var(--success); }
+
+/* ── AI panel: the deliberately anonymous one ── */
+.how-track .ai-input {
+  display: flex; align-items: center; gap: var(--space-4);
+  background: var(--surface-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: var(--space-4) var(--space-6);
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted);
+  margin-bottom: var(--space-7); white-space: nowrap; overflow: hidden;
+}
+.how-track .ai-text { overflow: hidden; text-overflow: ellipsis; }
+.how-track .ai-caret { width: 1.5px; height: 13px; background: var(--accent); flex-shrink: 0; animation: how-blink 1s steps(2) infinite; }
+@keyframes how-blink { 50% { opacity: 0; } }
+
+/* "Squiggly lines" — abstract shape, not fake AI prose. The page must not put
+ * invented words in an AI's mouth; the shape is the point. */
+.how-track .stream { display: flex; flex-direction: column; gap: var(--space-5); }
+.how-track .sq {
+  height: 7px; border-radius: var(--radius-pill); background: var(--track);
+  width: var(--w); transform-origin: left center;
+  transform: scaleX(clamp(0, calc(var(--lines, 0) - var(--i)), 1));
+}
+.how-track .sq.is-accent { background: color-mix(in srgb, var(--accent) 28%, var(--track)); }
+
+.how-track .json { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7; color: var(--ink-secondary); white-space: pre; }
+.how-track .json b { color: var(--accent); font-weight: 400; }
+
+/* ── The pointer ── */
+.how-track .cursor {
+  position: absolute; left: 0; top: 0; width: 20px; height: 20px; z-index: 20;
+  pointer-events: none; opacity: var(--co, 0);
+  transform: translate(var(--cx, 0px), var(--cy, 0px)) scale(var(--cs, 1));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.19)); transition: opacity 200ms linear;
+}
+.how-track .cursor svg { display: block; }
+
+/* ── The travelling clipboard chip ── */
+.how-track .chip-fly {
+  position: absolute; z-index: 15; pointer-events: none;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+  padding: 4px 10px; border-radius: var(--radius-pill);
+  background: var(--accent); color: #fff; white-space: nowrap;
+  opacity: var(--fo, 0); transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(var(--fs, 1));
+  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* ── Captions. Real DOM text, not painted into the animation — a screen reader
+ *    gets all four steps in order regardless of scroll. ── */
+.how-track .beats { margin-top: var(--space-10); position: relative; min-height: 82px; }
+.how-track .beat { position: absolute; inset: 0; opacity: 0; transform: translateY(6px); transition: opacity 260ms var(--ease), transform 260ms var(--ease); }
+.how-track .beat[data-on='1'] { opacity: 1; transform: none; }
+.how-track .beat-n { font-family: var(--font-mono); font-size: var(--fs-micro); font-weight: 700; color: var(--accent); letter-spacing: 0.08em; }
+.how-track .beat h3 { font-size: 17px; margin: 2px 0 4px; letter-spacing: -0.015em; }
+.how-track .beat p { font-size: var(--fs-secondary); color: var(--ink-secondary); margin: 0; max-width: 62ch; }
+
+/* ── Progress rail ── */
+.how-track .rail { margin-top: var(--space-8); height: 2px; background: var(--track); border-radius: 2px; }
+.how-track .rail i { display: block; height: 100%; border-radius: 2px; background: var(--accent); transform: scaleX(var(--p, 0)); transform-origin: left; }
+
+/* ── Fallbacks ────────────────────────────────────────────────────
+ * Reduced motion, narrow screens, and no-JS all get the same thing: no pinning,
+ * all four states stacked and legible. scrub.ts paints the same final frame for
+ * the first two; the no-JS block below stands in when the script never runs. */
+@media (prefers-reduced-motion: reduce), (max-width: 860px) {
+  .how-track { height: auto; }
+  .how-stage { position: static; height: auto; min-height: 0; padding-block: var(--space-12); overflow: visible; }
+  .how-track .stage-body { grid-template-columns: 1fr; gap: var(--space-8); }
+  .how-track .panel[data-active='0'] { opacity: 1; filter: none; transform: none; }
+  .how-track .panel-body { min-height: 0; }
+  .how-track .view { position: static; opacity: 1; pointer-events: auto; margin-top: var(--space-6); }
+  .how-track .cursor, .how-track .chip-fly, .how-track .rail { display: none; }
+  .how-track .beats { min-height: 0; display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-9); }
+  .how-track .beat { position: static; opacity: 1; transform: none; }
+  .how-track .sq { transform: none; }
+  .how-track .check { opacity: 1; }
+}
+
+/* No-JS: the head script adds .js before first paint, so this only matches with
+ * scripting genuinely off. --p and --lines are never set, so unpin and force
+ * every state to its final, legible form — same shape as the media query above. */
+html:not(.js) .how-track { height: auto; }
+html:not(.js) .how-stage { position: static; height: auto; min-height: 0; padding-block: var(--space-12); overflow: visible; }
+html:not(.js) .how-track .stage-body { grid-template-columns: 1fr; gap: var(--space-8); }
+html:not(.js) .how-track .panel[data-active='0'] { opacity: 1; filter: none; transform: none; }
+html:not(.js) .how-track .panel-body { min-height: 0; }
+html:not(.js) .how-track .view { position: static; opacity: 1; pointer-events: auto; margin-top: var(--space-6); }
+html:not(.js) .how-track .cursor, html:not(.js) .how-track .chip-fly, html:not(.js) .how-track .rail { display: none; }
+html:not(.js) .how-track .beats { min-height: 0; display: flex; flex-direction: column; gap: var(--space-8); }
+html:not(.js) .how-track .beat { position: static; opacity: 1; transform: none; }
+html:not(.js) .how-track .sq { transform: none; }
+html:not(.js) .how-track .check { opacity: 1; }

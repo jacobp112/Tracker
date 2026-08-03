@@ -6,10 +6,12 @@
     <title>Cairn — a memory for self-study</title>
     <meta name="description" content="Cairn gives your AI-tutored studying a retention curve and a review schedule — local-first, no accounts, your data in a file you own." />
 
-    <!-- Both themes declared so the browser chrome matches the page in either.
-         Values are --bg-page from tokens.css, light and dark. -->
-    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <!-- One meta, no prefers-color-scheme gate. main.ts rewrites its content
+         from the live --bg-page inside the same render() that owns the toggle's
+         icon and label, so the browser chrome follows the user's chosen theme —
+         not just their OS setting. Starts at the light value; render() runs on
+         load and corrects it to whatever the pre-paint script resolved. -->
+    <meta name="theme-color" content="#ffffeb" />
 
     <!-- TODO: set the real origin before launch. -->
     <link rel="canonical" href="https://example.com/landing/" />
@@ -22,9 +24,11 @@
 
     <!-- Shared-link preview. og.png = 1200×630, still to be produced. -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cairn" />
     <meta property="og:title" content="Cairn — a memory for self-study" />
     <meta property="og:description" content="Your AI can teach you anything. It just can't remember you learned it. Cairn tracks your courses on a real retention curve — local-first, no accounts." />
     <meta property="og:image" content="https://example.com/og.png" />
+    <meta property="og:image:alt" content="Cairn's Overview screen: a course-health ring at 82, with topics due for review on a retention curve." />
     <meta property="og:url" content="https://example.com/landing/" />
     <meta name="twitter:card" content="summary_large_image" />
 
@@ -107,7 +111,10 @@
       </nav>
     </header>
 
-    <main id="main">
+    <!-- tabindex="-1" so the skip link actually moves focus here. Without it,
+         href="#main" scrolls in Safari and Firefox but leaves focus at the top
+         of the document — the exact failure the skip link exists to prevent. -->
+    <main id="main" tabindex="-1">
       <section class="hero" aria-labelledby="hero-headline">
         <div class="hero-copy reveal" style="--i:0">
           <p class="eyebrow">A memory for self-study</p>
@@ -164,33 +171,42 @@
         <p class="band-lead">You study a topic with your AI. A week later, nothing remembers you did.</p>
       </section>
 
-      <section class="band" id="how" aria-labelledby="how-title">
-        <p class="eyebrow reveal">How it works</p>
-        <h2 class="band-title reveal" id="how-title">You bring the AI. Cairn brings the memory.</h2>
-        <div class="steps">
-          <article class="card step reveal" style="--i:0">
-            <span class="step-num mono-num">01</span>
-            <h3>Copy the prompt</h3>
-            <div class="prompt-block">
-              <!--
-                The visible block is an EXCERPT and now says so. Previously it
-                held a literal ellipsis mid-schema and the Copy button copied
-                exactly that — handing the user a truncated prompt their AI
-                cannot satisfy. A silent failure, in a product whose stated
-                principle is that there are none.
+      <!-- How it works: a tall track that pins its stage and scrubs a four-beat
+           sequence on scroll (scrub.ts). Under reduced motion, narrow screens,
+           or no-JS the stage unpins and every state stacks, legibly (how.css).
+           The .beat captions are real DOM text in order, so a screen reader
+           gets all four steps regardless of scroll. -->
+      <section class="how-track" id="how" aria-labelledby="how-title">
+        <div class="how-stage">
+          <div class="stage-head">
+            <p class="eyebrow reveal">How it works</p>
+            <h2 class="reveal" id="how-title">You bring the AI. Cairn brings the <span class="ul-accent">memory</span>.</h2>
+          </div>
 
-                The full prompt lives in the <template> below. clipboard.ts must
-                copy from #prompt-full, not #prompt-text (pass 3 change), and
-                should keep the two in sync from one source at build time if
-                this prompt is also shipped inside the app.
-              -->
-              <code id="prompt-text">You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields.</code>
-              <p class="prompt-note">Excerpt. The button copies the full prompt.</p>
-              <button id="copy-prompt" type="button" aria-describedby="copy-status">Copy</button>
-              <!-- Announced on copy; also gives sighted users confirmation. -->
-              <span class="copy-status" id="copy-status" role="status" aria-live="polite"></span>
-            </div>
-            <template id="prompt-full">You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields. Unknown values must be omitted rather than guessed.
+          <div class="stage-body">
+
+            <!-- ── CAIRN ── -->
+            <div class="panel" data-panel="cairn" data-active="1">
+              <div class="mock-window-bar">
+                <div class="window-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <span class="window-title">cairn — new course</span>
+              </div>
+              <div class="panel-body">
+
+                <div class="view view-static" data-view="prompt" data-on="1">
+                  <div class="prompt-block">
+                    <!-- The visible block is an EXCERPT; the Copy button copies
+                         the FULL prompt from the <template> below via main.ts /
+                         clipboard.ts. Same ids the wiring already expects, so the
+                         real copy feature survives the section's redesign. -->
+                    <code>You are converting a course syllabus into a
+structured JSON object for a study tracker.
+Output only valid JSON. Do not invent dates,
+scores, or difficulty values…</code>
+                    <button class="copy-btn" id="copy-prompt" type="button" data-hit="0">Copy</button>
+                    <span class="copy-status" id="copy-status" role="status" aria-live="polite"></span>
+                  </div>
+                  <template id="prompt-full">You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields. Unknown values must be omitted rather than guessed.
 
 {
   "title": string,
@@ -210,43 +226,105 @@ Rules:
 
 Here is the syllabus:
 [PASTE SYLLABUS HERE]</template>
-            <p>Cairn hands you a ready-made prompt. Paste it into whatever AI you already use, along with your syllabus, session notes, or exam paper.</p>
-          </article>
-          <article class="card step reveal" style="--i:1">
-            <span class="step-num mono-num">02</span>
-            <h3>Paste the result back</h3>
-            <div class="mock mock-validation" id="mock-schema-check" role="img" aria-label="A validation error: the field topics 3 difficulty is not allowed by the schema. Cairn names the field and the fix instead of failing silently.">
-              <div class="val-head">
-                <span class="val-file mono-num">paste.json</span>
-                <span class="tag tag-danger">rejected</span>
+                </div>
+
+                <div class="view" data-view="reject">
+                  <div class="val is-bad" role="img" aria-label="A validation error: the field topics 3 difficulty is not allowed by the schema. Cairn names the field and the fix instead of failing silently.">
+                    <div class="val-head">
+                      <span class="val-file">paste.json</span>
+                      <span class="tag tag-danger">rejected</span>
+                    </div>
+                    <div class="val-field">topics[3].difficulty</div>
+                    <p class="val-msg">is not an allowed field. Remove it — difficulty is measured, not declared. Nothing is saved when a paste doesn't fit.</p>
+                  </div>
+                </div>
+
+                <div class="view" data-view="commit">
+                  <div class="val is-good" role="img" aria-label="A validation preview of syllabus.json, marked committed: 4 sections and 22 topics accepted. Nothing saved until you say so.">
+                    <div class="val-head">
+                      <span class="val-file">syllabus.json</span>
+                      <span class="tag tag-success">committed</span>
+                    </div>
+                    <div class="checks">
+                      <div class="check" style="--i:0"><i aria-hidden="true">✓</i>schema shape</div>
+                      <div class="check" style="--i:1"><i aria-hidden="true">✓</i>no invented dates</div>
+                      <div class="check" style="--i:2"><i aria-hidden="true">✓</i>no extra fields</div>
+                    </div>
+                    <div class="val-counts">
+                      <span class="val-count"><b>4</b>&nbsp;sections</span>
+                      <span class="val-count"><b>22</b>&nbsp;topics</span>
+                    </div>
+                    <p class="val-msg">Written in one atomic step. Nothing saved until you said so.</p>
+                  </div>
+                </div>
+
               </div>
-              <div class="val-error">
-                <span class="val-error-field mono-num">topics[3].difficulty</span>
-                <span class="val-error-msg">is not an allowed field. Remove it — difficulty is measured, not declared.</span>
-              </div>
-              <p class="val-note">Nothing is saved when a paste doesn't fit.</p>
             </div>
-            <p>Paste the AI's JSON into Cairn. It's checked against a strict schema — no extra fields, no invented dates. If something's wrong, you get a plain-English message naming the field and the fix.</p>
-          </article>
-          <article class="card step reveal" style="--i:2">
-            <span class="step-num mono-num">03</span>
-            <h3>Preview, then commit</h3>
-            <!-- role="img" + label, matching mock-overview. Without it a screen
-                 reader reads a bare jumble: "syllabus.json committed 4 sections
-                 22 topics". -->
-            <div class="mock mock-validation" id="mock-validation" role="img" aria-label="A validation preview of syllabus.json, marked committed: 4 sections and 22 topics accepted. Nothing saved until you say so.">
-              <div class="val-head">
-                <span class="val-file mono-num">syllabus.json</span>
-                <span class="tag tag-success">committed</span>
+
+            <!-- ── ANY AI ── -->
+            <div class="panel" data-panel="ai" data-active="0">
+              <div class="mock-window-bar">
+                <div class="window-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <span class="window-title">whichever ai you already use</span>
               </div>
-              <div class="val-counts">
-                <span class="val-count"><span class="check" aria-hidden="true">✓</span><span class="mono-num">4</span>&nbsp;sections</span>
-                <span class="val-count"><span class="check" aria-hidden="true">✓</span><span class="mono-num">22</span>&nbsp;topics</span>
+              <div class="panel-body">
+                <div class="ai-input"><span class="ai-text"></span><i class="ai-caret" aria-hidden="true"></i></div>
+
+                <div class="view view-static" data-view="stream" data-on="1" aria-hidden="true">
+                  <div class="stream">
+                    <div class="sq" style="--i:0; --w:96%"></div>
+                    <div class="sq" style="--i:1; --w:88%"></div>
+                    <div class="sq is-accent" style="--i:2; --w:64%"></div>
+                    <div class="sq" style="--i:3; --w:92%"></div>
+                    <div class="sq" style="--i:4; --w:71%"></div>
+                    <div class="sq is-accent" style="--i:5; --w:83%"></div>
+                    <div class="sq" style="--i:6; --w:58%"></div>
+                  </div>
+                </div>
+
+                <div class="view" data-view="json" aria-hidden="true">
+<div class="json">{
+  <b>"course"</b>: "Linear Algebra",
+  <b>"sections"</b>: [ … 4 ],
+  <b>"topics"</b>: [ … 22 ]
+}</div>
+                </div>
               </div>
-              <p class="val-note">Nothing saved until you say so.</p>
             </div>
-            <p>See exactly what will change. Nothing is saved until you say so — then it's written in one atomic step. Cairn verifies; it never generates.</p>
-          </article>
+
+            <div class="cursor" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20">
+                <path d="M2 1 L2 15.5 L6 12 L8.6 18 L11.4 16.8 L8.8 11 L14 11 Z"
+                      fill="#fff" stroke="#16161a" stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="chip-fly" aria-hidden="true">prompt copied</div>
+          </div>
+
+          <div class="beats">
+            <div class="beat" data-on="1" data-b="0">
+              <span class="beat-n">01</span>
+              <h3>Copy the prompt</h3>
+              <p>Cairn hands you a ready-made prompt. Nothing has left your machine yet.</p>
+            </div>
+            <div class="beat" data-b="1">
+              <span class="beat-n">02</span>
+              <h3>Paste it into whichever AI you already use</h3>
+              <p>Along with your syllabus, session notes, or exam paper. Cairn never calls an AI — you do, in the tool you already trust.</p>
+            </div>
+            <div class="beat" data-b="2">
+              <span class="beat-n">03</span>
+              <h3>Paste the result back</h3>
+              <p>Checked against a strict schema. If something's wrong you get a plain-English message naming the field and the fix — and nothing is saved.</p>
+            </div>
+            <div class="beat" data-b="3">
+              <span class="beat-n">04</span>
+              <h3>Preview, then commit</h3>
+              <p>See exactly what will change. Written in one atomic step. Cairn verifies; it never generates.</p>
+            </div>
+          </div>
+
+          <div class="rail" aria-hidden="true"><i></i></div>
         </div>
       </section>
 
@@ -268,27 +346,28 @@ Here is the syllabus:
             <div class="matrix-row">
               <span class="mock-dot low" aria-hidden="true"></span>
               <span class="matrix-topic">Bayes' theorem</span>
-              <span class="badge cat-conceptual">conceptual</span>
+              <span class="matrix-diag"><span class="badge cat-conceptual">conceptual</span></span>
               <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:41%"></span></span>
               <span class="mono-num matrix-pct">41%</span>
             </div>
             <div class="matrix-row">
               <span class="mock-dot mid" aria-hidden="true"></span>
               <span class="matrix-topic">Eigenvectors</span>
-              <span class="badge cat-procedural">procedural</span>
+              <span class="matrix-diag"><span class="badge cat-procedural">procedural</span></span>
               <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:53%"></span></span>
               <span class="mono-num matrix-pct">53%</span>
             </div>
             <div class="matrix-row">
               <span class="mock-dot high" aria-hidden="true"></span>
               <span class="matrix-topic">Integration by parts</span>
+              <span class="matrix-diag"></span>
               <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:67%"></span></span>
               <span class="mono-num matrix-pct">67%</span>
             </div>
             <div class="matrix-row">
               <span class="mock-dot mid" aria-hidden="true"></span>
               <span class="matrix-topic">Krebs cycle</span>
-              <span class="badge cat-knowledge">knowledge gap</span>
+              <span class="matrix-diag"><span class="badge cat-knowledge">knowledge gap</span></span>
               <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:58%"></span></span>
               <span class="mono-num matrix-pct">58%</span>
             </div>
@@ -299,12 +378,76 @@ Here is the syllabus:
       <section class="band exams reveal" aria-labelledby="exams-title">
         <h2 class="band-title" id="exams-title">Exams don't count more because we say so. They count more because they're evidence.</h2>
         <p class="band-lead">Test events tune each topic's decay rate, so exams outweigh study sessions by evidence — not arbitrary weights.</p>
-        <div class="decay-curve" data-animate aria-hidden="true">
-          <svg viewBox="0 0 320 120" class="decay-svg">
-            <path class="decay-base" d="M8,110 L312,110" />
-            <path class="decay-path" pathLength="100" d="M8,18 C 96,34 150,96 312,104" />
+        <figure
+          class="decay-curve"
+          data-animate
+          role="img"
+          aria-label="A retention curve over 30 days. Retention decays steeply from 100 percent to 42 percent by day 15. A test event on day 15 restores it to 95 percent and flattens the decay: by day 30 the tested topic sits at 74 percent, while the same topic without a test event would have fallen to 19 percent."
+        >
+          <svg class="decay-svg" viewBox="0 0 420 188" xmlns="http://www.w3.org/2000/svg">
+            <!-- Gridlines. 100 / 50 / 0 percent retention. -->
+            <line class="decay-grid" x1="52" y1="24"  x2="330" y2="24"  />
+            <line class="decay-grid" x1="52" y1="90"  x2="330" y2="90"  />
+            <line class="decay-axis" x1="52" y1="156" x2="330" y2="156" />
+
+            <!-- Y scale. -->
+            <text class="decay-tick" x="42" y="27"  text-anchor="end">100</text>
+            <text class="decay-tick" x="42" y="93"  text-anchor="end">50</text>
+            <text class="decay-tick" x="42" y="159" text-anchor="end">0</text>
+
+            <!-- X scale. -->
+            <text class="decay-tick" x="52"  y="172" text-anchor="start">day 0</text>
+            <text class="decay-tick" x="191" y="172" text-anchor="middle">15</text>
+            <text class="decay-tick" x="330" y="172" text-anchor="end">30</text>
+
+            <!-- The test event: a rule through the plot, then the label above it. -->
+            <line class="decay-event" x1="191" y1="24" x2="191" y2="156" />
+            <text class="decay-event-label" x="191" y="14" text-anchor="middle">test event</text>
+
+            <!-- 1. Decay before any evidence. Steep. -->
+            <path class="decay-seg decay-seg-a" pathLength="100"
+                  d="M 52,24 C 76,60 118,86 191,101" />
+
+            <!-- 2. The event itself: retention restored. -->
+            <path class="decay-jump" pathLength="100"
+                  d="M 191,101 L 191,31" />
+
+            <!-- 3. Decay AFTER evidence. Visibly shallower — this is the claim. -->
+            <path class="decay-seg decay-seg-b" pathLength="100"
+                  d="M 191,31 C 224,38 275,50 330,58" />
+
+            <!-- The counterfactual: same topic, no test event. The GAP between this
+                 and the solid line at day 30 is the whole argument, so it is drawn
+                 rather than described. -->
+            <path class="decay-ghost"
+                  d="M 191,101 C 224,110 275,124 330,131" />
+
+            <circle class="decay-node" cx="191" cy="31" r="3.5" />
+
+            <!-- Endpoint readouts. -->
+            <text class="decay-endpoint is-tested"   x="338" y="55">74%</text>
+            <text class="decay-endpoint-cap"         x="338" y="67">tested</text>
+            <text class="decay-endpoint is-untested" x="338" y="128">19%</text>
+            <text class="decay-endpoint-cap"         x="338" y="140">untested</text>
           </svg>
-        </div>
+
+          <!-- Replays the draw sequence. Wired in main.ts, which also hides it
+               when JS is off (it can't work) or under reduced motion (there is
+               no animation to replay), and only lets it fire while the figure is
+               on screen. Kept between </svg> and <figcaption> so the caption
+               stays the figure's last child. -->
+          <button type="button" id="decay-replay" class="decay-replay" aria-label="Replay the animation" title="Replay">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+          </button>
+
+          <figcaption class="decay-caption">
+            Retention (%) over 30 days. A test event resets the curve
+            <em>and</em> flattens what follows.
+          </figcaption>
+        </figure>
       </section>
 
       <section class="band privacy reveal" id="privacy" aria-labelledby="privacy-title">
