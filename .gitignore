@@ -21,3 +21,7 @@ seed.html
 *.xlsx
 docs/Landing/AutoClicker.exe
 docs/Landing/ACLib/
+
+# Local environment variables (secrets and per-machine config)
+.env
+.env.local
