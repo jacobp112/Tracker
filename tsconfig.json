@@ -21,12 +21,13 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": false,
 
-    "types": ["vitest/globals", "@testing-library/jest-dom"],
+    "types": ["vitest/globals", "@testing-library/jest-dom", "node"],
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@server/*": ["server/*"]
     }
   },
-  "include": ["src", "tests", "landing", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "tests", "landing", "server", "api", "vite.config.ts", "vitest.config.ts"]
 }
