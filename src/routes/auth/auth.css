@@ -47,6 +47,30 @@
   box-shadow: 0 0 0 3px #f0d7ff;
 }
 
+/* Corner logo lockup (MOCKUP lines 30–38). */
+.auth-corner-logo {
+  position: absolute;
+  top: 56px;
+  left: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 3;
+}
+
+.auth-corner-logo__text {
+  font-family: 'EB Garamond', serif;
+  font-size: 24px;
+  color: #1a1a1a;
+  letter-spacing: -0.5px;
+}
+
+/* 160ms cross-fade wrapping the card content on every mode switch
+   (MOCKUP `contentWrapStyle`, lines 445–448). */
+.auth-content-wrap {
+  transition: opacity 160ms ease;
+}
+
 /* Shared two-panel row (MOCKUP line 40). */
 .auth-shell {
   display: flex;
@@ -558,4 +582,38 @@
   font-size: 15px;
   color: #77776a;
   margin: 0;
+}
+
+/* ---- DevStateNav (Task 13) --------------------------------------------- */
+
+/* Fixed bottom-left pill jump bar, dev-only (import.meta.env.DEV). */
+.auth-devnav {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  background: rgba(26, 26, 26, 0.9);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.auth-devnav button {
+  border: none;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #ffffeb;
+  background: #3a3a34;
+  cursor: pointer;
+}
+
+.auth-devnav button:hover {
+  background: #034f46;
 }

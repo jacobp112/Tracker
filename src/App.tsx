@@ -10,6 +10,7 @@ import type { PaletteAction } from '@/engine/palette';
 import { AppShell, type CourseSummary } from '@/shell/AppShell';
 import { AddIcon } from '@/shell/icons';
 import { AddCourse } from '@/routes/AddCourse';
+import { Auth } from '@/routes/Auth';
 import { AddExam } from '@/routes/AddExam';
 import { ComponentShowcase } from '@/routes/ComponentShowcase';
 import { CourseDashboard } from '@/routes/CourseDashboard';
@@ -171,6 +172,7 @@ function StudyIndex({ store }: { store: Store }) {
 
 function AppInner() {
   const route = useRoute();
+  if (route.name === 'auth') return <Auth signup={route.signup} />;
   const {
     store,
     commitValue,
