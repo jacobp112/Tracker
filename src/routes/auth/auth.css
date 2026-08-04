@@ -1,0 +1,145 @@
+/*
+ * Seed stylesheet for the Cairn auth page (MOCKUP: "Cairn Login.dc.html").
+ * Palette:
+ *   cream    #ffffeb   ink    #1a1a1a   lavender #f0d7ff
+ *   forest   #034f46   ember  #ffa946   fog      #8a8a80
+ *   stone    #e4e4d0   muted  #77776a
+ */
+
+/* Grain overlay, verbatim data-URI noise texture (MOCKUP line 17). */
+.cairn-noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* Spinner rotation used by the "Connecting to Google…" state (MOCKUP line 18/113). */
+@keyframes cairn-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Page shell (MOCKUP line 21): full-height cream canvas, content centered. */
+.auth-page {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'Figtree', sans-serif;
+  background: #ffffeb;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 64px;
+}
+
+.auth-page input::placeholder {
+  color: #8a8a80;
+}
+
+.auth-page input:focus {
+  outline: none;
+  border-color: #1a1a1a;
+  box-shadow: 0 0 0 3px #f0d7ff;
+}
+
+/* Shared two-panel row (MOCKUP line 40). */
+.auth-shell {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  max-width: 1080px;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Left dark brand panel (MOCKUP line 42). */
+.auth-brand {
+  box-sizing: border-box;
+  flex: 1.05;
+  min-width: 340px;
+  background: #1a1a1a;
+  border-radius: 36px 18px 36px 18px;
+  padding: 48px 40px;
+  position: relative;
+  transform: rotate(-1deg);
+  box-shadow: 10px 12px 0 rgba(3, 79, 70, 0.35);
+  margin-right: -10px;
+  z-index: 1;
+}
+
+.auth-brand__badge {
+  display: inline-block;
+  background: #ffa946;
+  color: #1a1a1a;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  margin-bottom: 28px;
+  transform: rotate(-5deg);
+}
+
+.auth-brand__headline {
+  font-family: 'EB Garamond', serif;
+  font-weight: 400;
+  font-size: 58px;
+  line-height: 0.98;
+  letter-spacing: -1.5px;
+  color: #ffffeb;
+  margin: 0 0 24px;
+}
+
+.auth-brand__headline-stone {
+  position: relative;
+  display: inline-block;
+}
+
+.auth-brand__squiggle {
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+}
+
+.auth-brand__illustration {
+  display: block;
+  margin: 8px 0 32px;
+}
+
+.auth-brand__tagline {
+  font-family: 'Figtree', sans-serif;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #d4d1c0;
+  margin: 0 0 40px;
+  max-width: 420px;
+}
+
+.auth-brand__copyright {
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  color: #77776a;
+  margin: 0;
+}
+
+/* Right card, seeded here for later tasks to build on (MOCKUP line 66). */
+.auth-card {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 340px;
+  background: #ffffeb;
+  border: 3px solid #1a1a1a;
+  border-radius: 18px 36px 18px 36px;
+  padding: 40px 36px;
+  position: relative;
+  transform: rotate(0.8deg);
+  box-shadow: -6px 8px 0 #1a1a1a;
+  z-index: 2;
+}
