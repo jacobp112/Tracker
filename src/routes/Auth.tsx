@@ -289,6 +289,11 @@ export function Auth({ signup }: { signup: boolean }): JSX.Element {
           <div className="auth-content-wrap" style={{ opacity: animating ? 0 : 1 }}>
             {screen}
           </div>
+          {(mode === 'login' || mode === 'signup') && (
+            <a className="auth-skip" href="/#/">
+              Continue without an account →
+            </a>
+          )}
         </div>
       </div>
 

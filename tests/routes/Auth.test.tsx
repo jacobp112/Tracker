@@ -44,4 +44,10 @@ describe('Auth page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'onboarding' }));
     expect(screen.getByRole('heading', { name: 'Make it yours' })).toBeInTheDocument();
   });
+
+  it('offers an escape hatch to the app without an account', () => {
+    render(<Auth signup={false} />);
+    const link = screen.getByRole('link', { name: /Continue without an account/ });
+    expect(link).toHaveAttribute('href', '/#/');
+  });
 });

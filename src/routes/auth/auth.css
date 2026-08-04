@@ -168,6 +168,22 @@
   z-index: 2;
 }
 
+/* Escape hatch — "Continue without an account" (Task 15, review flag F2).
+   Login is optional; this lets a visitor skip straight into the app. */
+.auth-skip {
+  display: block;
+  margin-top: 18px;
+  text-align: center;
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  color: #8a8a80;
+  text-decoration: none;
+}
+
+.auth-skip:hover {
+  text-decoration: underline;
+}
+
 /* ---- AuthForm (Task 9) ------------------------------------------------ */
 
 /* Pill tab row (MOCKUP lines 71–74, 428–439). */
