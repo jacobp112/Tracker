@@ -438,3 +438,44 @@
   text-decoration: none;
   font-weight: 500;
 }
+
+/* ---- Onboarding (Task 11) --------------------------------------------- */
+
+/* "Choose an avatar" label (MOCKUP line 167). */
+.auth-onboarding__label {
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin: 0 0 10px;
+}
+
+/* 3-col avatar grid (MOCKUP line 168). */
+.auth-onboarding__avatars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+/* Avatar button base (MOCKUP lines 418–422). */
+.auth-onboarding__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  border: 3px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/* Selected-avatar ring, verbatim from MOCKUP lines 423–427. */
+.auth-onboarding__avatar--selected {
+  box-shadow: 4px 4px 0 #1a1a1a;
+  transform: translate(-2px, -2px);
+}
