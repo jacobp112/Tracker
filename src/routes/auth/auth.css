@@ -366,3 +366,75 @@
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* ---- VerifyCode (Task 10) --------------------------------------------- */
+
+/* Back link (MOCKUP line 197). */
+.auth-verify__back {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 18px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #77776a;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Stone icon (MOCKUP lines 199–205). */
+.auth-verify__icon {
+  display: block;
+  margin-bottom: 20px;
+}
+
+/* Six code boxes (MOCKUP lines 210–216, box style line 495). */
+.auth-verify__boxes {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.auth-verify__box {
+  width: 44px;
+  height: 56px;
+  text-align: center;
+  border: 2px solid #1a1a1a;
+  font-family: 'Figtree', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  background: #ffffeb;
+  color: #1a1a1a;
+}
+
+.auth-verify__box--a {
+  border-radius: 14px 6px 14px 6px;
+}
+
+.auth-verify__box--b {
+  border-radius: 6px 14px 6px 14px;
+}
+
+/* Code error line (MOCKUP lines 218–220). */
+.auth-verify__error {
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  color: #b5432f;
+  margin: 0 0 14px;
+  font-weight: 500;
+}
+
+/* Resend row (MOCKUP line 225). */
+.auth-verify__resend-row {
+  font-family: 'Figtree', sans-serif;
+  font-size: 14px;
+  color: #77776a;
+  margin: 16px 0 0;
+}
+
+.auth-verify__resend {
+  color: #034f46;
+  text-decoration: none;
+  font-weight: 500;
+}
