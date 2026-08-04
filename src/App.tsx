@@ -172,7 +172,6 @@ function StudyIndex({ store }: { store: Store }) {
 
 function AppInner() {
   const route = useRoute();
-  if (route.name === 'auth') return <Auth signup={route.signup} />;
   const {
     store,
     commitValue,
@@ -267,7 +266,16 @@ function AppInner() {
 
 // ToastProvider wraps AppInner rather than living inside it, so screens (and
 // their overlays) can raise toasts via useToast.
+//
+// The auth/non-auth split happens here, before the provider tree, so it's a
+// component swap (mount/unmount) rather than a conditional early-return
+// inside AppInner. AppInner is remounted fresh on every auth<->non-auth
+// transition, so its hooks are never skipped on a re-render of the same
+// instance — an early return inside AppInner would violate the Rules of
+// Hooks the moment `useRoute` re-renders it in place on `hashchange`.
 export default function App() {
+  const route = useRoute();
+  if (route.name === 'auth') return <Auth signup={route.signup} />;
   return (
     <ToastProvider>
       <AppInner />

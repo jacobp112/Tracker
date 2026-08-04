@@ -192,10 +192,13 @@ export function Auth({ signup }: { signup: boolean }): JSX.Element {
 
   async function handleResendCode() {
     if (pending) return;
+    setPending(true);
     try {
       await sendCode(email);
     } catch (e) {
       setVerifyError(messageOf(e));
+    } finally {
+      setPending(false);
     }
   }
 
