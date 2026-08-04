@@ -143,3 +143,226 @@
   box-shadow: -6px 8px 0 #1a1a1a;
   z-index: 2;
 }
+
+/* ---- AuthForm (Task 9) ------------------------------------------------ */
+
+/* Pill tab row (MOCKUP lines 71–74, 428–439). */
+.auth-tabs {
+  display: flex;
+  background: #f0efd9;
+  border: 2px solid #1a1a1a;
+  border-radius: 9999px;
+  padding: 4px;
+  margin-bottom: 36px;
+}
+
+.auth-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: #1a1a1a;
+  font-family: 'Figtree', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.auth-tab--active {
+  background: #1a1a1a;
+  color: #ffffeb;
+}
+
+.auth-form__headline {
+  font-family: 'EB Garamond', serif;
+  font-weight: 400;
+  font-size: 36px;
+  letter-spacing: -0.8px;
+  color: #1a1a1a;
+  margin: 0 0 6px;
+  line-height: 1;
+}
+
+.auth-form__subhead {
+  font-family: 'Figtree', sans-serif;
+  font-size: 15px;
+  color: #77776a;
+  margin: 0 0 28px;
+}
+
+.auth-form__oauth {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+/* Google button (MOCKUP lines 232–235, 442). */
+.auth-btn-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffeb;
+  border: 2px solid #1a1a1a;
+  border-radius: 12px;
+  padding: 13px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.auth-btn-ghost:hover {
+  transform: translateY(-2px);
+  box-shadow: 3px 3px 0 #1a1a1a;
+}
+
+/* "or" divider (MOCKUP lines 238–242). */
+.auth-form__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.auth-form__divider-line {
+  flex: 1;
+  height: 2px;
+  background-image: radial-gradient(circle, #1a1a1a 1.5px, transparent 1.5px);
+  background-size: 8px 2px;
+  opacity: 0.4;
+}
+
+.auth-form__divider span {
+  font-size: 13px;
+  color: #8a8a80;
+}
+
+.auth-form__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.auth-field input {
+  border: 2px solid #1a1a1a;
+  border-radius: 14px 6px 14px 6px;
+  padding: 13px 14px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 15px;
+  background: #ffffeb;
+  color: #1a1a1a;
+}
+
+/* Email field uses the wider offset radius from the mockup (line 254). */
+.auth-field input[type='email'] {
+  border-radius: 16px 6px 16px 6px;
+}
+
+.auth-field__row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.auth-field__error {
+  font-size: 12px;
+  color: #b5432f;
+  font-weight: 500;
+}
+
+.auth-form__forgot {
+  font-size: 13px;
+  color: #034f46;
+  text-decoration: none;
+}
+
+.auth-form__server-error {
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  color: #b5432f;
+  font-weight: 500;
+  margin: -6px 0 0;
+}
+
+/* Password strength meter (MOCKUP lines 266–274, colors/labels 411–412). */
+.auth-pw-meter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.auth-pw-meter__bar {
+  width: 20px;
+  height: 6px;
+  border-radius: 3px;
+  transition: background 150ms ease;
+}
+
+.auth-pw-meter__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #77776a;
+  margin-left: 4px;
+}
+
+/* Primary CTA (MOCKUP line 281). */
+.auth-btn-cta {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  background: #f0d7ff;
+  border: 2px solid #1a1a1a;
+  border-radius: 9999px;
+  padding: 16px 24px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 #1a1a1a;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.auth-btn-cta:hover:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 #1a1a1a;
+}
+
+.auth-btn-cta:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Magic-link text button (MOCKUP line 283). */
+.auth-btn-text {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+  text-decoration: underline;
+}
