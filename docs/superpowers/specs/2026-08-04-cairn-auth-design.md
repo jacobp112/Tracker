@@ -212,6 +212,32 @@ Vitest + Testing Library. **No network in tests.**
 4. Confirm the two review flags (light-only theme; "continue without an account"
    link).
 
+### 7.1 Pre-deploy hardening gates (REQUIRED before public deploy)
+
+Surfaced by the final whole-branch review. These gate go-live, not the code
+merge (the endpoints are inert until a host + keys are wired):
+
+1. **Rate-limit `POST /api/auth/send-code`.** It is unauthenticated and triggers
+   a paid Resend email on every valid-format address, and each `issue()`
+   overwrites the prior record (resetting the attempt counter). Add a
+   per-email + per-IP cooldown/throttle at the edge or in the handler before
+   exposing it publicly, or it is an email-bomb / cost-abuse vector.
+2. **Set a Firestore TTL policy on `authCodes.expiresAt`.** `codeService.check`
+   deletes on the success and expiry paths, but abandoned/never-checked codes
+   (and the expired-and-locked-out case) are never swept, so the `authCodes`
+   collection grows unbounded without a TTL.
+
+### 7.2 Design decision recorded (not a gap)
+
+**The 6-digit code does not gate authentication.** On signup,
+`registerWithEmail` creates and signs in the Firebase account *before*
+`sendCode`; `verifyCode` only gates the UI transition to onboarding. Abandoning
+the tab leaves a valid signed-in account. This is intentional and consistent
+with the optional-login, local-first threat model (§2) — the code confirms email
+reachability for the flow, it is **not** enforced email verification. If real
+verification becomes required later, gate on Firebase `emailVerified` (needs the
+Admin SDK) or a server-set custom claim.
+
 ## 8. Out of scope (explicit)
 
 - Cloud sync of tracker data to the account (the next project).
@@ -225,3 +251,7 @@ Vitest + Testing Library. **No network in tests.**
 - **F1** — Auth page light-only vs theme-aware. Default: light-only (faithful).
 - **F2** — "Continue without an account →" addition to the card. Default: include.
 - **F3** — Backend host/store default (Vercel + Firestore). Confirm at wiring.
+- **F4** — Mockup's "Terms and Privacy Policy" footer line: **omitted, won't-fix.**
+  The mockup's links are dead `#` placeholders and no real legal pages exist;
+  shipping dead legal links is worse than omitting. Add the line if/when real
+  Terms + Privacy pages exist.
