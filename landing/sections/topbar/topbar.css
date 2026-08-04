@@ -1,80 +1,131 @@
 /* ── Topbar / floating nav pill ────────────────────────────────────
  * The header: brand (animated cairn stones), nav links, theme toggle, CTA.
  * Everything here is scoped to .topbar / .topnav / .brand / #theme-toggle,
- * so it can't touch any other section. */
+ * so it can't touch any other section.
+ *
+ * It is a pill in BOTH themes — not a chamber. Everything reads from the
+ * semantic tokens, so the flip is free: cream pill with an ink edge, espresso
+ * pill with a cream edge. */
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  max-width: var(--content-max); margin: var(--space-6) auto 0;
+  gap: var(--space-6);
+  max-width: var(--content-max);
+  /* Keep the pill clear of the viewport edge between --content-max and a
+   * slightly wider window, where `margin: auto` alone left it almost touching. */
+  width: calc(100% - var(--page-gutter) * 2);
+  margin: var(--space-6) auto 0;
   /* Floating cream pill with the signature 2px ink edge. */
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-7);
   background: var(--bg-page);
   border: var(--wf-border-w) solid var(--border-strong);
   border-radius: var(--radius-pill);
 }
-.topnav { display: flex; align-items: center; gap: var(--space-7); }
-.topnav a:not(.btn-primary) {
+
+.topnav { display: flex; align-items: center; gap: var(--space-6); }
+.topnav-link {
+  position: relative;
   font-size: var(--fs-nav); color: var(--ink-secondary); text-decoration: none;
+  border-radius: var(--radius-chip);
   transition: color var(--dur-standard) var(--ease);
 }
-.topnav a:not(.btn-primary):hover { color: var(--ink); }
+.topnav-link:hover { color: var(--ink); }
+/* A 2px rule in the accent grows under the link — the same weight as every
+ * other edge on the page, drawn from the left like the hero's underline. */
+.topnav-link::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: calc(var(--space-3) * -1);
+  height: var(--wf-border-w); border-radius: var(--radius-pill);
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform var(--dur-standard) var(--ease);
+}
+.topnav-link:hover::after,
+.topnav-link:focus-visible::after { transform: scaleX(1); }
+
+/* Wayfinding | controls. */
+.topnav-rule {
+  flex: none; width: 1px; height: var(--space-7);
+  background: var(--border); margin-inline: var(--space-1);
+}
+
 /* Hover was the only affordance here — keyboard users got no indication at all.
- * Drop this pair if a global :focus-visible rule already covers links. */
+ * The outline follows each control's OWN radius now; it used to impose
+ * --radius-lg on whatever was focused, which reshaped plain links mid-focus. */
 .topbar :focus-visible {
-  outline: 2px solid var(--ink);
+  outline: var(--wf-border-w) solid var(--ink);
   outline-offset: 3px;
-  border-radius: var(--radius-lg, 4px);
 }
 
 .brand {
-  display: inline-flex; align-items: center; gap: var(--space-3);
-  font-size: 18px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink);
-  text-decoration: none; transition: opacity var(--dur-standard) var(--ease);
+  display: inline-flex; align-items: center; gap: var(--space-4);
+  /* Wordmark: EB Garamond 400 with negative tracking, matching the display
+   * scale — the mark's own README rule (never set it in Figtree). */
+  font-family: var(--font-display); font-weight: 400; font-size: 22px; letter-spacing: -0.02em;
+  color: var(--ink); text-decoration: none; transition: opacity var(--dur-standard) var(--ease);
 }
 .brand:hover { opacity: 0.8; }
-/* Stones inherit the wordmark's --ink via currentColor, so they flip with the theme. */
-.brand-mark { fill: currentColor; flex-shrink: 0; }
-
-/* ── Cairn stones settle in ────────────────────────────────────────
- * The mark is a cairn: four stones, largest at the bottom, settling into place
- * from the ground up. DOM order of the ellipses is bottom-to-top, so their
- * order IS the stacking order. fill-box scopes each transform to its own
- * bounding box (SVG shapes transform around the viewport origin by default).
- *
- * nth-OF-TYPE, not nth-child: nth-child counts every element sibling. The day
- * someone adds a <title> to <svg class="brand-mark"> for accessibility, every
- * ellipse shifts one index, the bottom stone silently loses its 0ms delay and
- * the top one animates first — the stack would settle upside down. */
-.brand-mark ellipse {
+/* The stone FILLS are fixed brand colours (cream / forest / lavender + the ember
+ * summit) baked into the SVG. Only the STROKE follows currentColor, so one inline
+ * mark reads ink on cream surfaces and cream on dark ones (the cairn-mark /
+ * cairn-mark-dark variants) — here it inverts with the pill for free.
+ * fill-box scopes each transform to its own box (SVG shapes transform around
+ * the viewport origin by default).
+ * NOTE: the footer no longer carries this mark — it builds its own cairn from
+ * DOM stones — so this is the only instance on the landing page. */
+.brand-mark { flex-shrink: 0; }
+.brand-mark rect, .brand-mark circle {
+  stroke: currentColor;
   transform-box: fill-box;
   transform-origin: center;
 }
-.js .reveal.is-visible .brand-mark ellipse {
+
+/* ── Cairn stones settle in ────────────────────────────────────────
+ * Three stones (largest at the bottom) plus the ember summit dot settle into
+ * place from the ground up on reveal. DOM order of the rects is bottom-to-top,
+ * so their order IS the stacking order.
+ *
+ * nth-OF-TYPE, not nth-child: the summit <circle> is a sibling, and a future
+ * <title> for accessibility would shift every nth-child index — the stack would
+ * settle in the wrong order. */
+.js .reveal.is-visible .brand-mark rect {
   /* `backwards` holds each stone at keyframe-0 through its delay. */
   animation: cairn-stone 420ms var(--ease) backwards;
 }
-.js .reveal.is-visible .brand-mark ellipse:nth-of-type(2) { animation-delay: 70ms; }
-.js .reveal.is-visible .brand-mark ellipse:nth-of-type(3) { animation-delay: 140ms; }
-.js .reveal.is-visible .brand-mark ellipse:nth-of-type(4) { animation-delay: 210ms; }
+.js .reveal.is-visible .brand-mark rect:nth-of-type(2) { animation-delay: 70ms; }
+.js .reveal.is-visible .brand-mark rect:nth-of-type(3) { animation-delay: 140ms; }
+/* The ember summit lands last, with a small pop rather than a slide. */
+.js .reveal.is-visible .brand-mark circle { animation: cairn-summit 300ms var(--ease) 210ms backwards; }
 
 @keyframes cairn-stone {
   from { opacity: 0; transform: translateY(-5px) scaleX(0.55); }
   60%  { opacity: 1; transform: translateY(0)    scaleX(1.06); }
   to   { opacity: 1; transform: none; }
 }
-/* tokens.css zeroes transition-duration, but this is an ANIMATION it doesn't
- * touch — disable it explicitly under reduced motion. */
-@media (prefers-reduced-motion: reduce) {
-  .js .reveal.is-visible .brand-mark ellipse { animation: none; opacity: 1; transform: none; }
+@keyframes cairn-summit {
+  from { opacity: 0; transform: scale(0); }
+  to   { opacity: 1; transform: none; }
 }
+/* tokens.css zeroes transition-duration, but these are ANIMATIONS it doesn't
+ * touch — disable them explicitly under reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal.is-visible .brand-mark rect,
+  .js .reveal.is-visible .brand-mark circle { animation: none; opacity: 1; transform: none; }
+}
+
+/* ── Controls ──────────────────────────────────────────────────────
+ * The CTA takes the pill radius rather than the standard 12px: inside a pill
+ * this is the only shape that doesn't fight its container, and it matches the
+ * toggle beside it. Fill, ink and edge are the shared button treatment. */
+.topbar .btn-primary { border-radius: var(--radius-pill); }
 
 #theme-toggle {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; padding: 0; border-radius: var(--radius-pill);
   background: transparent; border: var(--wf-border-w) solid var(--border-strong); color: var(--ink);
-  cursor: pointer; transition: background var(--dur-standard) var(--ease);
+  cursor: pointer;
+  transition: background var(--dur-standard) var(--ease), color var(--dur-standard) var(--ease);
 }
-#theme-toggle:hover { background: var(--surface-sunken); }
+#theme-toggle:hover { background: var(--surface-sunken); color: var(--accent); }
 #theme-toggle svg { width: 17px; height: 17px; }
 /* The button reads at 34px but 34px is under the 44px touch minimum, and it sits
  * right beside the CTA — a near miss on mobile hits the wrong control. This
@@ -84,9 +135,9 @@
   content: ''; position: absolute; top: 50%; left: 50%;
   width: 44px; height: 44px; transform: translate(-50%, -50%);
 }
-/* The toggle's icon/label are painted by main.ts; it does nothing without them,
- * and the head script adds .js before first paint — so this only matches with
- * JS genuinely off. */
+/* The toggle's icon/label are painted by topbar.ts; it does nothing without
+ * them, and the head script adds .js before first paint — so this only matches
+ * with JS genuinely off. */
 html:not(.js) #theme-toggle { display: none; }
 
 /* The top bar runs out of room on a narrow viewport: the anchor links are the
@@ -100,7 +151,19 @@ html:not(.js) #theme-toggle { display: none; }
   .topnav { gap: var(--space-5); }
 }
 @media (max-width: 600px) {
-  .topnav a:not(.btn-primary) { display: none; }
+  .topnav-link, .topnav-rule { display: none; }
   /* Only brand, toggle and CTA are left — reclaim the generous left inset. */
-  .topbar { padding-left: var(--space-4); }
+  .topbar { padding-left: var(--space-5); }
+}
+@media (max-width: 420px) {
+  /* Last resort before the three survivors start colliding: the CTA says
+   * "Open". The rest of its label is only VISUALLY hidden, so its accessible
+   * name is still "Open the app". */
+  .topbar .topbar-cta-rest {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden; white-space: nowrap; clip-path: inset(50%);
+  }
+  .topbar { padding-left: var(--space-4); gap: var(--space-4); }
+  .brand { font-size: 20px; gap: var(--space-3); }
 }
