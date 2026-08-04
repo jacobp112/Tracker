@@ -479,3 +479,83 @@
   box-shadow: 4px 4px 0 #1a1a1a;
   transform: translate(-2px, -2px);
 }
+
+/* ---- Outcome screens (Task 12) ---------------------------------------- */
+
+/* Illustration icon, standard spacing (MOCKUP lines 82, 120, 132, 146). */
+.auth-outcome__icon {
+  display: block;
+  margin: 0 0 20px;
+}
+
+/* Smaller Forgot-form icon uses a tighter bottom margin (MOCKUP line 94). */
+.auth-outcome__icon-form {
+  display: block;
+  margin: 0 0 16px;
+}
+
+/* Welcome / Welcome back headline size (MOCKUP lines 141, 159). */
+.auth-outcome__headline--lg {
+  font-family: 'EB Garamond', serif;
+  font-weight: 400;
+  font-size: 36px;
+  letter-spacing: -0.8px;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+  line-height: 1;
+}
+
+/* Forgot / MagicLinkSent headline size (MOCKUP lines 89, 99, 127). */
+.auth-outcome__headline--md {
+  font-family: 'EB Garamond', serif;
+  font-weight: 400;
+  font-size: 32px;
+  letter-spacing: -0.8px;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+  line-height: 1.1;
+}
+
+/* "Didn't get it?" row under MagicLinkSent (MOCKUP line 129). */
+.auth-outcome__resend-row {
+  font-family: 'Figtree', sans-serif;
+  font-size: 14px;
+  color: #77776a;
+  margin: 0;
+}
+
+/* GoogleConnecting centered layout (MOCKUP line 112). */
+.auth-google__wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* Spinner ring, animated by the shared cairn-spin keyframe (MOCKUP line 113). */
+.auth-google__spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  border: 4px solid #e4e4d0;
+  border-top-color: #034f46;
+  animation: cairn-spin 0.9s linear infinite;
+  margin-bottom: 24px;
+}
+
+.auth-google__headline {
+  font-family: 'EB Garamond', serif;
+  font-weight: 400;
+  font-size: 28px;
+  letter-spacing: -0.6px;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+}
+
+.auth-google__subhead {
+  font-family: 'Figtree', sans-serif;
+  font-size: 15px;
+  color: #77776a;
+  margin: 0;
+}
