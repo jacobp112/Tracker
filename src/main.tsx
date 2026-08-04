@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { AuthProvider } from './auth/useAuth';
 
 /* Self-hosted Wispr Flow faces (no CDN). These register 'EB Garamond' and
  * 'Figtree Variable'; tokens.css points --font-display / --font-sans at them. */
@@ -24,7 +25,9 @@ if (!root) throw new Error('Root element #root not found');
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </StrictMode>,
 );
 
