@@ -15,7 +15,8 @@ export type Route =
   | { name: 'settings' }
   | { name: 'quick-add' }
   | { name: 'dev-tokens' }
-  | { name: 'dev-components' };
+  | { name: 'dev-components' }
+  | { name: 'auth'; signup: boolean };
 
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#\/?/, '');
@@ -34,6 +35,8 @@ export function parseHash(hash: string): Route {
       return { name: 'quick-add' };
     case 'dev':
       return tail === 'components' ? { name: 'dev-components' } : { name: 'dev-tokens' };
+    case 'auth':
+      return { name: 'auth', signup: tail === 'signup' };
     default:
       return { name: 'overview' };
   }
