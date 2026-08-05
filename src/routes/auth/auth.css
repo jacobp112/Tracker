@@ -137,6 +137,17 @@
   margin: 8px 0 32px;
 }
 
+/* Animated Cairn mascot (see animateCairn.ts). overflow:visible lets the head
+   whip outside the 100×130 viewBox without being clipped; transform-box keeps
+   the per-segment rotations pivoting in the viewBox coordinate system. */
+.auth-brand__cairn {
+  overflow: visible;
+}
+
+.auth-brand__cairn * {
+  transform-box: view-box;
+}
+
 .auth-brand__tagline {
   font-family: 'Figtree', sans-serif;
   font-size: 18px;
