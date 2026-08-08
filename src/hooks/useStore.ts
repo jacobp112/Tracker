@@ -8,6 +8,7 @@ import {
   emptyStore,
   type Confidence,
   type ReviewEvent,
+  type SessionRecord,
   type Store,
   type TopicStatus,
 } from '@/domain/types';
@@ -52,6 +53,51 @@ export function useStore() {
         } catch {
           /* a failed celebratory toast is not a failed commit */
         }
+        return null;
+      } catch (e) {
+        if (e instanceof StorageError) return e.message;
+        return e instanceof Error
+          ? `That couldn't be saved: ${e.message}. Your existing data is unchanged.`
+          : "That couldn't be saved. Your existing data is unchanged.";
+      }
+    },
+    [store],
+  );
+
+  /**
+   * Commit a session: the pasted JSON goes through the normal pipeline (same
+   * merge/save/adopt path as `commitValue`), and a `SessionRecord` is appended
+   * in the SAME persisted update — one save, one adopted draft, so the two
+   * never drift apart. The AI-supplied JSON is never the source of the stored
+   * duration: `duration_minutes` comes only from `meta.measured_minutes`, the
+   * real timer-measured value, never from `value`.
+   */
+  const commitSession = useCallback(
+    (
+      value: unknown,
+      meta: Omit<SessionRecord, 'session_id' | 'course_id' | 'duration_minutes' | 'completed_at'> & {
+        measured_minutes: number;
+      },
+    ): string | null => {
+      try {
+        const committed = commit('session', value, store, mergeInto);
+        const v = value as { session_id: string; course_id: string };
+        const record: SessionRecord = {
+          session_id: v.session_id,
+          topic_id: meta.topic_id,
+          course_id: v.course_id,
+          created_at: meta.created_at,
+          completed_at: new Date().toISOString(),
+          duration_minutes: meta.measured_minutes,
+          intent: meta.intent,
+          scope: meta.scope,
+          timer_mode: meta.timer_mode,
+          pomodoro_config: meta.pomodoro_config,
+        };
+        const next: Store = { ...committed, sessions: [...committed.sessions, record] };
+        saveStore(next); // throws before we adopt the draft
+        setUndoSnapshot(store); // the pre-commit state, for the toast's Undo
+        setStore(next);
         return null;
       } catch (e) {
         if (e instanceof StorageError) return e.message;
@@ -184,6 +230,7 @@ export function useStore() {
   return {
     store,
     commitValue,
+    commitSession,
     undoLast,
     toggleError,
     promoteTopic,

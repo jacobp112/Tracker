@@ -93,17 +93,22 @@ export interface WorkLogged {
 /**
  * "What have I put in." Derived from append-only history, so it is monotonic by
  * construction — it never falls, which is exactly what EXP can't promise. Hours
- * are a count × nominal duration (duration is decomposed away on ingestion):
+ * prefer the real measured duration from a session's `SessionRecord` when one
+ * was committed; sessions with no record (imported/legacy data whose duration
+ * was decomposed away on ingestion) fall back to a nominal per-session proxy —
  * exact in the count, honest as a proxy in the hours.
  */
 export function workLogged(store: Store): WorkLogged {
+  const recorded = new Map(store.sessions.map((s) => [s.session_id, s.duration_minutes]));
   const sessionIds = new Set<string>();
   for (const { topic } of allTopics(store)) {
     for (const e of topic.review_history) {
       if (e.source === 'session') sessionIds.add(e.source_id);
     }
   }
-  const sessions = sessionIds.size;
-  const hours = Math.round((sessions * CONFIG.PROGRESS.SESSION_MINUTES) / 60 * 10) / 10;
-  return { sessions, hours, papers: store.exams.length };
+  // Include recorded sessions even if their events aren't reconstructable yet.
+  for (const id of recorded.keys()) sessionIds.add(id);
+  let minutes = 0;
+  for (const id of sessionIds) minutes += recorded.get(id) ?? CONFIG.PROGRESS.SESSION_MINUTES;
+  return { sessions: sessionIds.size, hours: Math.round((minutes / 60) * 10) / 10, papers: store.exams.length };
 }

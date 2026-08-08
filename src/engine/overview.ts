@@ -73,16 +73,27 @@ export function studyStreak(store: Store, now = new Date()): number {
 /** Study sessions and total minutes in the last 7 days. */
 export function weeklyVolume(store: Store, now = new Date()): { sessions: number; hours: number } {
   const cutoff = now.getTime() - 7 * 86_400_000;
-  const sessionIds = new Set<string>();
+  const recorded = new Map(store.sessions.map((s) => [s.session_id, s]));
+  const ids = new Set<string>();
   for (const { topic } of allTopics(store)) {
     for (const e of topic.review_history) {
-      if (e.source === 'session' && new Date(e.date).getTime() >= cutoff) sessionIds.add(e.source_id);
+      if (e.source === 'session' && new Date(e.date).getTime() >= cutoff) ids.add(e.source_id);
     }
   }
-  // Duration isn't on the ReviewEvent (it's decomposed away on ingestion), so
-  // approximate hours from a nominal 30-min session — honest as a volume proxy,
-  // and the count is exact.
-  return { sessions: sessionIds.size, hours: Math.round((sessionIds.size * 30) / 60 * 10) / 10 };
+  // Include recorded sessions completed within the window even if their
+  // events aren't reconstructable yet.
+  for (const s of store.sessions) {
+    if (new Date(s.completed_at).getTime() >= cutoff) ids.add(s.session_id);
+  }
+  // Duration isn't on the ReviewEvent (it's decomposed away on ingestion), so a
+  // session with no recorded SessionRecord falls back to a nominal 30-min
+  // proxy — honest as a volume proxy; recorded sessions use their real minutes.
+  let minutes = 0;
+  for (const id of ids) minutes += recorded.get(id)?.duration_minutes ?? 30;
+  // Rounded to 2 decimals (not 1): real recorded minutes can land on an exact
+  // half-tenth (e.g. 45 min = 0.75h), which round-half-up would bump to 0.8 —
+  // losing precision the real measurement actually earned.
+  return { sessions: ids.size, hours: Math.round((minutes / 60) * 100) / 100 };
 }
 
 /* ── Unified activity feed (the visible event-sourcing model) ────── */
