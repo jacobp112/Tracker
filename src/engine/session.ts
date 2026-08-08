@@ -1,6 +1,14 @@
 import type { Course, Section, SessionIntent, SessionScope, Topic } from '@/domain/types';
 import { retentionPct } from '@/engine/retention';
 
+export interface SessionContext {
+  topic: { title: string; sectionTitle: string; courseTitle: string };
+  learner?: { retention: number | null; confidence: number; overconfident: boolean; status: string };
+  unresolvedErrors: string[];
+  siblings: SiblingSummary[];
+  snapshot: CourseSnapshot | null;
+}
+
 export type Block = 'topic-title' | 'learner' | 'unresolved-errors' | 'related-topics' | 'course-snapshot';
 
 export const scopeConfig: Record<SessionScope, Block[]> = {
@@ -94,4 +102,34 @@ export function courseSnapshot(course: Course, now: Date): CourseSnapshot {
       return b.unresolvedErrors - a.unresolvedErrors;
     });
   return { sections, topWeaknesses: started.slice(0, 5) };
+}
+
+export function buildSessionContext(
+  course: Course, section: Section, topic: Topic, intent: SessionIntent, scope: SessionScope, now: Date,
+): SessionContext {
+  const blocks = scopeConfig[scope];
+  const ctx: SessionContext = {
+    topic: { title: topic.title, sectionTitle: section.title, courseTitle: course.title },
+    unresolvedErrors: [], siblings: [], snapshot: null,
+  };
+  if (blocks.includes('learner')) {
+    const r = retentionPct(topic, now);
+    const confidencePct = topic.conf * 20;
+    ctx.learner = {
+      retention: r === null ? null : Math.round(r),
+      confidence: topic.conf,
+      overconfident: r !== null && confidencePct - r > 15,
+      status: topic.status,
+    };
+  }
+  if (blocks.includes('unresolved-errors')) {
+    ctx.unresolvedErrors = topic.error_log.filter((e) => !e.resolved).map((e) => e.description);
+  }
+  if (blocks.includes('related-topics')) {
+    ctx.siblings = rankSiblings(section, topic.topic_id, intent, now);
+  }
+  if (blocks.includes('course-snapshot')) {
+    ctx.snapshot = courseSnapshot(course, now);
+  }
+  return ctx;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rankSiblings, courseSnapshot } from '@/engine/session';
+import { rankSiblings, courseSnapshot, buildSessionContext } from '@/engine/session';
 import type { Course, Section, Topic } from '@/domain/types';
 
 const NOW = new Date('2026-08-07T12:00:00Z');
@@ -37,5 +37,34 @@ describe('courseSnapshot', () => {
     const snap = courseSnapshot(course, NOW);
     expect(snap.sections[0]).toMatchObject({ mastered: 1, total: 2 });
     expect(snap.topWeaknesses.length).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('buildSessionContext', () => {
+  const focal = topic({ topic_id: 'focal', title: 'Elasticity', conf: 4, error_log: [
+    { error_id: 'x', date: '', source: 'session', source_id: 's', error_type: 'conceptual', description: 'confuses elastic/inelastic', resolved: false, resolved_date: null },
+  ]});
+  const sec = section([focal, topic({ topic_id: 'sib', title: 'Demand' })]);
+  const course: Course = { schema_version: '2.0.0', course_id: 'c', title: 'Micro', created_at: '', source: 'ai_generated', sections: [sec] };
+
+  it('clean_slate carries only topic identity — no learner data', () => {
+    const ctx = buildSessionContext(course, sec, focal, 'new_content', 'clean_slate', NOW);
+    expect(ctx.topic.title).toBe('Elasticity');
+    expect(ctx.learner).toBeUndefined();
+    expect(ctx.unresolvedErrors).toEqual([]);
+    expect(ctx.siblings).toEqual([]);
+    expect(ctx.snapshot).toBeNull();
+  });
+
+  it('topic scope includes learner signals + unresolved errors, no siblings', () => {
+    const ctx = buildSessionContext(course, sec, focal, 'remediate', 'topic', NOW);
+    expect(ctx.learner?.confidence).toBe(4);
+    expect(ctx.unresolvedErrors).toContain('confuses elastic/inelastic');
+    expect(ctx.siblings).toEqual([]);
+  });
+
+  it('section scope adds ranked siblings; course scope adds a snapshot', () => {
+    expect(buildSessionContext(course, sec, focal, 'retention', 'section', NOW).siblings.length).toBeGreaterThan(0);
+    expect(buildSessionContext(course, sec, focal, 'adaptive', 'course', NOW).snapshot).not.toBeNull();
   });
 });
