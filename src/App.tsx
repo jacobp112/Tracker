@@ -339,10 +339,15 @@ function AppInner() {
   const [flow, setFlow] = useState<SessionFlowState>({ phase: 'idle' });
   const [resumeDraft, setResumeDraft] = useState<FocusDraft | null>(null);
 
-  // Resume prompt: check once at mount for a session left mid-focus.
+  // Resume prompt: re-read the single source of truth (localStorage)
+  // whenever the flow returns to idle — including on mount, since `flow`
+  // starts at 'idle'. A mount-only effect would go stale: FocusMode
+  // autosaves the draft every tick, commit/discard clears it, and the
+  // banner must reflect whichever of those happened most recently rather
+  // than whatever was in storage when the app first loaded.
   useEffect(() => {
-    setResumeDraft(loadFocusDraft());
-  }, []);
+    if (flow.phase === 'idle') setResumeDraft(loadFocusDraft());
+  }, [flow.phase]);
 
   useCommandShortcut(() => setSearchOpen((o) => !o));
 
