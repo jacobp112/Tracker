@@ -99,15 +99,15 @@ export function StartSession({
 
         <p style={{ fontSize: '13px', color: theme.muted, margin: '0 0 6px' }}>{course.title}</p>
 
-        <Field label="Intent">
+        <Field label="Intent" theme={theme}>
           <ChoiceRow theme={theme} value={intent} labels={INTENT_LABEL} onChange={setIntent} />
         </Field>
 
-        <Field label="Scope">
+        <Field label="Scope" theme={theme}>
           <ChoiceRow theme={theme} value={scope} labels={SCOPE_LABEL} onChange={setScope} />
         </Field>
 
-        <Field label="Timer">
+        <Field label="Timer" theme={theme}>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -137,7 +137,7 @@ export function StartSession({
           )}
         </Field>
 
-        <Field label="Briefing preview">
+        <Field label="Briefing preview" theme={theme}>
           <pre style={previewBox(theme)}>{prompt}</pre>
           <button type="button" data-press onClick={copyPrompt} style={copyBtn(theme)}>Copy</button>
         </Field>
@@ -148,10 +148,10 @@ export function StartSession({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, theme, children }: { label: string; theme: CairnTheme; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: '16px' }}>
-      <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted, inherit)', margin: '0 0 8px' }}>
+      <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: theme.muted, margin: '0 0 8px' }}>
         {label}
       </p>
       {children}

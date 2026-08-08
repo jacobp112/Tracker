@@ -31,6 +31,16 @@ describe('startSessionPrompt', () => {
     expect(p).toMatch(/duration_minutes.*0/);
     expect(p.toLowerCase()).toMatch(/app records the time|do not estimate/);
   });
+  it('the OUTPUT block itself (not just AVOID) pins the timekeeper instruction', () => {
+    const p = build('retention', 'topic');
+    const output = p.slice(p.indexOf('OUTPUT'));
+    // This must live in the OUTPUT section specifically — the AVOID block's
+    // NO_TIME line is a separate, deletable instruction that must not be the
+    // only place this constraint is asserted (C1: an AI that skips it emits
+    // duration_minutes > 0, which used to fail Ajv validation).
+    expect(output).toContain('the app records the real time');
+    expect(output).toMatch(/duration_minutes["\s]*:\s*0/);
+  });
   it('intent drives INSTRUCTIONS + AVOID copy', () => {
     expect(build('remediate', 'topic')).toContain('Do not move on until each error is corrected.');
   });

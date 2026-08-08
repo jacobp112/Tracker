@@ -153,7 +153,11 @@ export const SESSION_SCHEMA: SchemaObject = {
     session_id: ID_PATTERN('session'),
     course_id: ID_PATTERN('course'),
     date: ISO_DATETIME,
-    duration_minutes: { type: 'integer', exclusiveMinimum: 0 },
+    // The app is the timekeeper: a pasted session's duration is never stored
+    // (see core/merge.ts mergeSession + hooks/useStore.ts commitSession), so
+    // 0 — "the app records the real time" per the start-session briefing — is
+    // a valid placeholder, not a real duration to reject.
+    duration_minutes: { type: 'integer', minimum: 0 },
     topics_covered: {
       type: 'array',
       minItems: 1,

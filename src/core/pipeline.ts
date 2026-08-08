@@ -61,8 +61,12 @@ function buildPreview(schemaName: SchemaName, value: unknown): Preview {
     case 'session': {
       const s = value as StudySession;
       const errs = s.topics_covered.reduce((n, t) => n + (t.errors?.length ?? 0), 0);
+      // duration_minutes is a placeholder the AI sets to 0 (the app is the
+      // timekeeper — see engine/session.ts); "0 minutes" would read as if
+      // nothing happened, so the preview omits the minutes phrase instead.
+      const durationPhrase = s.duration_minutes > 0 ? `${plural(s.duration_minutes, 'minute')} across ` : '';
       return {
-        summary: `${plural(s.duration_minutes, 'minute')} across ${plural(
+        summary: `${durationPhrase}${plural(
           s.topics_covered.length,
           'topic',
         )}${errs > 0 ? `, ${plural(errs, 'mistake')} logged` : ''}`,
