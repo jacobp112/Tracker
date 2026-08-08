@@ -25,6 +25,7 @@ export function useStudyTimer(opts: {
   const [elapsedSeconds, setElapsed] = useState(opts.initialSeconds ?? 0);
   const [phase, setPhase] = useState<'work' | 'break' | 'long_break'>('work');
   const [running, setRunning] = useState(true);
+  const phaseRef = useRef<'work' | 'break' | 'long_break'>('work');
   const phaseSecRef = useRef(0);
   const cyclesRef = useRef(0);
 
@@ -35,23 +36,23 @@ export function useStudyTimer(opts: {
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
-      setPhase((ph) => {
-        if (ph === 'work') setElapsed((s) => s + 1);
-        if (opts.mode === 'count_up') return ph;
-        phaseSecRef.current += 1;
-        const budgetMinutes =
-          ph === 'work' ? workMinutes : ph === 'break' ? breakMinutes : longBreakMinutes;
-        const budget = (budgetMinutes ?? 0) * 60;
-        if (phaseSecRef.current >= budget) {
-          phaseSecRef.current = 0;
-          if (ph === 'work') {
-            cyclesRef.current += 1;
-            return cyclesRef.current % 4 === 0 ? 'long_break' : 'break';
-          }
-          return 'work';
-        }
-        return ph;
-      });
+      // Two independent, side-effect-free state updates per tick — no
+      // side effects (setElapsed calls, ref mutations) may live inside a
+      // setState updater, since StrictMode double-invokes updaters in dev.
+      if (phaseRef.current === 'work') setElapsed((s) => s + 1);
+      if (opts.mode === 'count_up') return;
+      phaseSecRef.current += 1;
+      const cur = phaseRef.current;
+      const budgetMinutes =
+        cur === 'work' ? workMinutes : cur === 'break' ? breakMinutes : longBreakMinutes;
+      const budget = (budgetMinutes ?? 0) * 60;
+      if (phaseSecRef.current >= budget) {
+        phaseSecRef.current = 0;
+        const next: 'work' | 'break' | 'long_break' =
+          cur === 'work' ? (++cyclesRef.current % 4 === 0 ? 'long_break' : 'break') : 'work';
+        phaseRef.current = next;
+        setPhase(next);
+      }
     }, 1000);
     return () => clearInterval(id);
   }, [running, opts.mode, workMinutes, breakMinutes, longBreakMinutes]);
