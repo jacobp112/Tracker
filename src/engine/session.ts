@@ -133,3 +133,41 @@ export function buildSessionContext(
   }
   return ctx;
 }
+
+export function startSessionPrompt(ctx: SessionContext, intent: SessionIntent, scope: SessionScope): string {
+  const renderers: Record<Block, () => string | null> = {
+    'topic-title': () =>
+      `SESSION\nIntent: ${intent}\nTopic: ${ctx.topic.title}   (${ctx.topic.sectionTitle} · ${ctx.topic.courseTitle})`,
+    learner: () => {
+      if (!ctx.learner) return null;
+      const l = ctx.learner;
+      const ret = l.retention === null ? '—' : `${l.retention}%`;
+      return `LEARNER\nRetention: ${ret}   Confidence: ${l.confidence}/5   Overconfident: ${l.overconfident ? 'yes' : 'no'}   Status: ${l.status}`;
+    },
+    'unresolved-errors': () =>
+      ctx.unresolvedErrors.length === 0 ? null
+        : `UNRESOLVED ERRORS\n${ctx.unresolvedErrors.map((e) => `- ${e}`).join('\n')}`,
+    'related-topics': () =>
+      ctx.siblings.length === 0 ? null
+        : `RELATED TOPICS\n${ctx.siblings.map((s) => `- ${s.title} (${s.status}${s.retention === null ? '' : `, ${s.retention}%`})`).join('\n')}`,
+    'course-snapshot': () => {
+      if (!ctx.snapshot) return null;
+      const secs = ctx.snapshot.sections.map((s) => `${s.title} — ${s.mastered}/${s.total} mastered`).join('\n');
+      const weak = ctx.snapshot.topWeaknesses.map((w) => `- ${w.title}${w.retention === null ? '' : ` (${w.retention}%)`}`).join('\n');
+      return `COURSE SNAPSHOT\n${secs}\n\nTop weaknesses\n${weak}`;
+    },
+  };
+
+  const spec = intentConfig[intent];
+  const contextBlocks = scopeConfig[scope].map((b) => renderers[b]()).filter((s): s is string => s !== null);
+  const instructions = `INSTRUCTIONS\n${spec.instructions.join('\n')}`;
+  const avoid = `AVOID\n${spec.avoid.join('\n')}`;
+  const output = [
+    'OUTPUT',
+    'When finished, output ONLY the session-log JSON (no prose, no fences):',
+    '{ "schema_version": "2.0.0", "session_id": "session_<10 random>", "course_id": "…", "date": "<ISO now>", "duration_minutes": 0, "topics_covered": [ … ] }',
+    'Set duration_minutes to 0 — the app records the real time.',
+  ].join('\n');
+
+  return [...contextBlocks, instructions, avoid, output].join('\n\n');
+}
