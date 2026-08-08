@@ -53,13 +53,6 @@ export default defineConfig({
     },
   },
   test: {
-    // Fake timers auto-advance in near-real-time so `userEvent` (which needs
-    // to await real interaction delays even under `vi.useFakeTimers()`)
-    // doesn't deadlock waiting on React's scheduler, which itself schedules
-    // work via a timer. Needed by tests combining `userEvent` with fake
-    // timers (e.g. FocusMode's timer + click tests); harmless for tests that
-    // only call `vi.advanceTimersByTime` directly.
-    fakeTimers: { shouldAdvanceTime: true },
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],

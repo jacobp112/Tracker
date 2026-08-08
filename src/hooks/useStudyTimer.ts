@@ -15,6 +15,11 @@ export interface StudyTimer {
   running: boolean;
   pause(): void;
   resume(): void;
+  // The same worked-seconds count as elapsedSeconds, mutated in the same tick
+  // that calls setElapsed — a synchronous read for callers (e.g. FocusMode's
+  // "End session") that need the authoritative value the instant they're
+  // invoked, without waiting on a React re-render to land first.
+  elapsedSecondsRef: { current: number };
 }
 
 export function useStudyTimer(opts: {
@@ -28,6 +33,7 @@ export function useStudyTimer(opts: {
   const phaseRef = useRef<'work' | 'break' | 'long_break'>('work');
   const phaseSecRef = useRef(0);
   const cyclesRef = useRef(0);
+  const elapsedRef = useRef(opts.initialSeconds ?? 0);
 
   const workMinutes = opts.pomodoro?.work_minutes;
   const breakMinutes = opts.pomodoro?.break_minutes;
@@ -39,7 +45,10 @@ export function useStudyTimer(opts: {
       // Two independent, side-effect-free state updates per tick — no
       // side effects (setElapsed calls, ref mutations) may live inside a
       // setState updater, since StrictMode double-invokes updaters in dev.
-      if (phaseRef.current === 'work') setElapsed((s) => s + 1);
+      if (phaseRef.current === 'work') {
+        elapsedRef.current += 1;
+        setElapsed((s) => s + 1);
+      }
       if (opts.mode === 'count_up') return;
       phaseSecRef.current += 1;
       const cur = phaseRef.current;
@@ -64,5 +73,6 @@ export function useStudyTimer(opts: {
     running,
     pause: () => setRunning(false),
     resume: () => setRunning(true),
+    elapsedSecondsRef: elapsedRef,
   };
 }

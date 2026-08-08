@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { FocusDraft } from '@/core/focusDraft';
 import { saveFocusDraft } from '@/core/focusDraft';
 import { useStudyTimer } from '@/hooks/useStudyTimer';
@@ -53,20 +53,6 @@ export function FocusMode({
 
   const timer = useStudyTimer({ mode: draft.timer_mode, pomodoro: draft.pomodoro, initialSeconds: draft.elapsed_seconds });
   const [checked, setChecked] = useState<string[]>(draft.checked_error_ids);
-
-  // useStudyTimer's own elapsedSeconds only reaches this component through a
-  // React re-render, so reading it from an onClick closure can be a tick (or,
-  // under batched/rapid updates, more) behind the true count. "End session"
-  // reports a measured duration that feeds the study log, so it reads a plain
-  // ref that this effect keeps ticking in lockstep with the same
-  // running/phase conditions the hook itself uses — accurate the instant the
-  // button is pressed, independent of render timing.
-  const measuredRef = useRef(draft.elapsed_seconds);
-  useEffect(() => {
-    if (!timer.running || timer.phase !== 'work') return;
-    const id = setInterval(() => { measuredRef.current += 1; }, 1000);
-    return () => clearInterval(id);
-  }, [timer.running, timer.phase]);
 
   useEffect(() => {
     saveFocusDraft({ ...draft, elapsed_seconds: timer.elapsedSeconds, checked_error_ids: checked });
@@ -124,7 +110,7 @@ export function FocusMode({
         <button
           type="button"
           data-press
-          onClick={() => onEnd(Math.floor(measuredRef.current / 60))}
+          onClick={() => onEnd(Math.floor(timer.elapsedSecondsRef.current / 60))}
           style={primaryBtn(theme)}
         >
           End session
