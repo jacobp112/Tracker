@@ -1,4 +1,4 @@
-import { emptyStore, SCHEMA_VERSION, type Store } from '@/domain/types';
+import { emptyStore, SCHEMA_VERSION, type Store, type SessionRecord } from '@/domain/types';
 
 /**
  * Local-first persistence. v1 is single-user and local (Document 4 §13.4), so
@@ -53,11 +53,21 @@ export function loadStore(): Store {
  */
 function migrate(parsed: unknown): Store {
   const p = (parsed ?? {}) as Record<string, unknown>;
-  return {
+  const result = {
     schema_version: SCHEMA_VERSION,
     courses: Array.isArray(p.courses) ? (p.courses as Store['courses']) : [],
     exams: Array.isArray(p.exams) ? (p.exams as Store['exams']) : [],
+    sessions: [] as SessionRecord[],
   };
+
+  // Additive migration: legacy stores predate per-session durations.
+  if (!Array.isArray((p as { sessions?: unknown }).sessions)) {
+    (result as { sessions: SessionRecord[] }).sessions = [];
+  } else {
+    result.sessions = p.sessions as SessionRecord[];
+  }
+
+  return result;
 }
 
 /**

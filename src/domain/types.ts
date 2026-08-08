@@ -132,12 +132,31 @@ export interface Exam {
   breakdown?: ExamBreakdownEntry[];
 }
 
+/* ── Session Recording ──────────────────────────────────────────── */
+
+export type SessionIntent = 'remediate' | 'retention' | 'new_content' | 'adaptive';
+export type SessionScope = 'clean_slate' | 'topic' | 'section' | 'course';
+
+export interface SessionRecord {
+  session_id: string;
+  topic_id: string;
+  course_id: string;
+  created_at: string;   // ISO — timer started
+  completed_at: string; // ISO — committed
+  duration_minutes: number; // measured, authoritative
+  intent: SessionIntent;
+  scope: SessionScope;
+  timer_mode: 'count_up' | 'pomodoro';
+  pomodoro_config?: { work_minutes: number; break_minutes: number; long_break_minutes: number };
+}
+
 /* ── Store ─────────────────────────────────────────────────────── */
 
 export interface Store {
   schema_version: string;
   courses: Course[];
   exams: Exam[];
+  sessions: SessionRecord[];
 }
 
 export function emptyStore(): Store {
@@ -145,6 +164,7 @@ export function emptyStore(): Store {
     schema_version: SCHEMA_VERSION,
     courses: [],
     exams: [],
+    sessions: [],
   };
 }
 
