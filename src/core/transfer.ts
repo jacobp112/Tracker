@@ -2,6 +2,7 @@ import { type SchemaName } from '@/domain/schemas';
 import { type Course, type Exam, emptyStore, SCHEMA_VERSION, type Store } from '@/domain/types';
 import type { FriendlyError } from './errorTranslation';
 import { checkIntegrity } from './integrity';
+import { recomputeLapseContamination } from './migrations';
 import { validateAgainst } from './validate';
 
 /**
@@ -114,6 +115,11 @@ export function importBundle(input: string): ImportResult {
   }
 
   if (errors.length > 0) return { ok: false, errors };
+
+  // Import must run the same v3.1.0 migration as the load path (design §4): a
+  // pre-3.1.0 bundle imported after deploy would otherwise reinstate contaminated
+  // kFactor. Idempotent, so a 3.1.0+ bundle is untouched.
+  if ((parsed.schema_version ?? '0.0.0') < '3.1.0') recomputeLapseContamination(draft);
 
   return {
     ok: true,

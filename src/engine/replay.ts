@@ -1,5 +1,5 @@
 import { CONFIG } from '@/config/constants';
-import type { Topic } from '@/domain/types';
+import type { ReviewEvent, Topic } from '@/domain/types';
 import { applyEvent } from './recalculate';
 
 /**
@@ -13,7 +13,19 @@ import { applyEvent } from './recalculate';
  * not event-derived; callers needing them for health reconstruct them
  * separately. Nothing here is stored (Document 1 §2.3).
  */
-export function topicStateAsOf(topic: Topic, asOf: Date): Topic {
+/**
+ * Forward-fold an ordered event list from a fresh genesis — the shared forward-k
+ * function (design 2026-08-09 §3.2). Used by `topicStateAsOf`, the v3.1.0
+ * migration, and the eval harness, so all three recompute `k` forward and never
+ * trust a stored `k`. `events` must already be date-filtered and sorted.
+ *
+ * Plain fold: applyEvent owns the promotion/seeding rules exactly as the live
+ * system applies them (a logged event on a not_started topic increments strength
+ * and auto-promotes — the SEED_STRENGTH branch is skipped because the increment
+ * already made strength truthy). Reproducing that path verbatim is what makes the
+ * replay faithful; do not pre-promote or pre-seed here.
+ */
+export function replayEvents(topic: Topic, events: readonly ReviewEvent[]): Topic {
   const genesis: Topic = {
     ...topic,
     status: 'not_started',
@@ -27,18 +39,16 @@ export function topicStateAsOf(topic: Topic, asOf: Date): Topic {
     error_log: [],
   };
 
-  const events = topic.review_history
-    .filter((e) => new Date(e.date).getTime() <= asOf.getTime())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  // Plain fold: applyEvent owns the promotion/seeding rules exactly as the live
-  // system applies them (a logged event on a not_started topic increments
-  // strength and auto-promotes — the SEED_STRENGTH branch is skipped because the
-  // increment already made strength truthy). Reproducing that path verbatim is
-  // what makes the replay faithful; do not pre-promote or pre-seed here.
   let state = genesis;
   for (const e of events) {
     state = applyEvent(state, e, new Date(e.date));
   }
   return state;
+}
+
+export function topicStateAsOf(topic: Topic, asOf: Date): Topic {
+  const events = topic.review_history
+    .filter((e) => new Date(e.date).getTime() <= asOf.getTime())
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return replayEvents(topic, events);
 }

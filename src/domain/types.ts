@@ -6,7 +6,7 @@
  * layer, so these types use the storage names verbatim.
  */
 
-export const SCHEMA_VERSION = '3.0.0';
+export const SCHEMA_VERSION = '3.1.0';
 
 /** Document 2 §7 ladder. Stored snake_case; Document 3 owns the display labels. */
 export type TopicStatus = 'not_started' | 'learning' | 'practising' | 'mastered';
