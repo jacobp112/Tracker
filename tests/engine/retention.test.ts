@@ -33,3 +33,17 @@ describe('predictRetention with fractional t', () => {
     expect(predictRetention(t, reviewed)).toBe(1);
   });
 });
+
+describe('predictRetention uses effective strength', () => {
+  it('retention uses effective strength, so a fail shortens the curve', () => {
+    const failEv = {
+      event_id: 'event_f', date: '2026-08-05T09:00:00Z', kind: 'test_fail' as const, source: 'exam' as const,
+      source_id: 'exam_1', confidence_reported: 3 as const, test: { score: 1, out_of: 10, actual_retention: 0.1 },
+    };
+    const reviewed = new Date('2026-08-05T09:00:00Z');
+    const now = new Date('2026-08-08T09:00:00Z');
+    const lapsed = topic({ strength: 3, last_reviewed: reviewed.toISOString(), review_history: [failEv] });
+    const solid = topic({ strength: 3, last_reviewed: reviewed.toISOString(), review_history: [] });
+    expect(predictRetention(lapsed, now)!).toBeLessThan(predictRetention(solid, now)!);
+  });
+});

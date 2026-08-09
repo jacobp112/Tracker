@@ -47,8 +47,12 @@ describe('E3-S2 — retention guards (Document 2 §2)', () => {
     expect(predictRetention(topic({ last_reviewed: NOW.toISOString() }), NOW)).toBe(1);
   });
 
-  it('returns 0 when strength ≤ 0', () => {
-    expect(predictRetention(topic({ strength: 0 }), NOW)).toBe(0);
+  it('floors a zero-strength reviewed topic at the S_EFF_MIN curve, not 0 (§2, amended 2026-08-09)', () => {
+    // Effective stability floors at S_EFF_MIN>0, so a topic that has been
+    // reviewed can't read a literal 0% — even fully lapsed it retains a floor.
+    // t = 3 days (2026-07-13 → NOW), k = DECAY_K, s_eff = S_EFF_MIN.
+    const expected = Math.exp(-3 / (CONFIG.DECAY_K * CONFIG.S_EFF_MIN));
+    expect(predictRetention(topic({ strength: 0 }), NOW)).toBeCloseTo(expected, 6);
   });
 
   it('a never-reviewed topic is not "due" — it has not started decaying', () => {

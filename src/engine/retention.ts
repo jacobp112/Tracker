@@ -1,5 +1,6 @@
 import { CONFIG } from '@/config/constants';
 import type { Topic } from '@/domain/types';
+import { effectiveStrength } from './stability';
 
 /**
  * Retention — Document 2 §2, and the projected due date — §2.1.
@@ -41,12 +42,15 @@ export function predictRetention(topic: Topic, now: Date = new Date()): number |
   const reviewed = new Date(topic.last_reviewed);
   if (Number.isNaN(reviewed.getTime())) return null;
 
-  if (topic.strength <= 0) return 0;
+  // Retention reads lapse-penalised effective stability, not raw strength, so a
+  // fail SHORTENS the curve (design 2026-08-09 §2). s_eff floors at S_EFF_MIN>0.
+  const s = effectiveStrength(topic);
+  if (s <= 0) return 0;
 
   const t = elapsedDays(reviewed, now);
   if (t <= 0) return 1; // reviewed just now / backdated
 
-  return Math.exp(-t / (topic.k_factor * topic.strength));
+  return Math.exp(-t / (topic.k_factor * s));
 }
 
 /** Retention as a 0–100 percentage, or null. The UI never renders null as 0%. */

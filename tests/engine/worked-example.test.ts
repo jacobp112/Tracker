@@ -91,13 +91,17 @@ function algebraicFractions(): Topic {
 }
 
 describe('Document 2 §12 worked example — retention', () => {
-  it('t = 9, k·s = 9.1 → R = e^(−0.989) = 0.372 → 37%', () => {
+  // Amended 2026-08-09: retention reads lapse-penalised effective stability, not
+  // raw strength. The one test scored 11/20 = 0.55 (a fail), so
+  // s_eff = 1.3 × penaltyFrom(0.55) = 1.3 × 0.8125 = 1.05625, and k·s_eff = 7.39375.
+  // The pre-2026-08-09 raw-strength model gave k·s = 9.1 → R = 0.372 → 37%.
+  it('t = 9, k·s_eff = 7.39 → R = e^(−1.217) = 0.296 → 30%', () => {
     const topic = algebraicFractions();
-    expect(topic.k_factor * topic.strength).toBeCloseTo(9.1, 10);
+    expect(topic.k_factor * topic.strength).toBeCloseTo(9.1, 10); // raw k·s (velocity/EXP still read raw strength)
 
     const r = predictRetention(topic, NOW)!;
-    expect(r).toBeCloseTo(0.372, 3);
-    expect(Math.round(r * 100)).toBe(37);
+    expect(r).toBeCloseTo(0.296, 3);
+    expect(Math.round(r * 100)).toBe(30);
   });
 
   it('is below DUE_THRESHOLD (0.70), so it is due for review', () => {
@@ -114,8 +118,8 @@ describe('Document 2 §12 worked example — OCI', () => {
 describe('Document 2 §12 worked example — health sub-scores', () => {
   const topic = algebraicFractions();
 
-  it('retentionScore = 37.2', () => {
-    expect(retentionScore(topic, NOW)).toBeCloseTo(37.2, 1);
+  it('retentionScore = 29.6 (100 × 0.296, lapse-penalised)', () => {
+    expect(retentionScore(topic, NOW)).toBeCloseTo(29.6, 1);
   });
 
   it('errorScore = 40 (2 active errors)', () => {
@@ -134,8 +138,10 @@ describe('Document 2 §12 worked example — health sub-scores', () => {
     expect(cardScore(topic)).toBe(20);
   });
 
-  it('health = 11.16 + 10 + 15 + 12 + 2 = 50 (mid band, amber)', () => {
-    expect(health(topic, NOW)).toBe(50);
+  it('health = 8.88 + 10 + 15 + 12 + 2 = 48 (mid band, amber)', () => {
+    // 0.30·29.6 + 0.25·40 + 0.20·75 + 0.15·80 + 0.10·20 = 47.88 → 48.
+    // Pre-2026-08-09 (raw-strength retentionScore 37.2) this was 50.
+    expect(health(topic, NOW)).toBe(48);
   });
 });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { applyEvent } from '@/engine/recalculate';
+import { predictRetention } from '@/engine/retention';
 import { CONFIG } from '@/config/constants';
 import type { ReviewEvent, Topic } from '@/domain/types';
 
@@ -34,5 +35,15 @@ describe('applyEvent drift skip for smeared events', () => {
     // toBe(+1), not toBeGreaterThan(-1): the latter passes even when nothing was pushed.
     expect(after.drift_history.length).toBe(before.drift_history.length + 1);
     expect(after.k_factor).not.toBe(before.k_factor);
+  });
+});
+
+describe('drift-order invariant', () => {
+  it('drift is scored against the curve BEFORE the event lands (excludes its own penalty)', () => {
+    const before = baseTopic({ strength: 3, review_history: [], drift_history: [] });
+    const rBefore = predictRetention(before, new Date('2026-08-08T09:00:00Z'))!;
+    const after = applyEvent(before, testEvent({ smeared: false, test: { score: 3, out_of: 10, actual_retention: 0.3 } }));
+    const pushed = after.drift_history.at(-1)!;
+    expect(pushed).toBeCloseTo(0.3 - rBefore, 6); // NOT 0.3 - R(after the fail)
   });
 });

@@ -51,17 +51,17 @@ All constants live in one config object/file, never inline. Defaults shown are t
 
 ## 2. Retention (the forgetting curve)
 
-$$R(t) = e^{-t / (k \cdot s)}$$
+$$R(t) = e^{-t / (k \cdot s_{eff})}$$
 
 - `R(t)`: predicted retention, 0–1 (shown as a % in the UI).
-- `t`: whole days elapsed since the topic's `reviewed` date, computed against `now`.
-- `s`: the topic's current `strength` (≥ 0).
+- `t`: **fractional** days elapsed since the topic's `reviewed` date, computed against `now`. *(Amended 2026-08-09 — previously whole days; `t` is no longer quantised, so decay is continuous within a day.)*
+- `s_eff`: the topic's **effective stability** — `max(S_EFF_MIN, strength · P)`, where `P` is a multiplicative lapse factor folded over `review_history` (a failed test shortens the curve, a pass recovers it, asymmetrically). Retention reads `s_eff`, **not** raw `strength`; raw `strength` stays append-only and still feeds velocity, EXP, and badges. The lapse fold is specified in the retention-honesty design (2026-08-09 §2). *(Amended 2026-08-09 — previously retention read raw `strength`, so a lapse could paradoxically lengthen the curve.)*
 - `k`: the topic's current `kFactor` (defaults to `DECAY_K` until tuned).
 
 Rules:
 - If the topic has never been reviewed (`reviewed == null`) or `status == "Not Started"` → retention is **undefined** (not a number). The UI shows a neutral "—" cell, not 0%.
 - If `t ≤ 0` (reviewed today) → `R = 1.0`.
-- If `s ≤ 0` → `R = 0.0`.
+- `s_eff` floors at `S_EFF_MIN` (> 0), so a topic that has been reviewed never reads a literal 0% — even fully lapsed it keeps the floor. *(Amended 2026-08-09 — the withdrawn `s ≤ 0 → R = 0` rule can no longer fire.)*
 
 Retention is evaluated **fresh on every dashboard render** against the current date — so a topic visibly decays between visits with no event. This continuous decay is the product's core behaviour.
 
@@ -83,7 +83,7 @@ due_date = reviewed + t_due days          // t_due = −k·s·ln(0.70) ≈ 0.356
 - If `due_date` is in the past the topic is **already overdue**; the UI says so rather than showing a past date as "upcoming".
 - This is a *projection*, recomputed live like retention. It is **never persisted** — a stored copy would go stale the moment `k` or `s` changed.
 
-**Worked check** (the §12 topic): `k = 7.0`, `s = 1.3` → `k·s = 9.1`, `t_due = 0.3567 × 9.1 = 3.25` days. Reviewed 9 days ago, so it fell due ~5.75 days back — consistent with its `R = 37%` being well under 0.70.
+**Worked check** (the §12 topic): `k = 7.0`, `s = 1.3` → `k·s = 9.1`, `t_due = 0.3567 × 9.1 = 3.25` days. Reviewed 9 days ago, so it fell due ~5.75 days back — consistent with its retention (`R = 30%` under the lapse-penalised curve, see §12) being well under 0.70. *(This `t_due` still uses raw `strength`; the 2026-08-09 rewrite moves `projectedDue` onto `s_eff` in a follow-up, which shortens `t_due` for lapsed topics.)*
 
 This is what populates Document 3 §5.2's "Upcoming review plan" dates and orders the review queue (§11).
 
@@ -251,21 +251,22 @@ The review queue (Document 3 Overview) is built from topics with `R < DUE_THRESH
 Topic "Algebraic fractions": `strength = 1.3`, `kFactor = 7.0`, `reviewed = 9 days ago`, `confidence = 4`, `activeErrors = 2`, `cards = 1`, one test scoring 11/20 at confidence 4.
 
 **Retention.**
-`t = 9`, `k·s = 7.0 × 1.3 = 9.1` → `R = e^(−9/9.1) = e^(−0.989) = 0.372` → **37%.** Below 0.70, so **due for review**.
+The one test scored 11/20 = 0.55 — a fail — so effective stability is lapse-penalised: `s_eff = strength · penaltyFrom(0.55) = 1.3 × 0.8125 = 1.05625`.
+`t = 9`, `k·s_eff = 7.0 × 1.05625 = 7.39` → `R = e^(−9/7.39) = e^(−1.217) = 0.296` → **30%.** Below 0.70, so **due for review**. *(Amended 2026-08-09. The pre-rewrite raw-strength model gave `k·s = 9.1` → `R = 0.372` → 37% — a lapse that made the topic look healthier, the bug this rewrite fixes.)*
 
 **OCI.** one test: `(4/5) − (11/20) = 0.80 − 0.55 = 0.25` → `OCI = +0.25` → **overconfident.**
 
 **Health.**
-- retentionScore = 37.2
+- retentionScore = 29.6 *(100 × 0.296, lapse-penalised)*
 - errorScore = 40 (2 active errors)
 - calibrationScore = 100 × (1 − 0.25) = 75
 - confidenceScore = (4/5)×100 = 80
 - cardScore = min(100, 1×20) = 20
-- health = 0.30·37.2 + 0.25·40 + 0.20·75 + 0.15·80 + 0.10·20 = 11.16 + 10 + 15 + 12 + 2 = **50** (mid band, amber).
+- health = 0.30·29.6 + 0.25·40 + 0.20·75 + 0.15·80 + 0.10·20 = 8.88 + 10 + 15 + 12 + 2 = **48** (mid band, amber). *(Amended 2026-08-09; pre-rewrite raw-strength retentionScore 37.2 made this 50.)*
 
 **Badges.** velocity = 1.3 / 3 reviews ≈ 0.43 (< 0.5 with ≥3 reviews) → **Slow growth.** Under-carded needs `cards = 0`, but cards = 1, so it does *not* fire.
 
-**Self-tuning.** Suppose the next test shows actual retention 0.30 while the curve predicted 0.37 → `drift = −0.07`. After three such negative samples averaging below −0.10, `kFactor` drops to `7.0 × 0.9 = 6.3` (still above `K_MIN` 4.2), steepening the curve to match the faster real forgetting.
+**Self-tuning.** Illustrating the (unchanged) drift → `kFactor` mechanism generically: suppose that at some later review the curve predicts 0.37 while the test shows actual retention 0.30 → `drift = −0.07`. After three such negative samples averaging below −0.10, `kFactor` drops to `7.0 × 0.9 = 6.3` (still above `K_MIN` 4.2), steepening the curve to match the faster real forgetting. *(Drift is scored against the curve BEFORE the event lands, so a fail's own penalty is excluded from its drift sample.)*
 
 ---
 
