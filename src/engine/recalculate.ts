@@ -73,7 +73,7 @@ export function applyEvent(topic: Topic, event: ReviewEvent, now: Date = new Dat
 
   // Drift must be measured against the curve as it stood *before* this event
   // lands (Document 2 §4.1: "predicted via §2 just before the event").
-  if (event.test && (event.kind === 'test_pass' || event.kind === 'test_fail')) {
+  if (!event.smeared && event.test && (event.kind === 'test_pass' || event.kind === 'test_fail')) {
     const predicted = predictRetention(topic, new Date(event.date));
     if (predicted !== null) {
       const drift = event.test.actual_retention - predicted;

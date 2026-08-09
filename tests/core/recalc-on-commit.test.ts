@@ -112,7 +112,25 @@ describe('E5-S2 — an exam drives drift and kFactor through the same path', () 
   }
 
   it('records a drift sample from a test, unlike a study review', () => {
-    const afterExam = logExam(storeWith(), 6);
+    // Non-smeared: a breakdown entry for the linked topic means the score
+    // isn't a uniform fallback, so drift IS pushed (smeared events skip it).
+    const r = ingest(
+      JSON.stringify({
+        schema_version: '2.0.0',
+        exam_id: 'exam_01J8ZXD5',
+        title: 'Midterm',
+        date: '2026-07-14T18:00:00Z',
+        linked_topic_ids: ['topic_01J8ZXA1'],
+        score: 6,
+        max_score: 20,
+        confidence_reported: 4,
+        breakdown: [{ topic_id: 'topic_01J8ZXA1', points_earned: 6, points_possible: 20 }],
+      }),
+      'exam',
+      storeWith(),
+    );
+    if (!r.ok) throw new Error('expected valid');
+    const afterExam = commit('exam', r.value, storeWith(), mergeInto);
     expect(findTopic(afterExam, 'topic_01J8ZXA1')!.drift_history).toHaveLength(1);
 
     const afterSession = logSession(storeWith(), 4);

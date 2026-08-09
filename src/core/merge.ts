@@ -154,6 +154,8 @@ function mergeExam(draft: Store, exam: Exam): void {
         // Computed here, never user-supplied (Document 1 v0.2 §2.4).
         actual_retention: earned / possible,
       },
+      smeared: !entry, // uniform fallback (no per-topic breakdown) → smeared
+      fanout: exam.linked_topic_ids.length, // stamped now for a future 1/√N option
     };
 
     topic.error_log.push(...toErrorEntries(entry?.errors, exam.date, 'exam', exam.exam_id));

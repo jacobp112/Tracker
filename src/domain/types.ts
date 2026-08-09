@@ -38,6 +38,15 @@ export interface ReviewEvent {
   confidence_reported: Confidence;
   /** Required when `kind` is a test; forbidden otherwise. */
   test?: TestEvidence;
+  /**
+   * True when this test event's score was smeared uniformly across an exam's
+   * linked topics (no per-topic `breakdown`). Excluded from kFactor self-tuning
+   * (§4); still counted, weighted, in the lapse fold (design 2026-08-09 §2.2).
+   */
+  smeared?: boolean;
+  /** Number of topics the source exam linked (`linked_topic_ids.length`).
+   *  Stamped for a future `1/√N` fan-out damping; unused at weight 1.0 today. */
+  fanout?: number;
   notes?: string;
 }
 

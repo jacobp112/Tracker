@@ -60,6 +60,8 @@ const REVIEW_EVENT: SchemaObject = {
     source_id: { type: 'string' },
     confidence_reported: CONFIDENCE,
     test: TEST_EVIDENCE,
+    smeared: { type: 'boolean' },
+    fanout: { type: 'integer', minimum: 1 },
     notes: { type: 'string', maxLength: 500 },
   },
   // Document 1 v0.2 §2.4: `test` is required when kind is a test, forbidden otherwise.
