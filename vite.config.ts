@@ -60,6 +60,10 @@ export default defineConfig({
       'tests/**/*.{test,spec}.{ts,tsx}',
       'src/**/*.{test,spec}.{ts,tsx}',
       'landing/**/*.{test,spec}.ts',
+      // Offline eval runner (not shipped, not `.test.ts`): discovered so it can
+      // report as *skipped* via describe.skipIf when EVAL_STORE isn't set,
+      // rather than silently vanishing from `npm test`'s file list.
+      'tests/eval/*.eval.ts',
     ],
   },
 });
