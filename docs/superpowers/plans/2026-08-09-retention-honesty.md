@@ -17,7 +17,7 @@
 - **Health weights unchanged** and must still sum to 1 (the `constants.ts` invariant check stays green).
 - **TDD, frequent commits** — each task: failing test → verify red → minimal code → verify green → commit.
 - **Test commands:** full suite `npm test`; single file `npx vitest run <path>`; filter `npx vitest run <path> -t "<name>"`; types `npm run typecheck`.
-- **Default constants (harness-tunable starting points):** `S_EFF_MIN 0.25`, `LAPSE_RECOVERY 1.25`, `PENALTY_FLOOR 0.40`, `SMEAR_PENALTY_DAMPING 1.0`, `TEST_GAIN_MIN 0.15`, `TEST_GAIN_AT_PASS_MARK 1.50`, `TEST_GAIN_MAX 2.00`.
+- **Default constants (harness-tunable starting points, except `SMEAR_PENALTY_WEIGHT`):** `S_EFF_MIN 0.25`, `LAPSE_RECOVERY 1.25`, `PENALTY_FLOOR 0.40`, `SMEAR_PENALTY_WEIGHT 1.0`, `TEST_GAIN_MIN 0.15`, `TEST_GAIN_AT_PASS_MARK 1.50`, `TEST_GAIN_MAX 2.00`.
 
 ---
 
@@ -39,6 +39,7 @@
 - `tests/eval/harness.test.ts` *(new)* — always-on unit tests (prior-events-only, clamp, smeared handling).
 - `tests/eval/harness.eval.ts` *(new)* — runner, `skipIf(!process.env.EVAL_STORE)`, prints the table.
 - `tests/eval/fixture.ts` *(new)* — synthetic multi-topic store so the harness runs without a real export.
+- `docs/superpowers/specs/2026-08-09-retention-eval-results.md` *(new, created here)* — the results table; the baseline row is appended in Task 4, `#1` in Task 6, `#1+continuous` in Task 9, and FSRS/constant + decision in Task 11 (it accretes, git-anchored per checkpoint).
 
 **Phase C — #1 + #7:**
 - `src/config/constants.ts` — the seven new constants.
@@ -48,7 +49,7 @@
 - `src/engine/recalculate.ts` — `strengthIncrement(event)` continuous for tests.
 
 **Phase D — decide:**
-- `docs/superpowers/specs/2026-08-09-retention-eval-results.md` *(new)* — the comparison table and model decision.
+- `docs/superpowers/specs/2026-08-09-retention-eval-results.md` — FSRS/constant rows + the model decision appended to the doc created in Phase B.
 
 ---
 
@@ -201,7 +202,8 @@ describe('applyEvent drift skip for smeared events', () => {
   it('a non-smeared test DOES push drift and tune k_factor', () => {
     const before = baseTopic();
     const after = applyEvent(before, testEvent({ smeared: false }));
-    expect(after.drift_history.length).toBeGreaterThan(before.drift_history.length - 1);
+    // toBe(+1), not toBeGreaterThan(-1): the latter passes even when nothing was pushed.
+    expect(after.drift_history.length).toBe(before.drift_history.length + 1);
     expect(after.k_factor).not.toBe(before.k_factor);
   });
 });
@@ -236,6 +238,7 @@ describe('mergeExam smeared marking', () => {
     mergeInto(s, 'exam', exam);
     const ev = s.courses[0].sections[0].topics[0].review_history.at(-1)!;
     expect(ev.smeared).toBe(true);
+    expect(ev.fanout).toBe(1); // linked_topic_ids.length, stamped for a future 1/√N option
   });
   it('marks a breakdown-backed exam event smeared: false', () => {
     const s = storeWithTopic();
@@ -264,9 +267,12 @@ In `src/domain/types.ts`, add to `ReviewEvent` after `test?`:
   /**
    * True when this test event's score was smeared uniformly across an exam's
    * linked topics (no per-topic `breakdown`). Excluded from kFactor self-tuning
-   * (§4); still counted, dampened, in the lapse fold (design 2026-08-09 §2.2).
+   * (§4); still counted, weighted, in the lapse fold (design 2026-08-09 §2.2).
    */
   smeared?: boolean;
+  /** Number of topics the source exam linked (`linked_topic_ids.length`).
+   *  Stamped for a future `1/√N` fan-out damping; unused at weight 1.0 today. */
+  fanout?: number;
 ```
 
 - [ ] **Step 4: Allow it in the schema**
@@ -275,16 +281,18 @@ In `src/domain/schemas.ts`, add to `REVIEW_EVENT.properties`:
 
 ```ts
     smeared: { type: 'boolean' },
+    fanout: { type: 'integer', minimum: 1 },
 ```
 
-(`additionalProperties: false` means it must be declared; it is not added to `required`, so old JSON without it still validates.)
+(`additionalProperties: false` means they must be declared; neither is added to `required`, so old JSON without them still validates.)
 
 - [ ] **Step 5: Stamp it in `mergeExam`**
 
-In `src/core/merge.ts` `mergeExam`, in the event object add (the topic's own breakdown entry decides it):
+In `src/core/merge.ts` `mergeExam`, in the event object add (the topic's own breakdown entry decides `smeared`; `source_id` is already `exam.exam_id` at line 146, which the migration join relies on):
 
 ```ts
       smeared: !entry, // uniform fallback (no per-topic breakdown) → smeared
+      fanout: exam.linked_topic_ids.length, // stamped now for a future 1/√N option
 ```
 
 - [ ] **Step 6: Skip drift in `applyEvent`**
@@ -393,6 +401,39 @@ describe('recomputeLapseContamination', () => {
     recomputeLapseContamination(s);
     expect(JSON.stringify(s)).toBe(once);
   });
+
+  // THE discriminating test: without it, "purged correctly" and "join failed,
+  // wiped everything to DECAY_K" are indistinguishable (both leave k===DECAY_K).
+  it('PRESERVES legitimate tuning from breakdown-backed exams (join resolves)', () => {
+    // Three breakdown-backed exams, each a real per-topic fail → real drift → real k move.
+    const exams: Exam[] = [0, 1, 2].map((i) => ({
+      schema_version: '3.0.0', exam_id: `exam_${i}`, title: `E${i}`,
+      date: `2026-08-0${i + 1}T09:00:00Z`, linked_topic_ids: ['topic_a'],
+      score: 2, max_score: 10,
+      breakdown: [{ topic_id: 'topic_a', points_earned: 2, points_possible: 10 }],
+    }));
+    const events: ReviewEvent[] = exams.map((ex, i) => ({
+      event_id: `event_${i}`, date: ex.date, kind: 'test_fail', source: 'exam',
+      source_id: ex.exam_id, confidence_reported: 3,
+      test: { score: 2, out_of: 10, actual_retention: 0.2 },
+    }));
+    const course: Course = {
+      schema_version: '3.0.0', course_id: 'course_1', title: 'C', created_at: '2026-08-01T00:00:00Z',
+      source: 'manual', sections: [{ section_id: 'section_1', title: 'S', order: 0, topics: [{
+        topic_id: 'topic_a', title: 'T', status: 'practising', conf: 3, strength: 3, k_factor: 8.4,
+        cards: 0, last_reviewed: '2026-08-03T09:00:00Z', mastered_at: null, drift_history: [],
+        review_history: events, error_log: [],
+      }] }],
+    };
+    const s = emptyStore(); s.courses.push(course); s.exams.push(...exams);
+
+    const counts = recomputeLapseContamination(s);
+    const t = s.courses[0].sections[0].topics[0];
+    expect(counts.unresolved).toBe(0);            // every source_id resolved to an exam
+    expect(t.review_history.every((e) => e.smeared === false)).toBe(true);
+    expect(t.drift_history.length).toBeGreaterThan(0); // legitimate drift survived
+    expect(t.k_factor).not.toBe(CONFIG.DECAY_K);   // legitimate tuning survived
+  });
 });
 ```
 
@@ -425,7 +466,7 @@ export function topicStateAsOf(topic: Topic, asOf: Date): Topic {
 }
 ```
 
-Add `ReviewEvent` to the type import in `replay.ts`.
+Add `ReviewEvent` to the type import in `replay.ts`. **Keep `genesis` byte-identical to the current implementation** — in particular `error_log: []` and `k_factor: CONFIG.DECAY_K`. `topicLevelHighWater` calls `topicStateAsOf` and then overrides `error_log` with date-filtered active errors (`leveling.ts:77-88`), so it relies on genesis emptying it; any drift here silently changes health-derived level. This is an extraction, not a behavior change.
 
 - [ ] **Step 4: Create the migration module**
 
@@ -445,17 +486,26 @@ export function examTopicSmeared(exam: Exam | undefined, topicId: string): boole
   return !exam.breakdown.some((b) => b.topic_id === topicId);
 }
 
+export interface RecomputeCounts { resolved: number; unresolved: number; }
+
 /**
  * v3.1.0 — purge kFactor/drift_history contamination from uniform-fallback exams.
- * Backfills the `smeared` marker on exam-sourced test events (joining
- * source_id → store.exams[]), then recomputes k forward under the new skip rule
- * via the shared replay. Idempotent; mutates `store` in place.
+ * Backfills `smeared` (and `fanout`) on exam-sourced test events by joining
+ * source_id → store.exams[] (mergeExam stamps source_id = exam.exam_id), then
+ * recomputes k forward under the new skip rule via the shared replay. Idempotent;
+ * mutates `store` in place. Returns join counts so a caller/test can assert that
+ * provenance actually resolved — an unresolved join silently reduces to "wipe
+ * everything to DECAY_K," which would otherwise look like a successful purge.
  */
-export function recomputeLapseContamination(store: Store): void {
+export function recomputeLapseContamination(store: Store): RecomputeCounts {
+  let resolved = 0;
+  let unresolved = 0;
   for (const { topic } of allTopics(store)) {
     for (const e of topic.review_history) {
       if (e.source === 'exam' && (e.kind === 'test_pass' || e.kind === 'test_fail')) {
         const exam = store.exams.find((x) => x.exam_id === e.source_id);
+        if (exam) { resolved += 1; e.fanout = exam.linked_topic_ids.length; }
+        else unresolved += 1;
         e.smeared = examTopicSmeared(exam, topic.topic_id);
       }
     }
@@ -463,6 +513,7 @@ export function recomputeLapseContamination(store: Store): void {
     topic.k_factor = replayed.k_factor;
     topic.drift_history = replayed.drift_history;
   }
+  return { resolved, unresolved };
 }
 ```
 
@@ -521,8 +572,8 @@ it('importBundle recomputes contaminated k from an old bundle', () => {
 
 - [ ] **Step 10: Run affected suites**
 
-Run: `npx vitest run tests/core/migrations.test.ts tests/engine/replay.test.ts && npm run typecheck`
-Expected: PASS (confirm `topicStateAsOf` refactor didn't disturb `replay.test.ts`).
+Run: `npx vitest run tests/core/migrations.test.ts tests/engine/replay.test.ts tests/engine/leveling.test.ts && npm run typecheck`
+Expected: PASS. `replay.test.ts` confirms the `topicStateAsOf` extraction is behaviour-preserving; `leveling.test.ts` confirms `topicLevelHighWater` (which depends on genesis emptying `error_log`) is unaffected. If `leveling.test.ts` does **not** exercise high-water with active errors, add a case that does before trusting this step.
 
 - [ ] **Step 11: Commit**
 
@@ -600,6 +651,20 @@ describe('scoreStore', () => {
     const scored = scoreStore(s, constantModel(s));
     expect(Number.isFinite(scored.mae)).toBe(true);
   });
+
+  it('skips a test with no prior events (first-event exam) instead of scoring R=1', () => {
+    const s = fixtureStore();
+    const firstEventExam = {
+      event_id: 'event_first', date: '2026-06-01T09:00:00Z', kind: 'test_fail' as const,
+      source: 'exam' as const, source_id: 'exam_first', confidence_reported: 3,
+      test: { score: 1, out_of: 10, actual_retention: 0.1 },
+    };
+    // Prepend as the topic's very first event.
+    s.courses[0].sections[0].topics[0].review_history.unshift(firstEventExam);
+    const scored = scoreStore(s, engineModel);
+    expect(scored.skipped).toBe(1);
+    expect(scored.n).toBe(3); // unchanged — the first-event exam is not scored
+  });
 });
 ```
 
@@ -621,7 +686,7 @@ const EPS = 1e-6;
 const clamp = (r: number) => Math.min(1 - EPS, Math.max(EPS, r));
 const isTest = (e: ReviewEvent) => e.kind === 'test_pass' || e.kind === 'test_fail';
 
-export interface Scored { mae: number; logLoss: number; bernoulli: number; n: number; }
+export interface Scored { mae: number; logLoss: number; bernoulli: number; n: number; skipped: number; }
 
 /** Predict R for a topic from prior events only, at time `at`. */
 export interface Model { name: string; predict: (topic: Topic, prior: ReviewEvent[], at: Date) => number; }
@@ -662,7 +727,7 @@ export function constantModel(store: Store): Model {
 }
 
 export function scoreStore(store: Store, model: Model): Scored {
-  let mae = 0, logLoss = 0, bernoulli = 0, n = 0;
+  let mae = 0, logLoss = 0, bernoulli = 0, n = 0, skipped = 0;
   for (const { topic } of allTopics(store)) {
     const events = [...topic.review_history].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -670,19 +735,25 @@ export function scoreStore(store: Store, model: Model): Scored {
     const prior: ReviewEvent[] = [];
     for (const e of events) {
       if (isTest(e) && !e.smeared && e.test) {
-        const a = e.test.actual_retention;
-        const r = clamp(model.predict(topic, prior, new Date(e.date)));
-        mae += Math.abs(r - a);
-        logLoss += -(a * Math.log(r) + (1 - a) * Math.log(1 - r));
-        const o = a >= CONFIG.TEST_PASS_MARK ? 1 : 0;
-        bernoulli += -(o * Math.log(r) + (1 - o) * Math.log(1 - r));
-        n += 1;
+        if (prior.length === 0) {
+          // No prior evidence — a first-event exam. Scoring a fabricated R=1
+          // here would hand every model a guaranteed large error. Skip, count it.
+          skipped += 1;
+        } else {
+          const a = e.test.actual_retention;
+          const r = clamp(model.predict(topic, prior, new Date(e.date)));
+          mae += Math.abs(r - a);
+          logLoss += -(a * Math.log(r) + (1 - a) * Math.log(1 - r));
+          const o = a >= CONFIG.TEST_PASS_MARK ? 1 : 0;
+          bernoulli += -(o * Math.log(r) + (1 - o) * Math.log(1 - r));
+          n += 1;
+        }
       }
-      prior.push(e); // smeared events stay in history
+      prior.push(e); // smeared / skipped events still stay in history
     }
   }
-  return n === 0 ? { mae: 0, logLoss: 0, bernoulli: 0, n: 0 }
-    : { mae: mae / n, logLoss: logLoss / n, bernoulli: bernoulli / n, n };
+  return n === 0 ? { mae: 0, logLoss: 0, bernoulli: 0, n: 0, skipped }
+    : { mae: mae / n, logLoss: logLoss / n, bernoulli: bernoulli / n, n, skipped };
 }
 ```
 
@@ -708,26 +779,44 @@ describe.skipIf(!path)('retention model eval (set EVAL_STORE to an exported bund
     const store: Store = raw.store ?? raw;
     const models = [engineModel, fsrsModel, constantModel(store)];
     // eslint-disable-next-line no-console
-    console.log('\nmodel            n     MAE      logLoss  bernoulli');
+    console.log('\nmodel            n     skip  MAE      logLoss  bernoulli');
     for (const m of models) {
       const s = scoreStore(store, m);
       // eslint-disable-next-line no-console
       console.log(
-        `${m.name.padEnd(15)} ${String(s.n).padEnd(5)} ${s.mae.toFixed(4)}  ${s.logLoss.toFixed(4)}  ${s.bernoulli.toFixed(4)}`,
+        `${m.name.padEnd(15)} ${String(s.n).padEnd(5)} ${String(s.skipped).padEnd(5)} ${s.mae.toFixed(4)}  ${s.logLoss.toFixed(4)}  ${s.bernoulli.toFixed(4)}`,
       );
     }
   });
 });
 ```
 
-- [ ] **Step 7: Smoke-run the runner against the fixture, then record the baseline**
+- [ ] **Step 7: Create the accreting results doc and record the baseline row**
+
+The results doc is created **now**, not at Task 11, so each checkpoint's engine row is git-anchored to the commit that produced it rather than carried across subagent handoffs in a scratch note.
 
 Run (PowerShell; bash form: `EVAL_STORE=... npx vitest ...`):
 ```powershell
 # Export a real store from Settings → save as bundle.json, then:
 $env:EVAL_STORE = 'C:\path\to\bundle.json'; npx vitest run tests/eval/harness.eval.ts
 ```
-Expected: prints the table. **Copy the `engine` row — this is the baseline** — into a scratch note for Task 11. If no real store exists yet, point `EVAL_STORE` at a fixture bundle you write from `fixtureStore()` and mark the decision provisional.
+Expected: prints the table. Create `docs/superpowers/specs/2026-08-09-retention-eval-results.md`:
+
+```markdown
+# Retention Model Eval — Results (2026-08-09)
+
+Store: <bundle name / N topics / M scored test events / K skipped (first-event exams)>.
+Smeared events excluded as targets. Decision rule: with fewer than ~50 scored events (`n`),
+the table cannot separate these models — record "insufficient data, decision deferred."
+
+| Model            | commit | n | skip | MAE | log-loss (soft) | Bernoulli |
+|------------------|--------|---|------|-----|-----------------|-----------|
+| baseline         | <sha>  |   |      |     |                 |           |
+```
+
+Fill the `baseline` row from the `engine` row of this run and put the current commit sha in `commit`.
+If no real store exists yet, point `EVAL_STORE` at a bundle written from `fixtureStore()`, note `n = 3`
+(smoke only), and mark every downstream decision provisional.
 
 - [ ] **Step 8: Confirm the eval file is skipped in the normal suite**
 
@@ -737,8 +826,8 @@ Expected: PASS; `harness.eval.ts` reports skipped (no `EVAL_STORE`).
 - [ ] **Step 9: Commit**
 
 ```bash
-git add tests/eval/
-git commit -m "feat(eval): offline retention scorer + baseline harness (skipped by default)"
+git add tests/eval/ docs/superpowers/specs/2026-08-09-retention-eval-results.md
+git commit -m "feat(eval): offline retention scorer + baseline row (harness skipped by default)"
 ```
 
 ---
@@ -750,7 +839,7 @@ git commit -m "feat(eval): offline retention scorer + baseline harness (skipped 
 - Test: covered by Task 6's `penaltyFrom` tests (fold into that task's verification).
 
 **Interfaces:**
-- Produces: `CONFIG.S_EFF_MIN`, `LAPSE_RECOVERY`, `PENALTY_FLOOR`, `SMEAR_PENALTY_DAMPING`, `TEST_GAIN_MIN`, `TEST_GAIN_AT_PASS_MARK`, `TEST_GAIN_MAX`.
+- Produces: `CONFIG.S_EFF_MIN`, `LAPSE_RECOVERY`, `PENALTY_FLOOR`, `SMEAR_PENALTY_WEIGHT`, `TEST_GAIN_MIN`, `TEST_GAIN_AT_PASS_MARK`, `TEST_GAIN_MAX`.
 
 - [ ] **Step 1: Add the constants**
 
@@ -761,7 +850,9 @@ In `src/config/constants.ts`, after `STRENGTH_GAIN`:
   S_EFF_MIN: 0.25,
   LAPSE_RECOVERY: 1.25,
   PENALTY_FLOOR: 0.4,
-  SMEAR_PENALTY_DAMPING: 1.0,
+  /** Weight on a smeared exam's penalty deviation (1.0 = full penalty). Not
+   *  harness-tunable — smeared events are excluded as scoring targets. */
+  SMEAR_PENALTY_WEIGHT: 1.0,
   /** Continuous test strength-gain anchors (§2.4). Unchanged at the 0.80 mark. */
   TEST_GAIN_MIN: 0.15,
   TEST_GAIN_AT_PASS_MARK: 1.5,
@@ -826,7 +917,12 @@ describe('lapseFactor', () => {
     expect(P).toBeCloseTo(CONFIG.PENALTY_FLOOR * CONFIG.LAPSE_RECOVERY, 6);
     expect(P).toBeLessThan(1);
   });
-  it('smeared fail is dampened toward 1 (no-op at damping 1.0 = same as non-smeared)', () => {
+  it('pins the recovery crossover: penaltyFrom(0.533)*RECOVERY ≈ 1 (§2.5)', () => {
+    // Below this actual_retention a single pass cannot fully erase the fail;
+    // above it, it can. Pinned so re-tuning PENALTY_FLOOR/LAPSE_RECOVERY shows up.
+    expect(penaltyFrom(0.533) * CONFIG.LAPSE_RECOVERY).toBeCloseTo(1, 2);
+  });
+  it('smeared fail is weighted toward 1 (no-op at weight 1.0 = same as non-smeared)', () => {
     expect(lapseFactor([failEv(0.3, true)])).toBeCloseTo(lapseFactor([failEv(0.3, false)]), 6);
   });
 });
@@ -879,7 +975,7 @@ export function lapseFactor(events: readonly ReviewEvent[]): number {
   for (const e of events) {
     if (e.kind === 'test_fail' && e.test) {
       let pen = penaltyFrom(e.test.actual_retention);
-      if (e.smeared) pen = 1 - (1 - pen) * CONFIG.SMEAR_PENALTY_DAMPING;
+      if (e.smeared) pen = 1 - (1 - pen) * CONFIG.SMEAR_PENALTY_WEIGHT;
       P *= pen;
     } else if (e.kind === 'test_pass') {
       P = Math.min(1, P * CONFIG.LAPSE_RECOVERY);
@@ -968,17 +1064,28 @@ it('drift is scored against the curve BEFORE the event lands (excludes its own p
 Run: `npx vitest run tests/engine/recalculate.test.ts -t "before the event lands"`
 Expected: PASS (guards a future refactor to `next`).
 
-- [ ] **Step 9: Run full suite + typecheck; record the #1 engine row**
+- [ ] **Step 9: Run full suite + typecheck**
 
 Run: `npm test && npm run typecheck`
-Expected: PASS. Then re-run the harness (Task 4 Step 7) — **copy the `engine` row; this is the `#1` number** for Task 11.
+Expected: PASS.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 10: Commit the engine change**
 
 ```bash
 git add src/engine/stability.ts src/engine/retention.ts tests/engine/stability.test.ts tests/engine/retention.test.ts tests/engine/recalculate.test.ts
 git commit -m "feat(retention): lapse-penalised effective stability (#1)"
 ```
+
+- [ ] **Step 11: Append the `#1` row to the results doc**
+
+Re-run the harness against your bundle (Task 4 Step 7 command). Append the `engine` row to `docs/superpowers/specs/2026-08-09-retention-eval-results.md` as `#1 (penalty)` with this commit's sha, then commit:
+
+```bash
+git add docs/superpowers/specs/2026-08-09-retention-eval-results.md
+git commit -m "docs(eval): record #1 (penalty) row"
+```
+
+(If no real bundle: skip the harness run, leave the `#1` row blank, and note it deferred.)
 
 ---
 
@@ -1048,7 +1155,9 @@ git commit -m "feat(retention): projectedDue uses effective stability so fails r
 - Consumes: `topicStateAsOf` (Task 3), `predictRetention`.
 - Removes: `topicAsOf`, `replayStrength`, `incrementOf` (local, now dead).
 
-- [ ] **Step 1: Failing test — past points must not see future fails**
+- [ ] **Step 1: Failing test — the pre-fail point is identical with and without the future fail**
+
+This is the property that actually matters. Comparing two days of one series conflates the penalty with recency (the later day is closer to its review and has higher raw strength); comparing the *same* pre-fail day across two histories isolates leakage cleanly.
 
 ```ts
 // tests/engine/history.test.ts
@@ -1056,36 +1165,37 @@ import { describe, it, expect } from 'vitest';
 import { retentionSeries } from '@/engine/history';
 import type { Course, ReviewEvent } from '@/domain/types';
 
-function courseWithLateFail(): Course {
-  const study: ReviewEvent = {
-    event_id: 'event_s', date: '2026-08-01T09:00:00Z', kind: 'study_review',
-    source: 'session', source_id: 'session_1', confidence_reported: 4,
-  };
-  const lateFail: ReviewEvent = {
-    event_id: 'event_f', date: '2026-08-09T09:00:00Z', kind: 'test_fail', source: 'exam',
-    source_id: 'exam_1', confidence_reported: 3, test: { score: 1, out_of: 10, actual_retention: 0.1 },
-  };
+const study: ReviewEvent = {
+  event_id: 'event_s', date: '2026-08-01T09:00:00Z', kind: 'study_review',
+  source: 'session', source_id: 'session_1', confidence_reported: 4,
+};
+const lateFail: ReviewEvent = {
+  event_id: 'event_f', date: '2026-08-09T09:00:00Z', kind: 'test_fail', source: 'exam',
+  source_id: 'exam_1', confidence_reported: 3, test: { score: 1, out_of: 10, actual_retention: 0.1 },
+};
+
+function course(history: ReviewEvent[]): Course {
   return {
     schema_version: '3.1.0', course_id: 'course_1', title: 'C', created_at: '2026-08-01T00:00:00Z',
     source: 'manual', sections: [{ section_id: 'section_1', title: 'S', order: 0, topics: [{
       topic_id: 'topic_a', title: 'T', status: 'practising', conf: 4, strength: 2, k_factor: 8.4,
-      cards: 0, last_reviewed: '2026-08-09T09:00:00Z', mastered_at: null, drift_history: [],
-      review_history: [study, lateFail], error_log: [],
+      cards: 0, last_reviewed: history.at(-1)!.date, mastered_at: null, drift_history: [],
+      review_history: history, error_log: [],
     }] }],
   };
 }
 
-it('a point before the fail is unpenalised (no future leakage)', () => {
+it('the Aug 3 point is identical whether or not an Aug 9 fail exists (no future leakage)', () => {
   const now = new Date('2026-08-10T09:00:00Z');
-  const series = retentionSeries(courseWithLateFail(), 10, now);
-  const aug3 = series.find((p) => p.date.toISOString().startsWith('2026-08-03'))!;
-  const aug10 = series.find((p) => p.date.toISOString().startsWith('2026-08-10'))!;
-  expect(aug3.value).toBeGreaterThan(aug10.value); // pre-fail day higher than post-fail day
+  const withoutFail = retentionSeries(course([study]), 10, now);
+  const withFail = retentionSeries(course([study, lateFail]), 10, now);
+  const aug3 = (s: typeof withFail) => s.find((p) => p.date.toISOString().startsWith('2026-08-03'))!.value;
+  expect(aug3(withFail)).toBe(aug3(withoutFail));
 });
 ```
 
 Run: `npx vitest run tests/engine/history.test.ts`
-Expected: FAIL — current `topicAsOf` keeps full history and would apply the fail's penalty retroactively.
+Expected: FAIL — current `topicAsOf` keeps the full history, so the Aug 3 point in `withFail` carries the Aug 9 fail's penalty retroactively and differs from `withoutFail`.
 
 - [ ] **Step 2: Rewrite the series to forward replay; delete the subtraction path**
 
@@ -1198,17 +1308,28 @@ Expected: PASS.
 Run: `npm test`
 For each failing strength/health assertion in `tests/engine/worked-example.test.ts` and `tests/engine/engine.test.ts`, recompute the expected value with the formula above. Example: a test at 11/20 → `a = 0.55 ≤ 0.80` → gain `= 0.15 + (1.5 − 0.15)·(0.55/0.80) = 1.078` (was `1.5` for a pass or `0.15` for a fail). Update expected strengths (and any health values that depend on them) to the recomputed numbers — do not weaken the assertions.
 
-- [ ] **Step 5: Full suite + typecheck; record the #1+continuous engine row**
+- [ ] **Step 5: Full suite + typecheck**
 
 Run: `npm test && npm run typecheck`
-Expected: PASS. Re-run the harness (Task 4 Step 7) — **copy the `engine` row; this is the `#1+continuous` number** for Task 11.
+Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit the engine change**
 
 ```bash
 git add src/engine/recalculate.ts tests/engine/recalculate.test.ts tests/engine/worked-example.test.ts tests/engine/engine.test.ts
 git commit -m "feat(engine): continuous test strength-gain, anchored at the pass mark (#7)"
 ```
+
+- [ ] **Step 7: Append the `#1+continuous` row to the results doc**
+
+Re-run the harness against your bundle. Append the `engine` row as `#1 + continuous` with this commit's sha, then commit:
+
+```bash
+git add docs/superpowers/specs/2026-08-09-retention-eval-results.md
+git commit -m "docs(eval): record #1+continuous row"
+```
+
+(If no real bundle: leave the row blank, note deferred.)
 
 ---
 
@@ -1273,53 +1394,56 @@ git commit -m "test(engine): pin badge firing under continuous gain"
 
 ---
 
-## Task 11: Results doc + model decision (Phase D)
+## Task 11: FSRS/constant rows + model decision (Phase D)
 
 **Files:**
-- Create: `docs/superpowers/specs/2026-08-09-retention-eval-results.md`
+- Modify: `docs/superpowers/specs/2026-08-09-retention-eval-results.md` (created in Task 4; `baseline`/`#1`/`#1+continuous` rows already appended in Tasks 4/6/9)
 
 **Interfaces:**
-- Consumes: the three recorded `engine` rows (baseline / #1 / #1+continuous) from Tasks 4, 6, 9, plus `fsrs-rough` and `constant`.
+- Consumes: the three `engine` rows already committed to the doc, plus `fsrs-rough` and `constant` from a HEAD run.
 
-- [ ] **Step 1: Re-run the harness at HEAD for the FSRS + constant rows**
+- [ ] **Step 1: Run the harness at HEAD for the FSRS + constant rows**
 
 Run:
 ```powershell
 $env:EVAL_STORE = 'C:\path\to\bundle.json'; npx vitest run tests/eval/harness.eval.ts
 ```
-Expected: prints the table. The `engine` row here equals the `#1+continuous` number recorded in Task 9; `fsrs-rough` and `constant` are model-independent of our git state, so read them here.
+Expected: prints the table. The `engine` row here equals the `#1+continuous` row already in the doc; `fsrs-rough` and `constant` are git-state-independent, so read them from this run. Note the `skip` count — a high skip fraction means much of the store is first-event exams and the effective evidence is smaller than the topic count suggests.
 
-- [ ] **Step 2: Write the results doc**
+- [ ] **Step 2: Append the FSRS + constant rows and write the decision**
+
+Append to `docs/superpowers/specs/2026-08-09-retention-eval-results.md` so the completed table reads:
 
 ```markdown
-# Retention Model Eval — Results (2026-08-09)
+| Model            | commit | n | skip | MAE | log-loss (soft) | Bernoulli |
+|------------------|--------|---|------|-----|-----------------|-----------|
+| constant (mean)  | <sha>  |   |      |     |       —         |     —     |
+| baseline         | <sha>  |   |      |     |                 |           |
+| #1 (penalty)     | <sha>  |   |      |     |                 |           |
+| #1 + continuous  | <sha>  |   |      |     |                 |           |
+| fsrs-rough       | <sha>  |   |      |     |                 |           |
 
-Store: <bundle name / N topics / M scored test events>. Smeared events excluded as targets.
+**Decision:** <#1 / #1+continuous / pursue FSRS / DEFERRED>.
 
-| Model            | n | MAE | log-loss (soft) | Bernoulli |
-|------------------|---|-----|-----------------|-----------|
-| constant (mean)  |   |     |     —           |     —     |
-| baseline         |   |     |                 |           |
-| #1 (penalty)     |   |     |                 |           |
-| #1 + continuous  |   |     |                 |           |
-| fsrs-rough       |   |     |                 |           |
+- **Data-sufficiency gate (apply first):** if `n < ~50` scored events, record
+  **"insufficient data — decision deferred"** and stop. The synthetic fixture yields `n = 3`;
+  that is a smoke test for the scorer, not evidence about the model. Do **not** rationalise a pick.
+- **If n is sufficient:** did #1(+continuous) close most of the gap from `baseline` to `fsrs-rough`
+  on MAE/log-loss? If yes, ship it; file FSRS as a follow-up only if the residual gap is material.
+  `fsrs-rough` is uncalibrated — a floor on what a tuned FSRS could reach, not a verdict.
 
-**Decision:** <#1 / #1+continuous / pursue FSRS>. Rationale: did #1(+continuous) close most of
-the gap from baseline to fsrs-rough on MAE/log-loss? If yes, ship it and file FSRS as a follow-up
-only if the residual gap is material. Caveat: fsrs-rough is uncalibrated; treat it as a floor on
-what a tuned FSRS could reach, not a verdict.
-
-**Constant tuning notes:** <any adjustments to penaltyFrom shape / TEST_GAIN_* / LAPSE_RECOVERY
-/ PENALTY_FLOOR / S_EFF_MIN / SMEAR_PENALTY_DAMPING suggested by the numbers>.
+**Tuning notes (only with sufficient real data):** adjustments to `penaltyFrom` shape / `TEST_GAIN_*`
+/ `LAPSE_RECOVERY` / `PENALTY_FLOOR` / `S_EFF_MIN` suggested by the numbers. **Never tune any constant
+against the fixture** — that is fitting to invented data. (`SMEAR_PENALTY_WEIGHT` is not tunable here at all.)
 ```
 
-Fill every cell from the recorded rows. If no real store was available, state that explicitly and mark the decision provisional against the synthetic fixture.
+If a larger evaluation is needed before real exams accumulate, a synthetic *generative* store (a learner model with known ground truth, sampled from a **non-exponential** curve — FSRS-ish or a mixture — so the test isn't "an exponential model recovers exponential data") is a follow-up, not part of this plan.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-08-09-retention-eval-results.md
-git commit -m "docs(eval): retention model comparison and decision"
+git commit -m "docs(eval): FSRS/constant rows and model decision"
 ```
 
 ---
@@ -1328,19 +1452,21 @@ git commit -m "docs(eval): retention model comparison and decision"
 
 **Spec coverage:**
 - §1 lapse penalty / `s_eff` → Tasks 5, 6 (fold, `effectiveStrength`, `predictRetention`).
-- §2.2 smeared included in fold → Task 6 (`lapseFactor` dampens, does not skip).
+- §2.2 smeared included in fold (weighted, not skipped) + fan-out `fanout` stamped → Task 6 (`lapseFactor`), Task 2 (ingestion stamp), Task 3 (backfill).
 - §2.4 continuous gain, anchored at mark → Task 9.
-- §2.5 recovery invariant on `P`; `s_eff` overshoot gated on maturity → Task 6 tests (hard-fail `P`), and `effectiveStrength` floor test.
+- §2.5 recovery invariant on `P` + sharp crossover pin (`a≈0.533`); `s_eff` overshoot gated on maturity → Task 6 tests (hard-fail `P`, crossover pin, `effectiveStrength` floor).
 - §3 plug-ins: `predictRetention` (T6), `projectedDue` (T7), `history.ts` consolidation (T8), drift-order regression (T6 Step 8), `topicVelocity` untouched (no task modifies it). ✔
 - §3.2 shared forward-k → Task 3 `replayEvents`, reused by migration + harness.
-- §4 #6 live rule + recompute on load & import + unresolved→smeared → Tasks 2, 3.
+- §4 #6 live rule + recompute on load & import + unresolved→smeared + resolution counts → Tasks 2, 3.
 - §5 fractional `t` → Task 1.
-- §6 harness: soft + Bernoulli, `[ε,1−ε]` clamp, constant baseline, smeared excluded-as-target/kept-in-history → Task 4.
+- §6 harness: soft + Bernoulli, `[ε,1−ε]` clamp, constant baseline, empty-prior skip, smeared excluded-as-target/kept-in-history → Task 4.
 - §7 sequencing (day-nit+#6 → baseline → #1+#7) → Task order 1-3, 4, 5-9. ✔
-- §8 tests: drift-order (T6), penaltyFrom endpoints (T6), `s_eff` floor (T6), P-invariant at hard fail (T6), maturity-gated overshoot (T6), badge-firing (T10), migration idempotent + on-import (T3), harness prior-only + clamp (T4). ✔
+- §8 tests: drift-order (T6), penaltyFrom endpoints (T6), crossover pin (T6), `s_eff` floor (T6), P-invariant at hard fail (T6), maturity-gated overshoot (T6), badge-firing (T10), migration idempotent + on-import + **preserves legitimate tuning** (T3), harness prior-only + clamp + skip (T4). ✔
 
 **Placeholder scan:** No TBD/TODO; every code step has real code. The two "update existing fixtures" steps (Task 1 Step 6, Task 9 Step 4) give the exact formula and a worked conversion rather than "fix the tests."
 
-**Type consistency:** `replayEvents(topic, events)`, `effectiveStrength(topic)`, `lapseFactor(events)`, `penaltyFrom(a)`, `strengthIncrement(event)`, `examTopicSmeared(exam, topicId)`, `recomputeLapseContamination(store)`, `scoreStore(store, model)`, `Model.predict(topic, prior, at)` — names and signatures match across their producing and consuming tasks.
+**Type consistency:** `replayEvents(topic, events)`, `effectiveStrength(topic)`, `lapseFactor(events)`, `penaltyFrom(a)`, `strengthIncrement(event)`, `examTopicSmeared(exam, topicId)`, `recomputeLapseContamination(store): RecomputeCounts`, `scoreStore(store, model): Scored{…,skipped}`, `Model.predict(topic, prior, at)` — names and signatures match across their producing and consuming tasks. Constant is `SMEAR_PENALTY_WEIGHT` (not `_DAMPING`) everywhere.
 
-**Note on `#1`-alone vs `#1+continuous`:** both are captured as git checkpoints (harness re-run at Task 6 and Task 9), not runtime flags — no model-selection code ships in the app.
+**Blind-spot guards added (review round 2):** migration `PRESERVES legitimate tuning` test + `unresolved` count (distinguishes purge from wipe); Task 8 tests the pre-fail point is *identical* with/without the future fail (isolates leakage from recency); Task 2 drift assertion is `toBe(+1)`; harness skips empty-prior targets.
+
+**Note on `#1`-alone vs `#1+continuous`:** both are captured as git checkpoints (harness re-run + results-doc row appended at Tasks 6 and 9), not runtime flags — no model-selection code ships in the app. The results doc accretes per checkpoint rather than being assembled from a scratch note.

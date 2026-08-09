@@ -56,7 +56,7 @@ lapseFactor(events, asOf):
   for e in events ordered by date, date ≤ asOf:
     if e.kind == 'test_fail':
       pen = penaltyFrom(e.test.actual_retention)                 // continuous, ≤ 1
-      if e.smeared: pen = 1 − (1 − pen) · SMEAR_PENALTY_DAMPING  // toward 1 = softer
+      if e.smeared: pen = 1 − (1 − pen) · SMEAR_PENALTY_WEIGHT  // weight 1.0 = full penalty
       P *= pen
     else if e.kind == 'test_pass':
       P = min(1, P · LAPSE_RECOVERY)                             // asymmetric, capped
@@ -64,7 +64,8 @@ lapseFactor(events, asOf):
 ```
 
 - **Scale-free and order-independent** in the way additive/fractional-subtraction penalties are not: a fixed subtraction is devastating at `strength 3` and noise at `strength 20`; a fractional subtraction is multiplicative in disguise but non-commutative with later gains, so replay order would start to matter. `Π` avoids both.
-- `smeared` events (uniform-fallback exams, §4) are **included in the fold** — a smeared exam is still real evidence the topic was tested and went badly; it is only *imprecisely attributed* across the linked topics. This is unlike `tuneKFactor` (§4), which is compounding self-tuning off a residual where interpolation accumulates *permanent* curve-shape error; the fold is a bounded, per-event response, so it takes the evidence, optionally softened by `SMEAR_PENALTY_DAMPING` (default `1.0`, a no-op until the harness says otherwise). **Gain (§2.4) and penalty must agree on smeared — both act.** If the penalty excluded smeared while the gain did not, a no-`breakdown[]` learner would have `P = 1` forever: raw strength rises on every failed exam with no offsetting penalty, which is exactly today's "a lapse looks healthier," preserved intact for the uniform-fallback subset.
+- `smeared` events (uniform-fallback exams, §4) are **included in the fold** — a smeared exam is still real evidence the topic was tested and went badly; it is only *imprecisely attributed* across the linked topics. This is unlike `tuneKFactor` (§4), which is compounding self-tuning off a residual where interpolation accumulates *permanent* curve-shape error; the fold is a bounded, per-event response, so it takes the evidence, optionally softened by `SMEAR_PENALTY_WEIGHT` (default `1.0` = full penalty; the harness can't tune this since it excludes smeared events as targets, so a lower default would be untestable taste). **Gain (§2.4) and penalty must agree on smeared — both act.** If the penalty excluded smeared while the gain did not, a no-`breakdown[]` learner would have `P = 1` forever: raw strength rises on every failed exam with no offsetting penalty, which is exactly today's "a lapse looks healthier," preserved intact for the uniform-fallback subset.
+- **Fan-out is the real imprecision, not smearing per se:** an exam linked to `N` topics applies its one score to all `N`. The principled damping is `1/√N` on `linked_topic_ids.length`, but that count isn't on the event — so we **stamp `fanout` (the linked-topic count) alongside `smeared` at ingestion** (and backfill it in the migration) and leave `SMEAR_PENALTY_WEIGHT` at `1.0`. The option then exists without a second migration; adopting it is a follow-up, not this spec.
 - The binary `kind` still *selects the branch*, but its **magnitude is continuous**, so the 80% cliff disappears: `penaltyFrom(actual_retention)` is continuous through the mark (`≈1.0` at 0.80), so a 79% barely dents `s_eff` and a 30% guts it.
 
 ### 2.3 `penaltyFrom` (parameterised; linear default)
@@ -100,7 +101,7 @@ A single-anchor form (`a=1 → 1.5`) is wrong: it deflates every sub-perfect pas
 The invariant lives on **`P`, not `s_eff`**. Because `s_eff = strength · P` and raw `strength` only grows, for a *young* topic the additive gain dominates the multiplicative recovery and `s_eff` after fail→pass *exceeds* its pre-fail value — e.g. `strength 1.0, P 1, s_eff 1.0`: hard fail (`a=0`) → `strength 1.15, P 0.4, s_eff 0.46`; perfect pass → `strength 2.65, P 0.5, s_eff 1.33 > 1.0`. Crossover is ~`strength 1.65`, and **no choice of `LAPSE_RECOVERY` fixes it** — the raw gain arrives through the other term. Therefore:
 
 - **Guaranteed on `P`:** `P` is capped at `1`; a `test_fail` with `a < TEST_PASS_MARK` strictly lowers `P`; a *hard* fail then one pass leaves `P = PENALTY_FLOOR · LAPSE_RECOVERY = 0.5 < 1` — ~5 passes to fully recover (`⌈log(1/PENALTY_FLOOR)/log(LAPSE_RECOVERY)⌉`).
-- **Not universal:** recovery is a *fixed* `1.25` per pass (not continuous in `a`), so a *mild* fail from an already-depressed `P` can be over-recovered (`P 0.6 → mild fail 0.54 → pass 0.675 > 0.6`). Whether recovery should scale with `a` above the mark is a harness question, deferred — don't assert a universal strict-`<` on `P` or the regression test hits the same "fails, then mis-tune a constant" trap.
+- **Not universal — the crossover is sharp:** one pass fully erases a fail iff `penaltyFrom(a) · LAPSE_RECOVERY ≥ 1`, i.e. **`a ≥ 0.533`** at the current defaults (`penaltyFrom(0.533)·1.25 ≈ 1`). So a fail at 60% is fully erased by one pass — from `P = 1` that caps at `1` (no overshoot, but no residue either); from `P < 1` the same fail→pass leaves `P` *strictly higher* than before. Whether recovery should scale with `a` above the mark is a harness question, deferred. Anchor the regression test at `a = 0` (unconditional), and separately **pin the crossover** (`penaltyFrom(0.533)·LAPSE_RECOVERY ≈ 1`) so re-tuning `PENALTY_FLOOR`/`LAPSE_RECOVERY` surfaces the move instead of hiding it.
 - **`s_eff` non-overshoot is tested only on a mature starting strength** (§8), never on a seeded `s = 1`.
 
 ### 2.6 New constants
@@ -110,7 +111,7 @@ The invariant lives on **`P`, not `s_eff`**. Because `s_eff = strength · P` and
 | `S_EFF_MIN` | `0.25` | floor on `s_eff` so a fully-lapsed topic still has a defined, non-zero curve |
 | `LAPSE_RECOVERY` | `1.25` | per-pass multiplicative recovery of `P`, capped at 1 |
 | `PENALTY_FLOOR` | `0.40` | `penaltyFrom` at `actual_retention = 0` |
-| `SMEAR_PENALTY_DAMPING` | `1.0` | fraction of a smeared exam's penalty that applies (`1.0` = full/no damping, `0` = none) |
+| `SMEAR_PENALTY_WEIGHT` | `1.0` | weight on a smeared exam's penalty deviation (`1.0` = full penalty, `0` = none). Untunable by the harness — see §2.2 |
 | `TEST_GAIN_MIN` | `0.15` | continuous test gain at `actual_retention = 0` |
 | `TEST_GAIN_AT_PASS_MARK` | `1.50` | test gain at the `0.80` mark — today's pass value, so the mark is unchanged |
 | `TEST_GAIN_MAX` | `2.00` | test gain at `actual_retention = 1` (a perfect exam beats an 80% one) |
@@ -139,7 +140,7 @@ Extract the forward walk that carries `strength`, `k_factor`, `drift_history`, a
 
 ## 4. #6 — uniform-fallback exams, and purging existing contamination
 
-**Live rule (future writes):** in `mergeExam`, an exam with no `breakdown[]` (or a topic absent from it) smears one uniform score across every linked topic. Mark that event `smeared: true`; `applyEvent` then **skips `pushDrift` and `tuneKFactor`** for it. Self-tuning (`k`) must not run on evidence we know is interpolated — but the §2.2 fold still *includes* the event (dampened by `SMEAR_PENALTY_DAMPING`), because a bounded per-event penalty tolerates smeared evidence where compounding `k`-tuning does not (§2.2).
+**Live rule (future writes):** in `mergeExam`, an exam with no `breakdown[]` (or a topic absent from it) smears one uniform score across every linked topic. Mark that event `smeared: true`; `applyEvent` then **skips `pushDrift` and `tuneKFactor`** for it. Self-tuning (`k`) must not run on evidence we know is interpolated — but the §2.2 fold still *includes* the event (weighted by `SMEAR_PENALTY_WEIGHT`), because a bounded per-event penalty tolerates smeared evidence where compounding `k`-tuning does not (§2.2). Also stamp `fanout = linked_topic_ids.length` on the event (§2.2), unused for now.
 
 **The correction — existing state is already contaminated.** `k_factor` and `drift_history` are *stored* on the topic and already contain tuning from past uniform-fallback exams. Skipping future writes leaves that baked into live `k` — and into the harness at whatever point it hands off to stored values.
 
@@ -177,7 +178,7 @@ A standalone scorer (not shipped in the app bundle) that reads a real store (exp
 - **Numerical guards:** clamp `R_pred` to `[ε, 1−ε]` before log-loss — `t ≤ 0 → R = 1` is reachable (a test the same day as a prior review) and `ln(1−1) = −∞` would silently poison a run. Record a **constant-predictor baseline** (predict the store's mean `actual_retention`) so MAE has a scale.
 - **Models compared:** `current` · `#1` (multiplicative penalty, binary gain) · `#1 + continuous` (penalty + §2.4 gain) · a rough FSRS port.
 - **Eval-set hygiene:** smeared (uniform-fallback) events are **excluded as *targets*** (a synthetic interpolation must not score a model) **but kept in *history*** — they still moved `strength` and `last_reviewed`, so dropping them from the replay would corrupt the state every *other* prediction is built on. (Down-weighting targets is the fallback; exclude is cleaner now that events carry the marker.)
-- **Decision rule:** if `#1` (or `#1 + continuous`) closes most of the gap to FSRS on MAE/log-loss, it's the answer, not a waypoint. Tune `penaltyFrom` shape, `TEST_GAIN_*`, `LAPSE_RECOVERY`, `PENALTY_FLOOR`, `S_EFF_MIN`, `SMEAR_PENALTY_DAMPING` on this metric — not by taste.
+- **Decision rule:** if `#1` (or `#1 + continuous`) closes most of the gap to FSRS on MAE/log-loss, it's the answer, not a waypoint. Tune `penaltyFrom` shape, `TEST_GAIN_*`, `LAPSE_RECOVERY`, `PENALTY_FLOOR`, `S_EFF_MIN` on this metric — not by taste. (`SMEAR_PENALTY_WEIGHT` is *not* tunable here — smeared events are excluded as targets.)
 
 ---
 
@@ -196,7 +197,7 @@ A standalone scorer (not shipped in the app bundle) that reads a real store (exp
 - `strengthIncrement` (test branch): monotonic in `a`; **unchanged at the mark** (`a = 0.80 → TEST_GAIN_AT_PASS_MARK`); `a = 1 → TEST_GAIN_MAX` (above the mark value).
 - Smeared consistency: a smeared `test_fail` both adds raw gain (§2.4) *and* lowers `P` (§2.2, dampened) — never one without the other.
 - `s_eff = max(S_EFF_MIN, strength·P)`; floor holds for a fully-lapsed topic.
-- **Recovery invariant on `P`, at a hard fail:** `a = 0` fail then one pass leaves `P = PENALTY_FLOOR·LAPSE_RECOVERY (0.5) < 1`; ~5 passes to reach `1`. Do **not** assert strict `<` for a mild fail — it can over-recover (§2.5).
+- **Recovery invariant on `P`, at a hard fail:** `a = 0` fail then one pass leaves `P = PENALTY_FLOOR·LAPSE_RECOVERY (0.5) < 1`; ~5 passes to reach `1`. Do **not** assert strict `<` for a mild fail — it can over-recover (§2.5). Separately **pin the crossover**: `penaltyFrom(0.533)·LAPSE_RECOVERY ≈ 1`.
 - **`s_eff` non-overshoot gated on maturity:** fail→pass does not raise `s_eff` above pre-fail *only* for a mature starting strength (e.g. `s ≥ 3`); never assert it for a seeded `s = 1`.
 - **Badge-firing-rate guard:** on a fixed store, `slow_growth`/`ready_to_test` firing counts before vs after the continuous-gain change — the harness metric is blind to this, so it needs its own test.
 - `projectedDue` moves earlier after a fail (uses `s_eff`, not raw `strength`).
