@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { predictRetention, elapsedDays } from '@/engine/retention';
+import { predictRetention, projectedDue, elapsedDays } from '@/engine/retention';
 import { CONFIG } from '@/config/constants';
 import type { Topic } from '@/domain/types';
 
@@ -45,5 +45,19 @@ describe('predictRetention uses effective strength', () => {
     const lapsed = topic({ strength: 3, last_reviewed: reviewed.toISOString(), review_history: [failEv] });
     const solid = topic({ strength: 3, last_reviewed: reviewed.toISOString(), review_history: [] });
     expect(predictRetention(lapsed, now)!).toBeLessThan(predictRetention(solid, now)!);
+  });
+});
+
+describe('projectedDue uses effective strength', () => {
+  it('projectedDue moves earlier after a fail (uses s_eff, not raw strength)', () => {
+    const reviewed = '2026-08-05T09:00:00Z';
+    const failEv = {
+      event_id: 'event_f', date: reviewed, kind: 'test_fail' as const, source: 'exam' as const,
+      source_id: 'exam_1', confidence_reported: 3 as const, test: { score: 1, out_of: 10, actual_retention: 0.1 },
+    };
+    const now = new Date('2026-08-05T10:00:00Z');
+    const lapsed = topic({ strength: 3, last_reviewed: reviewed, review_history: [failEv] });
+    const solid = topic({ strength: 3, last_reviewed: reviewed, review_history: [] });
+    expect(projectedDue(lapsed, now)!.date.getTime()).toBeLessThan(projectedDue(solid, now)!.date.getTime());
   });
 });

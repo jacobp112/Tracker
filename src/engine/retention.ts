@@ -81,12 +81,17 @@ export interface DueProjection {
  */
 export function projectedDue(topic: Topic, now: Date = new Date()): DueProjection | null {
   if (topic.last_reviewed === null || topic.status === 'not_started') return null;
-  if (topic.strength <= 0) return null;
+
+  // Projection solves R(t)=DUE_THRESHOLD on the SAME curve retention reads, so a
+  // lapse resurfaces the topic sooner (design 2026-08-09). s_eff floors at
+  // S_EFF_MIN>0, so a reviewed topic always has a projected date.
+  const s = effectiveStrength(topic);
+  if (s <= 0) return null;
 
   const reviewed = new Date(topic.last_reviewed);
   if (Number.isNaN(reviewed.getTime())) return null;
 
-  const tDue = -topic.k_factor * topic.strength * Math.log(CONFIG.DUE_THRESHOLD);
+  const tDue = -topic.k_factor * s * Math.log(CONFIG.DUE_THRESHOLD);
   const date = new Date(reviewed.getTime() + tDue * MS_PER_DAY);
 
   return { date, overdue: date.getTime() < now.getTime() };

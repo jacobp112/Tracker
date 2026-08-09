@@ -79,9 +79,14 @@ describe('E3-S2 — projected due date (Document 2 §2.1)', () => {
     expect(projectedDue(t, NOW)!.overdue).toBe(true);
   });
 
-  it('is null when retention is undefined — never a fabricated date', () => {
+  it('is null when retention is undefined (never reviewed) — never a fabricated date', () => {
     expect(projectedDue(topic({ last_reviewed: null }), NOW)).toBeNull();
-    expect(projectedDue(topic({ strength: 0 }), NOW)).toBeNull();
+  });
+
+  it('a reviewed zero-strength topic gets a floored due date, not null (§2.1, amended 2026-08-09)', () => {
+    // s_eff floors at S_EFF_MIN>0, so projectedDue reads the floor rather than
+    // returning null — a reviewed topic always has a projected date.
+    expect(projectedDue(topic({ strength: 0 }), NOW)).not.toBeNull();
   });
 });
 

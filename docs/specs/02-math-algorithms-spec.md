@@ -73,17 +73,18 @@ A topic is **due for review** when `R < DUE_THRESHOLD` (0.70).
 
 Setting `R(t) = DUE_THRESHOLD` and solving for `t`:
 
-$$t_{due} = -k \cdot s \cdot \ln(\text{DUE\_THRESHOLD})$$
+$$t_{due} = -k \cdot s_{eff} \cdot \ln(\text{DUE\_THRESHOLD})$$
 
 ```
-due_date = reviewed + t_due days          // t_due = −k·s·ln(0.70) ≈ 0.3567·k·s
+due_date = reviewed + t_due days          // t_due = −k·s_eff·ln(0.70) ≈ 0.3567·k·s_eff
 ```
 
-- Undefined when `reviewed == null` or `s ≤ 0` — the UI shows "not yet reviewed", never a fabricated date.
+- Reads the **same** `s_eff` as retention (§2), so a lapse resurfaces the topic sooner. *(Amended 2026-08-09 — previously raw `strength`.)*
+- Undefined only when `reviewed == null` — the UI shows "not yet reviewed", never a fabricated date. Because `s_eff` floors at `S_EFF_MIN > 0`, a reviewed topic always has a projected date. *(Amended 2026-08-09 — the withdrawn `s ≤ 0 → undefined` case can no longer fire.)*
 - If `due_date` is in the past the topic is **already overdue**; the UI says so rather than showing a past date as "upcoming".
-- This is a *projection*, recomputed live like retention. It is **never persisted** — a stored copy would go stale the moment `k` or `s` changed.
+- This is a *projection*, recomputed live like retention. It is **never persisted** — a stored copy would go stale the moment `k` or `s_eff` changed.
 
-**Worked check** (the §12 topic): `k = 7.0`, `s = 1.3` → `k·s = 9.1`, `t_due = 0.3567 × 9.1 = 3.25` days. Reviewed 9 days ago, so it fell due ~5.75 days back — consistent with its retention (`R = 30%` under the lapse-penalised curve, see §12) being well under 0.70. *(This `t_due` still uses raw `strength`; the 2026-08-09 rewrite moves `projectedDue` onto `s_eff` in a follow-up, which shortens `t_due` for lapsed topics.)*
+**Worked check** (the §12 topic): `k = 7.0`, the one fail gives `s_eff = 1.05625` → `k·s_eff = 7.39`, `t_due = 0.3567 × 7.39 = 2.64` days. Reviewed 9 days ago, so it fell due ~6.36 days back — consistent with its retention (`R = 30%` under the lapse-penalised curve, see §12) being well under 0.70. *(Pre-2026-08-09, on raw `strength` 1.3, `k·s = 9.1` gave `t_due = 3.25` days.)*
 
 This is what populates Document 3 §5.2's "Upcoming review plan" dates and orders the review queue (§11).
 
