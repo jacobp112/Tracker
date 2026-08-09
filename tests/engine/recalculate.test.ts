@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyEvent } from '@/engine/recalculate';
+import { applyEvent, strengthIncrement } from '@/engine/recalculate';
 import { predictRetention } from '@/engine/retention';
 import { CONFIG } from '@/config/constants';
 import type { ReviewEvent, Topic } from '@/domain/types';
@@ -46,4 +46,23 @@ describe('drift-order invariant', () => {
     const pushed = after.drift_history.at(-1)!;
     expect(pushed).toBeCloseTo(0.3 - rBefore, 6); // NOT 0.3 - R(after the fail)
   });
+});
+
+const testGain = (a: number): ReviewEvent => ({
+  event_id: 'event_t', date: '2026-08-08T09:00:00Z', kind: a >= CONFIG.TEST_PASS_MARK ? 'test_pass' : 'test_fail',
+  source: 'exam', source_id: 'exam_1', confidence_reported: 4,
+  test: { score: a * 10, out_of: 10, actual_retention: a },
+});
+
+describe('continuous test gain', () => {
+  it('is unchanged at the 0.80 mark', () =>
+    expect(strengthIncrement(testGain(0.8))).toBeCloseTo(CONFIG.TEST_GAIN_AT_PASS_MARK, 6));
+  it('is TEST_GAIN_MIN at 0 and TEST_GAIN_MAX at 1', () => {
+    expect(strengthIncrement(testGain(0))).toBeCloseTo(CONFIG.TEST_GAIN_MIN, 6);
+    expect(strengthIncrement(testGain(1))).toBeCloseTo(CONFIG.TEST_GAIN_MAX, 6);
+  });
+  it('is monotonic across the mark', () =>
+    expect(strengthIncrement(testGain(0.85))).toBeGreaterThan(strengthIncrement(testGain(0.75))));
+  it('study_review is unchanged (confidence buckets)', () =>
+    expect(strengthIncrement({ ...testGain(0), kind: 'study_review', test: undefined })).toBe(CONFIG.STRENGTH_GAIN.CONF_HIGH));
 });

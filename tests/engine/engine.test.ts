@@ -91,16 +91,36 @@ describe('E3-S2 — projected due date (Document 2 §2.1)', () => {
 });
 
 describe('E3-S3 — strength increments (Document 2 §3)', () => {
-  it.each<[ReviewEvent['kind'], Confidence, number]>([
-    ['test_pass', 3, 1.5],
-    ['test_fail', 3, 0.15],
-    ['study_review', 1, 0.3],
-    ['study_review', 2, 0.3],
-    ['study_review', 3, 0.6],
-    ['study_review', 4, 1.0],
-    ['study_review', 5, 1.0],
-  ])('%s at confidence %i → +%f', (kind, conf, expected) => {
-    expect(strengthIncrement(kind, conf)).toBe(expected);
+  const study = (conf: Confidence): ReviewEvent => ({
+    event_id: 'event_s', date: '2026-07-16T12:00:00Z', kind: 'study_review',
+    source: 'session', source_id: 'session_1', confidence_reported: conf,
+  });
+  it.each<[Confidence, number]>([
+    [1, 0.3],
+    [2, 0.3],
+    [3, 0.6],
+    [4, 1.0],
+    [5, 1.0],
+  ])('study_review at confidence %i → +%f', (conf, expected) => {
+    expect(strengthIncrement(study(conf))).toBe(expected);
+  });
+
+  // Tests are continuous in actual_retention (§2.4, amended 2026-08-09, #7),
+  // anchored so a pass at the 0.80 mark still gains TEST_GAIN_AT_PASS_MARK — no
+  // longer a flat 1.5 / 0.15. Full endpoint/monotonicity coverage lives in
+  // recalculate.test.ts "continuous test gain".
+  const test = (a: number): ReviewEvent => ({
+    event_id: 'event_t', date: '2026-07-16T12:00:00Z',
+    kind: a >= CONFIG.TEST_PASS_MARK ? 'test_pass' : 'test_fail',
+    source: 'exam', source_id: 'exam_1', confidence_reported: 4,
+    test: { score: a * 10, out_of: 10, actual_retention: a },
+  });
+  it('a pass at the 0.80 mark gains exactly TEST_GAIN_AT_PASS_MARK', () => {
+    expect(strengthIncrement(test(0.8))).toBeCloseTo(CONFIG.TEST_GAIN_AT_PASS_MARK, 6);
+  });
+  it('a fail is continuous, not a flat gain (0.5 > 0.2 > 0)', () => {
+    expect(strengthIncrement(test(0.5))).toBeGreaterThan(strengthIncrement(test(0.2)));
+    expect(strengthIncrement(test(0.2))).toBeGreaterThan(strengthIncrement(test(0)));
   });
 });
 

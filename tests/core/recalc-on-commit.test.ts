@@ -137,18 +137,22 @@ describe('E5-S2 — an exam drives drift and kFactor through the same path', () 
     expect(findTopic(afterSession, 'topic_01J8ZXA1')!.drift_history).toHaveLength(0);
   });
 
-  it('applies the test-pass strength increment on a pass', () => {
-    const next = logExam(storeWith(), 18); // 90% ≥ 80%
+  it('applies a continuous test-pass gain on a pass (larger above the mark)', () => {
+    const next = logExam(storeWith(), 18); // 18/20 = 0.90 ≥ 0.80 → pass
     const topic = findTopic(next, 'topic_01J8ZXA1')!;
     expect(topic.review_history[0]!.kind).toBe('test_pass');
-    expect(topic.strength).toBe(1.0 + CONFIG.STRENGTH_GAIN.TEST_PASS);
+    // Continuous (§2.4, #7): a=0.90 above the mark →
+    // 1.5 + (2.0−1.5)·((0.90−0.80)/(1−0.80)) = 1.75.
+    expect(topic.strength).toBeCloseTo(1.0 + 1.75, 6);
   });
 
-  it('applies the much smaller test-fail increment on a fail', () => {
-    const next = logExam(storeWith(), 6); // 30% < 80%
+  it('applies a continuous, much smaller test-fail gain on a fail', () => {
+    const next = logExam(storeWith(), 6); // 6/20 = 0.30 < 0.80 → fail
     const topic = findTopic(next, 'topic_01J8ZXA1')!;
     expect(topic.review_history[0]!.kind).toBe('test_fail');
-    expect(topic.strength).toBe(1.0 + CONFIG.STRENGTH_GAIN.TEST_FAIL);
+    // Continuous (§2.4, #7): a=0.30 below the mark →
+    // 0.15 + (1.5−0.15)·(0.30/0.80) = 0.65625 (still far below the pass gain).
+    expect(topic.strength).toBeCloseTo(1.0 + 0.65625, 6);
   });
 
   it('does not tune k_factor from a single sample (DRIFT_MIN is 3)', () => {
