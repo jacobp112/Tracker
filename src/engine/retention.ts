@@ -7,13 +7,25 @@ import type { Topic } from '@/domain/types';
  * Everything here is **derived live**, never stored (Document 1 v0.2 §2.3):
  * a topic decays between visits with no event, and that continuous decay is the
  * product's core behaviour.
+ *
+ * As of 2026-08-09, decay uses fractional `elapsedDays` (sub-day precision);
+ * `daysBetween` (whole days) is retained for display only (§2.1 projection, UI ticks).
  */
 
 export const MS_PER_DAY = 86_400_000;
 
-/** Whole days elapsed, per Document 2 §2 ("`t`: whole days elapsed"). */
+/** Whole days elapsed, per Document 2 §2 ("`t`: whole days elapsed"). Retained for UI display (whole-day ticks, projection). */
 export function daysBetween(from: Date, to: Date): number {
   return Math.floor((to.getTime() - from.getTime()) / MS_PER_DAY);
+}
+
+/**
+ * Fractional days elapsed — the decay input (Document 2 §2, amended 2026-08-09).
+ * Unlike `daysBetween` (whole days, for whole-day UI ticks), this is not floored,
+ * so `t` isn't quantised and decay is continuous within a day.
+ */
+export function elapsedDays(from: Date, to: Date): number {
+  return (to.getTime() - from.getTime()) / MS_PER_DAY;
 }
 
 /**
@@ -31,8 +43,8 @@ export function predictRetention(topic: Topic, now: Date = new Date()): number |
 
   if (topic.strength <= 0) return 0;
 
-  const t = daysBetween(reviewed, now);
-  if (t <= 0) return 1; // reviewed today
+  const t = elapsedDays(reviewed, now);
+  if (t <= 0) return 1; // reviewed just now / backdated
 
   return Math.exp(-t / (topic.k_factor * topic.strength));
 }
