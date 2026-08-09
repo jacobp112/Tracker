@@ -45,6 +45,18 @@ export const CONFIG = {
     CONF_HIGH: 1.0,
   },
 
+  /** Lapse penalty & effective stability (design 2026-08-09 §2.6). Harness-tuned. */
+  S_EFF_MIN: 0.25,
+  LAPSE_RECOVERY: 1.25,
+  PENALTY_FLOOR: 0.4,
+  /** Weight on a smeared exam's penalty deviation (1.0 = full penalty). Not
+   *  harness-tunable — smeared events are excluded as scoring targets. */
+  SMEAR_PENALTY_WEIGHT: 1.0,
+  /** Continuous test strength-gain anchors (§2.4). Unchanged at the 0.80 mark. */
+  TEST_GAIN_MIN: 0.15,
+  TEST_GAIN_AT_PASS_MARK: 1.5,
+  TEST_GAIN_MAX: 2.0,
+
   /** Strength seeded on first promotion out of Not Started (§7). */
   SEED_STRENGTH: 1.0,
 
