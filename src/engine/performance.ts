@@ -124,3 +124,28 @@ export function independentPerformance(events: ReviewEvent[]): IndependentPerfor
     sufficient: tiered.independent.length >= P.MIN_INDEPENDENT_N,
   };
 }
+
+export interface TransferAbility {
+  score: number; // 0–100
+  n: number;
+  trend: number | null; // later-half minus earlier-half, in score points
+}
+
+/** Mean transfer_level → 0–100, with a recent-vs-earlier trend. Null below
+ *  MIN_TRANSFER_N so a high score never rests on 1–2 observations (design §9). */
+export function transferAbility(events: ReviewEvent[]): TransferAbility | null {
+  const dated = events
+    .filter((e) => e.assessment?.transfer_level !== undefined)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  if (dated.length < P.MIN_TRANSFER_N) return null;
+
+  const toScore = (e: ReviewEvent) => (e.assessment!.transfer_level! / P.TRANSFER_MAX) * 100;
+  const score = mean(dated.map(toScore))!;
+
+  const mid = Math.floor(dated.length / 2);
+  const earlier = mean(dated.slice(0, mid).map(toScore));
+  const later = mean(dated.slice(dated.length - mid).map(toScore));
+  const trend = earlier === null || later === null ? null : later - earlier;
+
+  return { score, n: dated.length, trend };
+}
