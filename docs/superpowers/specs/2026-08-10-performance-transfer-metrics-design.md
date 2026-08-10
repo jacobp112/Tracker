@@ -155,9 +155,28 @@ test that the current fixture set still passes.
 ### Merge (`src/core/merge.ts`)
 
 `mergeSession` and `mergeExam` copy the `assessment` block (if present) onto the
-`ReviewEvent` they already construct — one added spread, no new decomposition. Exam-level
-`cold` is folded into each event's `assessment.cold` when the per-topic block doesn't set it.
-The block is passed through verbatim; the tracker adds nothing to it.
+`ReviewEvent` they already construct — one added spread, no new decomposition. The block is
+otherwise passed through verbatim; the tracker adds nothing to it **except** the exam-level
+cold fallback below.
+
+**Exam-level `cold` fallback — explicit rule.** When an exam sets top-level `cold: true`, it
+tags *every* linked topic's event as cold, regardless of that topic's per-breakdown state.
+Three cases, all resolved the same way — cold wins unless a per-breakdown block explicitly
+says otherwise:
+
+1. Per-breakdown `assessment.cold` is present (true or false) → it **overrides**; exam-level
+   cold is ignored for that topic.
+2. Per-breakdown `assessment` block exists but has no `cold` key → set `assessment.cold = true`
+   on the copied block.
+3. Per-breakdown `assessment` block is **absent** (partial applicability — the common case, and
+   for the uniform/smeared fallback where there is no breakdown at all) → the merge
+   **constructs a minimal `{ cold: true }` block** on the event rather than skipping it.
+
+Case 3 is the load-bearing clarification: absence-of-block normally means "tutor asserted no
+assessment," but an exam-level cold flag is itself a tutor assertion about the whole paper, so
+it must materialise a block. Downstream (§D) then correctly counts these as cold attempts even
+though they carry no other dimensions — Cold Performance re-normalises over the dimensions that
+*are* present, so a cold-only event contributes its correctness without inflating the others.
 
 ### Versioning
 
@@ -177,9 +196,33 @@ minimum-data guard returning `null` below threshold. All tunables live in a new
 the existing constant discipline.
 
 Helper: `assessedEvents(topic)` → events whose `assessment` block carries at least one
-scored dimension. `observedSuccess(event)` → the attempt's realised success in `[0,1]`,
-taken from `test.actual_retention` when present, else `performance_quality / 5`, else
-`undefined` (never fabricated).
+scored dimension.
+
+### `observedSuccess` — the success proxy, a documented decision (not just a helper)
+
+`observedSuccess(event)` maps an attempt to a realised success value in `[0,1]`, used by
+calibration and by the accuracy components. Its fallback chain encodes a real semantic claim
+that must be visible, not buried in a helper aside:
+
+```
+observedSuccess(event) =
+  test.actual_retention           if a test block is present   (a graded 0–1 outcome)
+  performance_quality / 5         else, if quality is present  (SEE CAVEAT)
+  undefined                       else                          (never fabricated)
+```
+
+**The caveat, stated plainly.** Preferring `test.actual_retention` is uncontroversial — it is
+already a `[0,1]` graded outcome. The second rung, `performance_quality / 5`, **treats a
+quality ordinal as commensurable with a retention score on the same `[0,1]` axis.** This is a
+deliberate approximation, not an identity: a `4/5` quality judgement is *not* obviously "0.8
+success" in the same sense a retention test is — quality folds in reasoning, clarity, and
+method, which a raw correctness score does not. We accept it because (a) for calibration we
+need *some* observed outcome to compare a prediction against, and quality is the best available
+signal when no graded test exists, and (b) it degrades to `undefined` rather than inventing a
+value when neither is present. If a future subject shows this proxy distorting calibration, the
+fix is to split calibration by outcome type (test-backed vs quality-backed) rather than to
+silently retune the divisor. This paragraph is the reason a future reader will find when a
+quality-only topic's calibration number looks surprising.
 
 ### Independence tiers — strict
 
