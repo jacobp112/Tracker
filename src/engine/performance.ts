@@ -258,3 +258,36 @@ export function calibrationError(events: ReviewEvent[]): Calibration | null {
     n: pairs.length,
   };
 }
+
+/**
+ * Performance Health, 0–100 (design §12/§D). Weighted composite, re-normalised
+ * over present sub-scores. Difficulty/novelty are SUCCESS-GATED (multiplied by
+ * observedSuccess) and drawn from independent (===3) attempts only — performance
+ * at difficulty *while independent*. Accuracy is deliberately NOT gated on
+ * difficulty (see INVARIANT). Null if fewer than MIN_HEALTH_INPUTS sub-scores
+ * are present.
+ */
+export function performanceHealth(events: ReviewEvent[]): number | null {
+  const w = P.HEALTH_WEIGHTS;
+  const indep = events.filter(isIndependent);
+
+  const accuracy = mean(indep.map(observedSuccess).filter((x): x is number => x !== undefined));
+
+  // transfer/quality are direct present-value means over ALL attempts (their own
+  // scales already encode success; transfer is independent of `independence`).
+  const dimAll = (max: number, pick: (e: ReviewEvent) => number | undefined): number | null =>
+    mean(events.map(pick).filter((x): x is number => x !== undefined).map((x) => x / max));
+
+  const parts = [
+    { weight: w.accuracy, score: accuracy },
+    // Success-gated over independent attempts (shared with Cold Performance).
+    { weight: w.difficulty, score: successGatedMean(indep, (e) => e.assessment?.difficulty, P.DIFFICULTY_MAX) },
+    { weight: w.novelty, score: successGatedMean(indep, (e) => e.assessment?.novelty, P.NOVELTY_MAX) },
+    { weight: w.transfer, score: dimAll(P.TRANSFER_MAX, (e) => e.assessment?.transfer_level) },
+    { weight: w.quality, score: dimAll(P.QUALITY_MAX, (e) => e.assessment?.performance_quality) },
+  ];
+
+  if (parts.filter((p) => p.score !== null).length < P.MIN_HEALTH_INPUTS) return null;
+  const composite = weightedComposite(parts);
+  return composite === null ? null : Math.round(composite * 100);
+}
