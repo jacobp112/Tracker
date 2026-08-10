@@ -186,6 +186,14 @@ export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
   return composite === null ? null : { score: composite * 100, n: coldEvents.length };
 }
 
+/**
+ * One difficulty/novelty level's independent-attempt performance. Note the two
+ * denominators deliberately differ: `n` counts ALL independent attempts at this
+ * level (exposure), while `successRate` is computed over only the OUTCOME-BEARING
+ * attempts in the bucket (those with a defined observedSuccess) — and is null when
+ * none of the n attempts have a measurable outcome. So a bucket may report e.g.
+ * n:3, successRate:1 when only one of the three had an outcome.
+ */
 export interface DimensionBucket {
   level: number;
   n: number;

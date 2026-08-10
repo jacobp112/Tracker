@@ -17,6 +17,14 @@ describe('performanceByDifficulty — independent-only', () => {
     ]);
     expect(buckets).toEqual([{ level: 4, n: 2, successRate: 0.5 }]);
   });
+
+  it('reports successRate null (with n>=1) when an independent attempt has a level but no outcome', () => {
+    // independence 3, difficulty 2, but a study_review with no test and no
+    // performance_quality → observedSuccess undefined → the bucket has n:1 but
+    // no measurable outcome, so successRate is null (not 0).
+    const buckets = performanceByDifficulty([makeEvent({ independence: 3, difficulty: 2 })]);
+    expect(buckets).toEqual([{ level: 2, n: 1, successRate: null }]);
+  });
 });
 
 describe('performanceByNovelty — independent-only', () => {
