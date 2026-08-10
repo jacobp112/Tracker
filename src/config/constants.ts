@@ -143,6 +143,9 @@ export const CONFIG = {
     MIN_CALIBRATION_N: 5,
     /** Min distinct sub-scores present before Performance Health is defined. */
     MIN_HEALTH_INPUTS: 2,
+    /** A prerequisite with surfaced health below this is flagged unstable
+     *  (design §E — the second health band; diagnostic only, tunable). */
+    PREREQ_UNSTABLE_HEALTH: 45,
     /** Ordinal maxima, for normalising each dimension to 0–1. */
     DIFFICULTY_MAX: 5,
     NOVELTY_MAX: 4,
