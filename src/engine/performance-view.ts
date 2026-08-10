@@ -1,3 +1,4 @@
+import { CONFIG } from '@/config/constants';
 import type { ReviewEvent, Store } from '@/domain/types';
 import { allTopics } from '@/domain/types';
 import {
@@ -56,5 +57,37 @@ export function performanceSummary(events: ReviewEvent[]): PerformanceSummary {
     quality: performanceQuality(events),
     novelTaskSuccess: novelTaskSuccess(events),
     calibration: calibrationError(events),
+  };
+}
+
+const MS_PER_DAY = 86_400_000;
+
+/** Events whose date falls within the last `days` up to `now`. */
+export function windowEvents(events: ReviewEvent[], now: Date, days: number): ReviewEvent[] {
+  const cutoff = now.getTime() - days * MS_PER_DAY;
+  return events.filter((e) => {
+    const t = new Date(e.date).getTime();
+    return t >= cutoff && t <= now.getTime();
+  });
+}
+
+export interface TrendWindows<T> {
+  d7: T;
+  d30: T;
+  lifetime: T;
+}
+
+/** Apply a metric over the 7-day, 30-day, and lifetime event windows (design
+ *  §13). Each window is computed independently, so an empty window yields
+ *  whatever the metric returns for no data (typically null) — never a false 0. */
+export function metricTrend<T>(
+  events: ReviewEvent[],
+  now: Date,
+  metric: (evs: ReviewEvent[]) => T,
+): TrendWindows<T> {
+  return {
+    d7: metric(windowEvents(events, now, CONFIG.PERFORMANCE.TREND_SHORT_DAYS)),
+    d30: metric(windowEvents(events, now, CONFIG.PERFORMANCE.TREND_LONG_DAYS)),
+    lifetime: metric(events),
   };
 }

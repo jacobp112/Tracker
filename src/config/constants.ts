@@ -152,6 +152,9 @@ export const CONFIG = {
     /** A prerequisite with surfaced health below this is flagged unstable
      *  (design §E — the second health band; diagnostic only, tunable). */
     PREREQ_UNSTABLE_HEALTH: 45,
+    /** Dashboard trend windows, in days (design §13). */
+    TREND_SHORT_DAYS: 7,
+    TREND_LONG_DAYS: 30,
     /** Ordinal maxima, for normalising each dimension to 0–1. */
     DIFFICULTY_MAX: 5,
     NOVELTY_MAX: 4,
