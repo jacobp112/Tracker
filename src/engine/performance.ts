@@ -185,3 +185,43 @@ export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
 
   return composite === null ? null : { score: composite * 100, n: coldEvents.length };
 }
+
+export interface DimensionBucket {
+  level: number;
+  n: number;
+  successRate: number | null;
+}
+
+function bucketBy(
+  events: ReviewEvent[],
+  pick: (e: ReviewEvent) => number | undefined,
+): DimensionBucket[] {
+  const byLevel = new Map<number, ReviewEvent[]>();
+  for (const e of events) {
+    if (!isIndependent(e)) continue; // INVARIANT: === 3 only (design §10)
+    const level = pick(e);
+    if (level === undefined) continue;
+    (byLevel.get(level) ?? byLevel.set(level, []).get(level)!).push(e);
+  }
+  return [...byLevel.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([level, es]) => {
+      const outcomes = es.map(observedSuccess).filter((x): x is number => x !== undefined);
+      const passes = outcomes.filter((x) => x >= CONFIG.TEST_PASS_MARK).length;
+      return {
+        level,
+        n: es.length,
+        successRate: outcomes.length === 0 ? null : passes / outcomes.length,
+      };
+    });
+}
+
+/** Pass-rate by difficulty over independent (===3) attempts only (design §13). */
+export function performanceByDifficulty(events: ReviewEvent[]): DimensionBucket[] {
+  return bucketBy(events, (e) => e.assessment?.difficulty);
+}
+
+/** Pass-rate by novelty over independent (===3) attempts only (design §13). */
+export function performanceByNovelty(events: ReviewEvent[]): DimensionBucket[] {
+  return bucketBy(events, (e) => e.assessment?.novelty);
+}
