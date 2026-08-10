@@ -18,6 +18,7 @@ import { CourseDashboard } from '@/routes/CourseDashboard';
 import { Exams } from '@/routes/Exams';
 import { FocusMode } from '@/routes/FocusMode';
 import { Overview } from '@/routes/Overview';
+import { Performance } from '@/routes/Performance';
 import { Settings } from '@/routes/Settings';
 import { StartSession } from '@/routes/StartSession';
 import { TokenSheet } from '@/routes/TokenSheet';
@@ -405,6 +406,8 @@ function AppInner() {
         );
       case 'overview':
         return <Overview store={store} onStartSession={startSession} />;
+      case 'performance':
+        return <Performance store={store} />;
       case 'study':
         return <StudyIndex store={store} />;
       case 'course': {

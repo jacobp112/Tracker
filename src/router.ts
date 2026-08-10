@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
  */
 export type Route =
   | { name: 'overview' }
+  | { name: 'performance' }
   | { name: 'study' }
   | { name: 'add-course' }
   | { name: 'course'; courseId: string }
@@ -29,6 +30,8 @@ export function parseHash(hash: string): Route {
       return tail === 'add' ? { name: 'add-course' } : { name: 'study' };
     case 'exams':
       return tail === 'add' ? { name: 'add-exam' } : { name: 'exams' };
+    case 'performance':
+      return { name: 'performance' };
     case 'settings':
       return { name: 'settings' };
     case 'add':

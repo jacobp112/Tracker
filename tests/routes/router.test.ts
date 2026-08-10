@@ -5,3 +5,8 @@ describe('parseHash auth', () => {
   it('routes #/auth', () => expect(parseHash('#/auth')).toEqual({ name: 'auth', signup: false }));
   it('routes #/auth/signup', () => expect(parseHash('#/auth/signup')).toEqual({ name: 'auth', signup: true }));
 });
+
+describe('parseHash performance', () => {
+  it('routes #/performance to the performance page', () =>
+    expect(parseHash('#/performance')).toEqual({ name: 'performance' }));
+});

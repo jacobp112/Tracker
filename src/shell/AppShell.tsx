@@ -26,6 +26,7 @@ function activeFor(route: Route): NavName {
 
 const TABS = [
   { name: 'overview' as const, label: 'Overview', href: '#/overview', Icon: OverviewIcon },
+  { name: 'performance' as const, label: 'Performance', href: '#/performance', Icon: OverviewIcon },
   { name: 'study' as const, label: 'Study', href: '#/study', Icon: StudyIcon },
   { name: 'exams' as const, label: 'Exams', href: '#/exams', Icon: ExamsIcon },
   { name: 'settings' as const, label: 'Settings', href: '#/settings', Icon: SettingsIcon },
@@ -101,6 +102,16 @@ export function AppShell({
           >
             <OverviewIcon />
             Overview
+          </button>
+
+          <button
+            type="button"
+            className={`nav-item ${active === 'performance' ? 'active' : ''}`}
+            onClick={() => navigate('/performance')}
+            aria-current={active === 'performance' ? 'page' : undefined}
+          >
+            <OverviewIcon />
+            Performance
           </button>
 
           {/* Split control: the label navigates, the chevron discloses the course
