@@ -143,6 +143,12 @@ export const CONFIG = {
     MIN_CALIBRATION_N: 5,
     /** Min distinct sub-scores present before Performance Health is defined. */
     MIN_HEALTH_INPUTS: 2,
+    /** Min quality observations before Performance Quality shows a number. */
+    MIN_QUALITY_N: 5,
+    /** Min novel-task observations before Novel-Task Success shows a number. */
+    MIN_NOVEL_N: 5,
+    /** Novelty at/above this counts as a "novel task" (3 = genuinely unfamiliar). */
+    NOVEL_THRESHOLD: 3,
     /** A prerequisite with surfaced health below this is flagged unstable
      *  (design §E — the second health band; diagnostic only, tunable). */
     PREREQ_UNSTABLE_HEALTH: 45,

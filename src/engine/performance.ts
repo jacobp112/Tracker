@@ -299,3 +299,36 @@ export function performanceHealth(events: ReviewEvent[]): number | null {
   const composite = weightedComposite(parts);
   return composite === null ? null : Math.round(composite * 100);
 }
+
+export interface QualityScore {
+  score: number; // 0–100
+  n: number;
+}
+
+/** Mean tutor performance_quality → 0–100 over attempts that carry it. Null below
+ *  MIN_QUALITY_N. Quality already encodes correctness via the tutor rubric, so
+ *  this is a straight mean (design §17 headline). */
+export function performanceQuality(events: ReviewEvent[]): QualityScore | null {
+  const qs = events
+    .map((e) => e.assessment?.performance_quality)
+    .filter((x): x is Exclude<typeof x, undefined> => x !== undefined) as number[];
+  if (qs.length < P.MIN_QUALITY_N) return null;
+  return { score: (mean(qs)! / P.QUALITY_MAX) * 100, n: qs.length };
+}
+
+export interface NovelTaskSuccess {
+  rate: number; // 0–1
+  n: number;
+}
+
+/** Pass-rate on novel tasks attempted INDEPENDENTLY (isIndependent AND novelty >=
+ *  NOVEL_THRESHOLD) — novelty never lifts the number without independent success
+ *  (§18). Null below MIN_NOVEL_N. */
+export function novelTaskSuccess(events: ReviewEvent[]): NovelTaskSuccess | null {
+  const outcomes = events
+    .filter((e) => isIndependent(e) && (e.assessment?.novelty ?? -1) >= P.NOVEL_THRESHOLD)
+    .map(observedSuccess)
+    .filter((x): x is number => x !== undefined);
+  if (outcomes.length < P.MIN_NOVEL_N) return null;
+  return { rate: outcomes.filter((x) => x >= CONFIG.TEST_PASS_MARK).length / outcomes.length, n: outcomes.length };
+}
