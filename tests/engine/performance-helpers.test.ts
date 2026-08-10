@@ -30,6 +30,10 @@ describe('independence tiers — strict boundary', () => {
   it('no independence value → undefined tier', () => {
     expect(independenceTier(makeEvent({ difficulty: 2 }))).toBeUndefined();
   });
+  it('isIndependent is false for assisted levels 0 and 1', () => {
+    expect(isIndependent(makeEvent({ independence: 0 }))).toBe(false);
+    expect(isIndependent(makeEvent({ independence: 1 }))).toBe(false);
+  });
 });
 
 describe('successGatedMean — difficulty/novelty earn credit only WITH success (§18)', () => {
@@ -53,6 +57,16 @@ describe('successGatedMean — difficulty/novelty earn credit only WITH success 
       (e) => e.assessment?.difficulty, 5,
     )).toBeNull();
   });
+  it('averages ONLY qualifying events in a mixed array — a non-qualifying event is excluded, not counted as 0', () => {
+    // One event qualifies (difficulty 4, success 1.0 → 0.8); one lacks any outcome
+    // (no test, no quality → observedSuccess undefined) and must be EXCLUDED, not
+    // averaged in as 0 (which would drag the mean to 0.4).
+    const events = [
+      makeEvent({ difficulty: 4 }, { test: { score: 10, out_of: 10 } }),
+      makeEvent({ difficulty: 2 }), // no outcome → excluded
+    ];
+    expect(successGatedMean(events, (e) => e.assessment?.difficulty, 5)).toBeCloseTo(0.8);
+  });
 });
 
 describe('mean / weightedComposite', () => {
@@ -69,5 +83,14 @@ describe('mean / weightedComposite', () => {
   });
   it('weightedComposite is null when no part has a score', () => {
     expect(weightedComposite([{ weight: 0.3, score: null }])).toBeNull();
+  });
+  it('weightedComposite re-normalises across MULTIPLE present parts with different weights', () => {
+    // present: {0.3,0.9} and {0.2,0.5}; {0.5,null} drops out.
+    // (0.3*0.9 + 0.2*0.5) / (0.3 + 0.2) = 0.37 / 0.5 = 0.74
+    expect(weightedComposite([
+      { weight: 0.3, score: 0.9 },
+      { weight: 0.2, score: 0.5 },
+      { weight: 0.5, score: null },
+    ])).toBeCloseTo(0.74);
   });
 });
