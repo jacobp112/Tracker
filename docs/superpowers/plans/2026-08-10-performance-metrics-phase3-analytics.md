@@ -62,6 +62,7 @@ The foundation every later task consumes. Thresholds, weight tables (with sum ch
   - `type IndependenceTier = 'independent' | 'lightly_assisted' | 'assisted'`
   - `independenceTier(e: ReviewEvent): IndependenceTier | undefined`
   - `mean(xs: number[]): number | null`
+  - `successGatedMean(events: ReviewEvent[], pick: (e: ReviewEvent) => number | undefined, max: number): number | null`
   - `weightedComposite(parts: Array<{ weight: number; score: number | null }>): number | null`
   - `makeEvent(assessment, opts?)` test factory.
 
@@ -97,8 +98,10 @@ In `src/config/constants.ts`, before the closing `} as const;`, add:
       transfer: 0.2,
       quality: 0.15,
     },
-    /** Cold Performance composite weights (proposed; tunable). Plain weighted
-     *  average of present dimensions of cold attempts (design §D). */
+    /** Cold Performance composite weights (proposed; tunable). Over cold attempts:
+     *  difficulty & novelty are success-gated like Performance Health (§18 — a
+     *  failed hard/novel cold attempt banks no difficulty/novelty credit);
+     *  correctness/independence/transfer/quality are direct present-value inputs. */
     COLD_WEIGHTS: {
       correctness: 0.3,
       difficulty: 0.15,
@@ -161,7 +164,7 @@ Create `tests/engine/performance-helpers.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { observedSuccess, isIndependent, independenceTier, mean, weightedComposite } from '@/engine/performance';
+import { observedSuccess, isIndependent, independenceTier, mean, successGatedMean, weightedComposite } from '@/engine/performance';
 import { makeEvent } from './assessment-fixtures';
 
 describe('observedSuccess — commensurability fallback (design §D)', () => {
@@ -191,6 +194,29 @@ describe('independence tiers — strict boundary', () => {
   });
   it('no independence value → undefined tier', () => {
     expect(independenceTier(makeEvent({ difficulty: 2 }))).toBeUndefined();
+  });
+});
+
+describe('successGatedMean — difficulty/novelty earn credit only WITH success (§18)', () => {
+  it('a solved hard attempt banks proportional credit', () => {
+    // difficulty 5/5 × success 0.9 = 0.9
+    expect(successGatedMean(
+      [makeEvent({ difficulty: 5 }, { test: { score: 9, out_of: 10 } })],
+      (e) => e.assessment?.difficulty, 5,
+    )).toBeCloseTo(0.9);
+  });
+  it('a FAILED hard attempt banks ~0 — difficulty cannot lift the score without success', () => {
+    // difficulty 5/5 × success 0 = 0
+    expect(successGatedMean(
+      [makeEvent({ difficulty: 5 }, { test: { score: 0, out_of: 10 } })],
+      (e) => e.assessment?.difficulty, 5,
+    )).toBe(0);
+  });
+  it('is null when no event has both the dimension and an outcome', () => {
+    expect(successGatedMean(
+      [makeEvent({ difficulty: 5 })], // no test, no quality → no observedSuccess
+      (e) => e.assessment?.difficulty, 5,
+    )).toBeNull();
   });
 });
 
@@ -261,6 +287,31 @@ export function mean(xs: number[]): number | null {
 }
 
 /**
+ * Mean of `(dim / max) × observedSuccess` over events where BOTH the dimension
+ * and an outcome are present. The single source of success-gating (design §18):
+ * difficulty/novelty earn credit only paired with a successful outcome, so a
+ * hard/novel attempt that was failed contributes ~0 — it is structurally
+ * impossible for difficulty or novelty to lift a score without also being
+ * solved. Used by both Cold Performance and Performance Health so the two cannot
+ * drift apart. Null when no event has both.
+ */
+export function successGatedMean(
+  events: ReviewEvent[],
+  pick: (e: ReviewEvent) => number | undefined,
+  max: number,
+): number | null {
+  return mean(
+    events
+      .map((e) => {
+        const dim = pick(e);
+        const s = observedSuccess(e);
+        return dim === undefined || s === undefined ? undefined : (dim / max) * s;
+      })
+      .filter((x): x is number => x !== undefined),
+  );
+}
+
+/**
  * Weighted composite over parts, re-normalising to the weights of the parts that
  * actually have a score. A null score drops out (never treated as 0). Returns
  * null when no part has a score (graceful degradation, design §D).
@@ -289,7 +340,8 @@ git add src/config/constants.ts src/engine/performance.ts tests/engine/assessmen
 git commit -m "feat(performance): CONFIG.PERFORMANCE + shared helpers
 
 observedSuccess (test→quality/5→undefined), strict independence tiers
-(===3 only), mean, and re-normalising weightedComposite. Weight tables
+(===3 only), mean, successGatedMean (single source of §18 difficulty/
+novelty gating), and re-normalising weightedComposite. Weight tables
 sum-checked. Read-only foundation for the Performance layer.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
@@ -549,14 +601,14 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 A transparent weighted composite over the *present* dimensions of **cold attempts only**, re-normalising over missing dimensions, null below `MIN_COLD_N`.
 
-**⚠ Note for reviewer/checkpoint:** Cold Performance is a plain weighted average of present dimensions (design §D), NOT success-gated the way Performance Health's difficulty/novelty are — cold attempts already fold correctness in as the highest-weighted dimension (0.30). Flag at checkpoint if success-gating is wanted here too.
+**⚠ INVARIANT (resolved 2026-08-10 review):** Cold Performance's **difficulty and novelty are success-gated** via `successGatedMean`, exactly like Performance Health — a hard/novel cold attempt that was failed banks no difficulty/novelty credit (§18: difficulty/novelty must not decouple from correctness). `correctness`, `independence`, `transfer`, and `quality` stay as direct present-value inputs (independence/transfer aren't correctness claims; quality encodes correctness via the tutor rubric). Named anti-gaming test below.
 
 **Files:**
 - Modify: `src/engine/performance.ts` (append)
 - Test: `tests/engine/cold-performance.test.ts`
 
 **Interfaces:**
-- Consumes: `observedSuccess`, `mean`, `weightedComposite` (Task 1); `CONFIG.PERFORMANCE.{ MIN_COLD_N, COLD_WEIGHTS, *_MAX }`.
+- Consumes: `observedSuccess`, `mean`, `successGatedMean`, `weightedComposite` (Task 1); `CONFIG.PERFORMANCE.{ MIN_COLD_N, COLD_WEIGHTS, *_MAX }`.
 - Produces:
   - `interface ColdPerformance { score: number; n: number; }` (`score` 0–100)
   - `coldPerformance(events: ReviewEvent[]): ColdPerformance | null` (null below `MIN_COLD_N` cold attempts).
@@ -592,6 +644,23 @@ describe('coldPerformance', () => {
     const events = Array.from({ length: 5 }, () => cold({}, { score: 8, out_of: 10 }));
     expect(coldPerformance(events)!.score).toBeCloseTo(80, 0);
   });
+
+  it('ANTI-GAMING: failed hard/novel cold attempts bank NO difficulty/novelty credit (§18)', () => {
+    // Max difficulty & novelty but scored 0. Ungated, difficulty+novelty would
+    // bank 0.30 of the composite (→ score 50); success-gated, they contribute 0
+    // and — with correctness also 0 — the whole score is 0. Attempting hard/novel
+    // cold work and failing must not read as good cold performance.
+    const events = Array.from({ length: 5 }, () =>
+      cold({ difficulty: 5, novelty: 4 }, { score: 0, out_of: 10 }),
+    );
+    expect(coldPerformance(events)!.score).toBe(0);
+  });
+
+  it('rewards solved hard/novel cold work over solved easy/familiar cold work', () => {
+    const hard = Array.from({ length: 5 }, () => cold({ difficulty: 5, novelty: 4 }, { score: 9, out_of: 10 }));
+    const easy = Array.from({ length: 5 }, () => cold({ difficulty: 0, novelty: 0 }, { score: 9, out_of: 10 }));
+    expect(coldPerformance(hard)!.score).toBeGreaterThan(coldPerformance(easy)!.score);
+  });
 });
 ```
 
@@ -615,6 +684,8 @@ export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
   if (coldEvents.length < P.MIN_COLD_N) return null;
 
   const w = P.COLD_WEIGHTS;
+  // Direct present-value mean (correctness claims not gated: independence/transfer
+  // aren't correctness, quality encodes it via rubric).
   const dim = (pick: (e: ReviewEvent) => number | undefined, max: number): number | null =>
     mean(coldEvents.map(pick).filter((x): x is number => x !== undefined).map((x) => x / max));
 
@@ -624,8 +695,10 @@ export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
 
   const composite = weightedComposite([
     { weight: w.correctness, score: correctness },
-    { weight: w.difficulty, score: dim((e) => e.assessment?.difficulty, P.DIFFICULTY_MAX) },
-    { weight: w.novelty, score: dim((e) => e.assessment?.novelty, P.NOVELTY_MAX) },
+    // §18 — difficulty & novelty success-gated, so failed hard/novel cold work
+    // banks no credit (same mechanism as Performance Health).
+    { weight: w.difficulty, score: successGatedMean(coldEvents, (e) => e.assessment?.difficulty, P.DIFFICULTY_MAX) },
+    { weight: w.novelty, score: successGatedMean(coldEvents, (e) => e.assessment?.novelty, P.NOVELTY_MAX) },
     { weight: w.independence, score: dim((e) => e.assessment?.independence, P.INDEPENDENCE_MAX) },
     { weight: w.transfer, score: dim((e) => e.assessment?.transfer_level, P.TRANSFER_MAX) },
     { weight: w.quality, score: dim((e) => e.assessment?.performance_quality, P.QUALITY_MAX) },
@@ -643,8 +716,10 @@ export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
 git add src/engine/performance.ts tests/engine/cold-performance.test.ts
 git commit -m "feat(performance): Cold Performance composite (cold-only, re-normalised)
 
-Weighted average over present dimensions of cold attempts only; missing
-dimensions re-normalise rather than zero-fill; null below MIN_COLD_N.
+Weighted composite over present dimensions of cold attempts only; difficulty
+& novelty success-gated (§18 — failed hard/novel cold banks no credit),
+correctness/independence/transfer/quality direct; missing dimensions
+re-normalise rather than zero-fill; null below MIN_COLD_N.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
@@ -909,7 +984,7 @@ The parallel 0–100 headline. Weighted composite of independent accuracy, succe
 - Test: `tests/engine/performance-health.test.ts`
 
 **Interfaces:**
-- Consumes: `isIndependent`, `observedSuccess`, `mean`, `weightedComposite` (Task 1); `CONFIG.PERFORMANCE.{ HEALTH_WEIGHTS, MIN_HEALTH_INPUTS, *_MAX }`.
+- Consumes: `isIndependent`, `observedSuccess`, `mean`, `successGatedMean`, `weightedComposite` (Task 1); `CONFIG.PERFORMANCE.{ HEALTH_WEIGHTS, MIN_HEALTH_INPUTS, *_MAX }`.
 - Produces: `performanceHealth(events: ReviewEvent[]): number | null` (0–100; null if fewer than `MIN_HEALTH_INPUTS` sub-scores are present).
 
 Sub-score definitions (all 0–1):
@@ -989,24 +1064,16 @@ export function performanceHealth(events: ReviewEvent[]): number | null {
 
   const accuracy = mean(indep.map(observedSuccess).filter((x): x is number => x !== undefined));
 
-  const gated = (max: number, pick: (e: ReviewEvent) => number | undefined): number | null =>
-    mean(
-      indep
-        .map((e) => {
-          const dim = pick(e);
-          const s = observedSuccess(e);
-          return dim === undefined || s === undefined ? undefined : (dim / max) * s;
-        })
-        .filter((x): x is number => x !== undefined),
-    );
-
+  // transfer/quality are direct present-value means over ALL attempts (their own
+  // scales already encode success; transfer is independent of `independence`).
   const dimAll = (max: number, pick: (e: ReviewEvent) => number | undefined): number | null =>
     mean(events.map(pick).filter((x): x is number => x !== undefined).map((x) => x / max));
 
   const parts = [
     { weight: w.accuracy, score: accuracy },
-    { weight: w.difficulty, score: gated(P.DIFFICULTY_MAX, (e) => e.assessment?.difficulty) },
-    { weight: w.novelty, score: gated(P.NOVELTY_MAX, (e) => e.assessment?.novelty) },
+    // Success-gated over independent attempts (shared with Cold Performance).
+    { weight: w.difficulty, score: successGatedMean(indep, (e) => e.assessment?.difficulty, P.DIFFICULTY_MAX) },
+    { weight: w.novelty, score: successGatedMean(indep, (e) => e.assessment?.novelty, P.NOVELTY_MAX) },
     { weight: w.transfer, score: dimAll(P.TRANSFER_MAX, (e) => e.assessment?.transfer_level) },
     { weight: w.quality, score: dimAll(P.QUALITY_MAX, (e) => e.assessment?.performance_quality) },
   ];
@@ -1065,4 +1132,4 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 **5. Read-side-only:** `performance.ts` imports only `CONFIG` and types — no engine-write modules. `overconfidenceIndex` and all existing metrics untouched. ✔
 
-**6. Open decision surfaced for checkpoint:** Cold Performance uses a plain (non-success-gated) weighted average per design §D — flagged in Task 4 for a checkpoint decision, not silently chosen.
+**6. Success-gating is single-sourced (resolved 2026-08-10 review):** difficulty/novelty are gated through one helper, `successGatedMean`, used by BOTH Cold Performance (Task 4) and Performance Health (Task 7) — so the §18 anti-gaming guarantee can't hold in one metric and silently regress in the other. Cold's difficulty/novelty were changed from a plain average to gated after review (a failed hard/novel cold attempt banking 0.30 of the composite was exactly the "harder/more-novel = better" vector §18 forbids); correctness/independence/transfer/quality remain direct. Named anti-gaming tests: `successGatedMean` (Task 1), Cold Performance failed-hard→0 + solved-hard>solved-easy (Task 4), Performance Health failed-hard→0 + hard>easy (Task 7). ✔
