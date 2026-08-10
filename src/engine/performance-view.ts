@@ -1,6 +1,9 @@
 import { CONFIG } from '@/config/constants';
 import type { ReviewEvent, Store } from '@/domain/types';
 import { allTopics } from '@/domain/types';
+import { activeErrorCount } from './metrics';
+import { prerequisiteInstability, type PrerequisiteReport } from './prerequisites';
+import { isDue } from './retention';
 import {
   calibrationError,
   coldPerformance,
@@ -90,4 +93,29 @@ export function metricTrend<T>(
     d30: metric(windowEvents(events, now, CONFIG.PERFORMANCE.TREND_LONG_DAYS)),
     lifetime: metric(events),
   };
+}
+
+export interface UnstableUpstream {
+  topic_id: string;
+  title: string;
+  report: PrerequisiteReport;
+}
+
+/**
+ * Topics that are themselves struggling (active errors, or due) AND have unstable
+ * upstream prerequisites — so a repeatedly-failing topic can point at its shaky
+ * foundations (design §6, §17). Diagnostic only; reads, never writes.
+ */
+export function unstablePrerequisites(store: Store, now: Date = new Date()): UnstableUpstream[] {
+  const out: UnstableUpstream[] = [];
+  for (const { topic } of allTopics(store)) {
+    if (!topic.prerequisites || topic.prerequisites.length === 0) continue;
+    const struggling = activeErrorCount(topic) > 0 || isDue(topic, now);
+    if (!struggling) continue;
+    const report = prerequisiteInstability(topic, store, now);
+    if (report.unstableCount > 0) {
+      out.push({ topic_id: topic.topic_id, title: topic.title, report });
+    }
+  }
+  return out;
 }
