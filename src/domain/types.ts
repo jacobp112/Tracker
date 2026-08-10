@@ -29,6 +29,59 @@ export interface TestEvidence {
   actual_retention: number;
 }
 
+/* ── Assessment evidence (Performance layer, design 2026-08-10 §B) ─────
+ * Generic across subjects — NOT mathematics-specific. Read only by the
+ * Performance layer (engine/performance.ts, Phase 3); never feeds retention,
+ * health, levels, EXP, or mastery. */
+
+/** Task difficulty, 0–5. 0 recall · 1 direct application · 2 multi-step familiar
+ *  · 3 unfamiliar application · 4 non-routine reasoning · 5 exceptionally hard. */
+export type Difficulty = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** Task novelty, 0–4. 0 identical · 1 minor variation · 2 different presentation
+ *  · 3 genuinely unfamiliar · 4 highly novel. Kept independent of transfer_level. */
+export type Novelty = 0 | 1 | 2 | 3 | 4;
+
+/** External assistance required, 0–3. 0 solution required · 1 substantial hinting
+ *  · 2 minor hint/prompt · 3 completely independent. Never inferred from correctness. */
+export type Independence = 0 | 1 | 2 | 3;
+
+/** Application beyond the learned context, 0–3. 0 cannot transfer · 1 with
+ *  prompting · 2 independently · 3 independently transfers AND generalises. */
+export type TransferLevel = 0 | 1 | 2 | 3;
+
+/** Subject-appropriate performance quality, 0–5 (correctness, reasoning, clarity,
+ *  method, communication, …). Not every subject uses every dimension. */
+export type PerformanceQuality = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * Tutor-supplied assessment metadata for a single attempt. Every dimension is
+ * optional — partial applicability is first-class (a recall card has difficulty
+ * but no transfer; a writing task has quality but no novelty). The tracker stores
+ * this verbatim and NEVER derives per-attempt values onto it; a missing dimension
+ * stays undefined, never zero-filled or guessed (design §B, §14).
+ */
+export interface AssessmentEvidence {
+  difficulty?: Difficulty;
+  novelty?: Novelty;
+  independence?: Independence;
+  transfer_level?: TransferLevel;
+  performance_quality?: PerformanceQuality;
+  /** Short tutor rationale for the quality judgement. */
+  quality_rationale?: string;
+  /** Tutor-marked cold assessment. NEVER auto-inferred from source. */
+  cold?: boolean;
+  /** Tutor's PRE-attempt probability of success, 0–1. Counts toward calibration
+   *  only when `predicted_at` verifies it as foresight (strictly before the
+   *  event's date); otherwise treated as hindsight and excluded. */
+  predicted_success?: number;
+  /** ISO timestamp when `predicted_success` was formed. Absent or not strictly
+   *  before the attempt's date → excluded from the calibration metric. */
+  predicted_at?: string;
+  /** Optional tutor/model/session provenance tag (design §14). */
+  assessed_by?: string;
+}
+
 export interface ReviewEvent {
   event_id: string;
   date: string;
@@ -48,6 +101,12 @@ export interface ReviewEvent {
    *  Stamped for a future `1/√N` fan-out damping; unused at weight 1.0 today. */
   fanout?: number;
   notes?: string;
+  /**
+   * Tutor-supplied assessment metadata (design 2026-08-10 §B). Optional and
+   * additive — historical events have none. Read only by the Performance layer;
+   * never feeds retention/health/levels (§A read-side-only invariant).
+   */
+  assessment?: AssessmentEvidence;
 }
 
 export interface ErrorLogEntry {
