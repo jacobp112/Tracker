@@ -73,3 +73,54 @@ export function weightedComposite(parts: Array<{ weight: number; score: number |
   if (wsum === 0) return null;
   return present.reduce((a, p) => a + p.weight * p.score, 0) / wsum;
 }
+
+export interface TierStats {
+  n: number;
+  accuracy: number | null;
+  avgDifficulty: number | null;
+  avgNovelty: number | null;
+}
+
+export interface IndependentPerformance {
+  independent: TierStats;
+  lightlyAssisted: TierStats;
+  assisted: TierStats;
+  /** independent.n >= MIN_INDEPENDENT_N — is the headline safe to present? */
+  sufficient: boolean;
+}
+
+function tierStats(events: ReviewEvent[]): TierStats {
+  const outcomes = events.map(observedSuccess).filter((x): x is number => x !== undefined);
+  const diffs = events
+    .map((e) => e.assessment?.difficulty)
+    .filter((x): x is Exclude<typeof x, undefined> => x !== undefined) as number[];
+  const novs = events
+    .map((e) => e.assessment?.novelty)
+    .filter((x): x is Exclude<typeof x, undefined> => x !== undefined) as number[];
+  return {
+    n: events.length,
+    accuracy: mean(outcomes),
+    avgDifficulty: mean(diffs),
+    avgNovelty: mean(novs),
+  };
+}
+
+/** Independent / lightly-assisted / assisted breakdown (design §10). Null when no
+ *  attempt carries an independence value — nothing to say. */
+export function independentPerformance(events: ReviewEvent[]): IndependentPerformance | null {
+  const tiered = { independent: [] as ReviewEvent[], lightly_assisted: [] as ReviewEvent[], assisted: [] as ReviewEvent[] };
+  let any = false;
+  for (const e of events) {
+    const t = independenceTier(e);
+    if (t === undefined) continue;
+    any = true;
+    tiered[t].push(e);
+  }
+  if (!any) return null;
+  return {
+    independent: tierStats(tiered.independent),
+    lightlyAssisted: tierStats(tiered.lightly_assisted),
+    assisted: tierStats(tiered.assisted),
+    sufficient: tiered.independent.length >= P.MIN_INDEPENDENT_N,
+  };
+}
