@@ -176,6 +176,7 @@ export interface SessionTopicEntry {
   confidence_reported: Confidence;
   notes?: string;
   errors?: Array<{ error_type: ErrorType; description: string }>;
+  assessment?: AssessmentEvidence;
 }
 
 export interface StudySession {
@@ -193,6 +194,7 @@ export interface ExamBreakdownEntry {
   points_possible: number;
   confidence_reported?: Confidence;
   errors?: Array<{ error_type: ErrorType; description: string }>;
+  assessment?: AssessmentEvidence;
 }
 
 export interface Exam {
@@ -205,6 +207,9 @@ export interface Exam {
   max_score: number;
   confidence_reported?: Confidence;
   breakdown?: ExamBreakdownEntry[];
+  /** Tutor-marked cold paper (design 2026-08-10 §C). Applied to every linked
+   *  topic's event unless a per-breakdown assessment.cold overrides. */
+  cold?: boolean;
 }
 
 /* ── Session Recording ──────────────────────────────────────────── */
