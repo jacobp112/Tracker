@@ -225,3 +225,36 @@ export function performanceByDifficulty(events: ReviewEvent[]): DimensionBucket[
 export function performanceByNovelty(events: ReviewEvent[]): DimensionBucket[] {
   return bucketBy(events, (e) => e.assessment?.novelty);
 }
+
+export interface Calibration {
+  meanAbsError: number;
+  bias: number; // mean(predicted − observed); positive = over-prediction
+  n: number;
+}
+
+/** Foresight rule (design §D, §11): predicted_success AND predicted_at present,
+ *  and predicted_at STRICTLY before the attempt's date. Absence or a
+ *  not-strictly-before timestamp → hindsight → excluded. */
+export function isForesightPrediction(e: ReviewEvent): boolean {
+  const a = e.assessment;
+  if (!a || a.predicted_success === undefined || a.predicted_at === undefined) return false;
+  return new Date(a.predicted_at).getTime() < new Date(e.date).getTime();
+}
+
+/** Tutor-prediction-vs-outcome error over foresight predictions only. Distinct
+ *  from OCI (confidence-vs-performance). Null below MIN_CALIBRATION_N. */
+export function calibrationError(events: ReviewEvent[]): Calibration | null {
+  const pairs: Array<{ predicted: number; observed: number }> = [];
+  for (const e of events) {
+    if (!isForesightPrediction(e)) continue;
+    const observed = observedSuccess(e);
+    if (observed === undefined) continue;
+    pairs.push({ predicted: e.assessment!.predicted_success!, observed });
+  }
+  if (pairs.length < P.MIN_CALIBRATION_N) return null;
+  return {
+    meanAbsError: mean(pairs.map((p) => Math.abs(p.predicted - p.observed)))!,
+    bias: mean(pairs.map((p) => p.predicted - p.observed))!,
+    n: pairs.length,
+  };
+}
