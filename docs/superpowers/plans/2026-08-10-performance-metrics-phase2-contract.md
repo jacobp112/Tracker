@@ -232,6 +232,11 @@ describe('assessment schema — rejection', () => {
   it('rejects an unknown key inside assessment (additionalProperties:false)', () => {
     expect(validateAgainst('session', session({ assessment: { made_up: 1 } })).ok).toBe(false);
   });
+  it('rejects a malformed predicted_at (Ajv date-time format assertion)', () => {
+    // The one field whose only runtime guard is the format assertion — a bad
+    // date-time from a tutor paste must not slip through as a valid string.
+    expect(validateAgainst('session', session({ assessment: { predicted_at: 'not-a-date' } })).ok).toBe(false);
+  });
 });
 ```
 
