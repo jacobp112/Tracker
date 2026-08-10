@@ -144,6 +144,13 @@ export interface Topic {
   drift_history: number[];
   review_history: ReviewEvent[];
   error_log: ErrorLogEntry[];
+  /**
+   * Upstream topic_ids this topic depends on (design 2026-08-10 §E). Optional;
+   * authored by the course layer, assumed a DAG. Diagnostic only — used by the
+   * prerequisite-instability check (Phase 4); NEVER overwrites mastery or any
+   * stored state.
+   */
+  prerequisites?: string[];
 }
 
 export interface Section {
