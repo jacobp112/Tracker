@@ -129,10 +129,62 @@ export const CONFIG = {
      */
     SESSION_MINUTES: 30,
   },
+
+  /**
+   * Performance layer (engine/performance.ts) — all derived, never stored
+   * (design 2026-08-10). Weights are the semantic knobs; thresholds are the
+   * min-data guards below which a metric returns null rather than a number.
+   */
+  PERFORMANCE: {
+    /** Min qualifying attempts before a headline metric shows a number. */
+    MIN_INDEPENDENT_N: 5,
+    MIN_TRANSFER_N: 5,
+    MIN_COLD_N: 5,
+    MIN_CALIBRATION_N: 5,
+    /** Min distinct sub-scores present before Performance Health is defined. */
+    MIN_HEALTH_INPUTS: 2,
+    /** Ordinal maxima, for normalising each dimension to 0–1. */
+    DIFFICULTY_MAX: 5,
+    NOVELTY_MAX: 4,
+    INDEPENDENCE_MAX: 3,
+    TRANSFER_MAX: 3,
+    QUALITY_MAX: 5,
+    /** Performance Health composite weights (design §D, user-approved). */
+    HEALTH_WEIGHTS: {
+      accuracy: 0.3,
+      difficulty: 0.2,
+      novelty: 0.15,
+      transfer: 0.2,
+      quality: 0.15,
+    },
+    /** Cold Performance composite weights (proposed; tunable). Over cold attempts:
+     *  difficulty & novelty are success-gated like Performance Health (§18 — a
+     *  failed hard/novel cold attempt banks no difficulty/novelty credit);
+     *  correctness/independence/transfer/quality are direct present-value inputs. */
+    COLD_WEIGHTS: {
+      correctness: 0.3,
+      difficulty: 0.15,
+      novelty: 0.15,
+      independence: 0.15,
+      transfer: 0.15,
+      quality: 0.1,
+    },
+  },
 } as const;
 
 /** Health weights must sum to 1, or `health` is no longer a 0–100 score. */
 const WEIGHT_SUM = CONFIG.W_RET + CONFIG.W_ERR + CONFIG.W_CAL + CONFIG.W_CONF + CONFIG.W_CARD;
 if (Math.abs(WEIGHT_SUM - 1) > 1e-9) {
   throw new Error(`Document 2 §6 health weights must sum to 1, got ${WEIGHT_SUM}`);
+}
+
+/** Performance-layer weight tables must each sum to 1 (0–100 composites). */
+for (const [name, table] of [
+  ['HEALTH_WEIGHTS', CONFIG.PERFORMANCE.HEALTH_WEIGHTS],
+  ['COLD_WEIGHTS', CONFIG.PERFORMANCE.COLD_WEIGHTS],
+] as const) {
+  const sum = Object.values(table).reduce((a, b) => a + b, 0);
+  if (Math.abs(sum - 1) > 1e-9) {
+    throw new Error(`CONFIG.PERFORMANCE.${name} must sum to 1, got ${sum}`);
+  }
 }
