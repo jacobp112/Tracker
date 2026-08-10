@@ -48,6 +48,28 @@ const TEST_EVIDENCE = {
   },
 };
 
+// Design 2026-08-10 §B. Every dimension optional (partial applicability, #16);
+// additionalProperties:false so a hallucinated dimension fails rather than being
+// silently accepted (§1.5). Ordinals are integers with explicit bounds.
+const ASSESSMENT_EVIDENCE: SchemaObject = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    difficulty: { type: 'integer', minimum: 0, maximum: 5 },
+    novelty: { type: 'integer', minimum: 0, maximum: 4 },
+    independence: { type: 'integer', minimum: 0, maximum: 3 },
+    transfer_level: { type: 'integer', minimum: 0, maximum: 3 },
+    performance_quality: { type: 'integer', minimum: 0, maximum: 5 },
+    quality_rationale: { type: 'string', maxLength: 1000 },
+    cold: { type: 'boolean' },
+    // 0–1 probability. Stored now; the strictly-before-completion foresight
+    // check for calibration is a Phase 3 concern (design §D).
+    predicted_success: { type: 'number', minimum: 0, maximum: 1 },
+    predicted_at: ISO_DATETIME,
+    assessed_by: { type: 'string', maxLength: 200 },
+  },
+};
+
 const REVIEW_EVENT: SchemaObject = {
   type: 'object',
   additionalProperties: false,
@@ -63,6 +85,7 @@ const REVIEW_EVENT: SchemaObject = {
     smeared: { type: 'boolean' },
     fanout: { type: 'integer', minimum: 1 },
     notes: { type: 'string', maxLength: 500 },
+    assessment: ASSESSMENT_EVIDENCE,
   },
   // Document 1 v0.2 §2.4: `test` is required when kind is a test, forbidden otherwise.
   allOf: [
@@ -113,6 +136,8 @@ const TOPIC: SchemaObject = {
     drift_history: { type: 'array', items: { type: 'number' }, maxItems: 5 },
     review_history: { type: 'array', items: REVIEW_EVENT },
     error_log: { type: 'array', items: ERROR_LOG_ENTRY },
+    // Design 2026-08-10 §E — optional upstream dependency list (topic_ids).
+    prerequisites: { type: 'array', items: ID_PATTERN('topic') },
   },
 };
 
@@ -172,6 +197,7 @@ export const SESSION_SCHEMA: SchemaObject = {
           confidence_reported: CONFIDENCE,
           notes: { type: 'string', maxLength: 500 },
           errors: { type: 'array', items: ERROR_LITE },
+          assessment: ASSESSMENT_EVIDENCE,
         },
       },
     },
@@ -192,6 +218,9 @@ export const EXAM_SCHEMA: SchemaObject = {
     score: { type: 'number', minimum: 0 },
     max_score: { type: 'number', exclusiveMinimum: 0 },
     confidence_reported: CONFIDENCE,
+    // Design 2026-08-10 §C — tutor marks the whole paper cold; per-breakdown
+    // assessment.cold overrides per topic (fallback resolved in merge.ts).
+    cold: { type: 'boolean' },
     breakdown: {
       type: 'array',
       items: {
@@ -204,6 +233,7 @@ export const EXAM_SCHEMA: SchemaObject = {
           points_possible: { type: 'number', exclusiveMinimum: 0 },
           confidence_reported: CONFIDENCE,
           errors: { type: 'array', items: ERROR_LITE },
+          assessment: ASSESSMENT_EVIDENCE,
         },
       },
     },
