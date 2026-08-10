@@ -17,6 +17,7 @@
 - **Generic, subject-agnostic:** no subject-specific terminology in names or doc comments — especially not "mathematical". The same fields serve history, physics, languages, GCSE/A-level. (Requirement #25.)
 - **Do NOT bump `SCHEMA_VERSION`** in this phase. It stays `'3.1.0'`. The `3.1.0 → 3.2.0` bump is tied to the Ajv schema/merge change in Phase 2 (design §C); bumping it now, with no persisted-shape or validation change, would be a lie about the on-disk contract.
 - **Red/green gate for type-only changes is `npm run typecheck`.** Vitest (esbuild) strips types without checking them, so a missing type will NOT fail Vitest — it fails `tsc`. Each task runs `npm run typecheck` as the failing-then-passing gate, and Vitest to confirm the runtime assertions hold.
+- **Baseline is NOT fully green — do not chase pre-existing failures.** The branch base (`823397d`) carries **18 pre-existing UI-test failures** in exactly three files: `tests/integration/app-smoke.test.tsx`, `tests/routes/CourseDashboard.test.tsx`, `tests/routes/TopicDetail.test.tsx`. These are a property of a mid-refactor base (committed route components lag their committed tests; the reconciling work is stashed), **not** something Phase 1 introduces or fixes. The layer Phase 1 touches — `tests/domain tests/engine tests/core` — is **fully green (240 tests)**. Verify against that subset plus your new tests, and treat `npm test` as a regression check meaning *"still exactly those 3 files failing, nothing new."*
 
 ---
 
@@ -222,8 +223,11 @@ Expected: PASS (exit 0, no errors).
 Run: `npx vitest run tests/domain/assessment-evidence.test.ts`
 Expected: PASS (5 tests).
 
+Run: `npx vitest run tests/domain tests/engine tests/core`
+Expected: PASS — the layer Phase 1 can affect is fully green (240 baseline tests + the 5 new = 245).
+
 Run: `npm test`
-Expected: PASS — the entire existing suite is still green (adding optional fields breaks nothing).
+Expected: the SAME 3 pre-existing UI files still failing (`app-smoke`, `CourseDashboard`, `TopicDetail`) and nothing new — adding optional fields breaks nothing. Do NOT attempt to fix those 3; they are the mid-refactor baseline (see Global Constraints).
 
 - [ ] **Step 7: Commit**
 
@@ -320,8 +324,11 @@ Expected: PASS (exit 0).
 Run: `npx vitest run tests/domain/prerequisites.test.ts`
 Expected: PASS (2 tests).
 
+Run: `npx vitest run tests/domain tests/engine tests/core`
+Expected: PASS — fully green (now 247 tests with both new files).
+
 Run: `npm test`
-Expected: PASS — entire existing suite still green.
+Expected: the SAME 3 pre-existing UI files still failing and nothing new (see Global Constraints). Do NOT fix those 3.
 
 - [ ] **Step 6: Commit**
 
