@@ -149,3 +149,39 @@ export function transferAbility(events: ReviewEvent[]): TransferAbility | null {
 
   return { score, n: dated.length, trend };
 }
+
+export interface ColdPerformance {
+  score: number; // 0–100
+  n: number;
+}
+
+/** Weighted composite over the present dimensions of cold attempts only,
+ *  re-normalising over missing ones (never zero-filled). Null below MIN_COLD_N
+ *  (design §8). */
+export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
+  const coldEvents = events.filter((e) => e.assessment?.cold === true);
+  if (coldEvents.length < P.MIN_COLD_N) return null;
+
+  const w = P.COLD_WEIGHTS;
+  // Direct present-value mean (correctness claims not gated: independence/transfer
+  // aren't correctness, quality encodes it via rubric).
+  const dim = (pick: (e: ReviewEvent) => number | undefined, max: number): number | null =>
+    mean(coldEvents.map(pick).filter((x): x is number => x !== undefined).map((x) => x / max));
+
+  const correctness = mean(
+    coldEvents.map(observedSuccess).filter((x): x is number => x !== undefined),
+  );
+
+  const composite = weightedComposite([
+    { weight: w.correctness, score: correctness },
+    // §18 — difficulty & novelty success-gated, so failed hard/novel cold work
+    // banks no credit (same mechanism as Performance Health).
+    { weight: w.difficulty, score: successGatedMean(coldEvents, (e) => e.assessment?.difficulty, P.DIFFICULTY_MAX) },
+    { weight: w.novelty, score: successGatedMean(coldEvents, (e) => e.assessment?.novelty, P.NOVELTY_MAX) },
+    { weight: w.independence, score: dim((e) => e.assessment?.independence, P.INDEPENDENCE_MAX) },
+    { weight: w.transfer, score: dim((e) => e.assessment?.transfer_level, P.TRANSFER_MAX) },
+    { weight: w.quality, score: dim((e) => e.assessment?.performance_quality, P.QUALITY_MAX) },
+  ]);
+
+  return composite === null ? null : { score: composite * 100, n: coldEvents.length };
+}
