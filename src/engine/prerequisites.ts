@@ -48,6 +48,43 @@ export function upstreamPrerequisites(root: Topic, store: Store): UpstreamTopic[
   return out;
 }
 
+/**
+ * Foundationality — the INVERSE of {@link upstreamPrerequisites}. All topics that
+ * (transitively) depend on `topicId`, i.e. list it directly or indirectly as a
+ * prerequisite. Breadth-first over the reversed edge set, each visited once;
+ * cycle-safe. Read-only. Used by the error-urgency engine (design §I.3): an error
+ * in a topic that underpins many downstream topics is more damaging.
+ */
+export function downstreamDependents(topicId: string, store: Store): Topic[] {
+  const all = allTopics(store).map(({ topic }) => topic);
+  const byId = new Map(all.map((t) => [t.topic_id, t]));
+  // Reversed adjacency: prerequisite id -> ids that depend on it.
+  const dependents = new Map<string, string[]>();
+  for (const t of all) {
+    for (const pid of t.prerequisites ?? []) {
+      (dependents.get(pid) ?? dependents.set(pid, []).get(pid)!).push(t.topic_id);
+    }
+  }
+
+  const seen = new Set<string>([topicId]);
+  const out: Topic[] = [];
+  let frontier = (dependents.get(topicId) ?? []).filter((id) => !seen.has(id));
+  frontier.forEach((id) => seen.add(id));
+
+  while (frontier.length > 0) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      const t = byId.get(id);
+      if (t) out.push(t);
+      for (const d of dependents.get(id) ?? []) {
+        if (!seen.has(d)) { seen.add(d); next.push(d); }
+      }
+    }
+    frontier = next;
+  }
+  return out;
+}
+
 export interface PrerequisiteHealth {
   topic_id: string;
   title: string;
