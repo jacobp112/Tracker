@@ -9,11 +9,15 @@ import {
   coldPerformance,
   independentPerformance,
   novelTaskSuccess,
+  normalizedPresentMean,
+  performanceByDifficulty,
+  performanceByNovelty,
   performanceHealth,
   performanceQuality,
   transferAbility,
   type Calibration,
   type ColdPerformance,
+  type DimensionBucket,
   type IndependentPerformance,
   type NovelTaskSuccess,
   type QualityScore,
@@ -71,6 +75,35 @@ export function performanceSummary(events: ReviewEvent[]): PerformanceSummary {
     quality: performanceQuality(events),
     novelTaskSuccess: novelTaskSuccess(events),
     calibration: calibrationError(events),
+  };
+}
+
+export interface TopicDiagnostics {
+  assessedCount: number;
+  independentAccuracy: number | null; // 0–1, raw (no min-N guard)
+  independentN: number;
+  difficulty: DimensionBucket[];
+  novelty: DimensionBucket[];
+  avgTransfer: number | null; // 0–100, raw
+  avgQuality: number | null;  // 0–100, raw
+}
+
+/** Raw, UNGUARDED per-topic assessment diagnostics for the TopicDetail drawer.
+ *  Deliberately bypasses the headline min-N guards — those protect the global
+ *  dashboard number, not one topic's diagnostics — so a topic with 1–2 assessed
+ *  attempts still surfaces its spread and raw means. Pure read; never writes. */
+export function topicDiagnostics(events: ReviewEvent[]): TopicDiagnostics {
+  const indep = independentPerformance(events)?.independent ?? null;
+  const transfer = normalizedPresentMean(events, (e) => e.assessment?.transfer_level, CONFIG.PERFORMANCE.TRANSFER_MAX);
+  const quality = normalizedPresentMean(events, (e) => e.assessment?.performance_quality, CONFIG.PERFORMANCE.QUALITY_MAX);
+  return {
+    assessedCount: events.filter((e) => e.assessment).length,
+    independentAccuracy: indep?.accuracy ?? null,
+    independentN: indep?.n ?? 0,
+    difficulty: performanceByDifficulty(events),
+    novelty: performanceByNovelty(events),
+    avgTransfer: transfer === null ? null : transfer * 100,
+    avgQuality: quality === null ? null : quality * 100,
   };
 }
 
