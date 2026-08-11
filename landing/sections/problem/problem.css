@@ -1,0 +1,156 @@
+/* ── Problem band ────────────────────────────────────────────────────
+ * "You forget on a curve. Nothing is measuring it." A dark velvet chamber with
+ * an oversized radius, holding a small figure that SHOWS the forgetting: a
+ * trace that dissolves left to right, and one topic read back at three points
+ * in time on the same fading ink ladder.
+ *
+ * In the dark theme the chamber inverts to cream, so the cream↔dark section
+ * alternation survives in both. Scoped to .band.problem and its own
+ * .problem-* / .decay-* descendants; nothing here can reach another section. */
+
+.band.problem {
+  /* ── The chamber's own ink ladder ──────────────────────────────
+   * This section is the one place on the page that inverts against the
+   * canvas, so the page's semantic --ink / --surface are exactly wrong
+   * inside it. These locals are the single inversion point: everything
+   * below reads from them, and they are mixed from the raw (theme-
+   * independent) Wispr palette, so one block per theme keeps both correct.
+   * No global token is added or changed.
+   *
+   * The fade steps are hand-set per theme rather than shared, because ink
+   * fading toward cream loses contrast far faster than cream fading toward
+   * ink. Every step below still clears 4:1 on its own background — the
+   * faintness is a hierarchy cue, never a legibility trade. */
+  --ch-bg: var(--wf-ink);
+  --ch-ink: var(--wf-cream);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-cream) 78%, var(--wf-ink));
+  --ch-fade-2: color-mix(in srgb, var(--wf-cream) 58%, var(--wf-ink));
+  --ch-fade-3: color-mix(in srgb, var(--wf-cream) 44%, var(--wf-ink));
+  --ch-rule: color-mix(in srgb, var(--wf-cream) 22%, var(--wf-ink));
+  /* One accent, chosen per theme for contrast against the chamber it sits on:
+   * ember reads on near-black, forest teal reads on cream. Both palette
+   * colours; both used exactly once. */
+  --ch-mark: var(--wf-ember);
+
+  background: var(--ch-bg);
+  color: var(--ch-ink);
+  border-radius: var(--radius-chamber);
+  padding: var(--space-14) var(--space-12);
+  margin-block: var(--space-12);
+}
+
+[data-theme='dark'] .band.problem {
+  --ch-bg: var(--wf-cream);
+  --ch-ink: var(--wf-ink);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-ink) 80%, var(--wf-cream));
+  --ch-fade-2: color-mix(in srgb, var(--wf-ink) 68%, var(--wf-cream));
+  --ch-fade-3: color-mix(in srgb, var(--wf-ink) 56%, var(--wf-cream));
+  --ch-rule: color-mix(in srgb, var(--wf-ink) 20%, var(--wf-cream));
+  --ch-mark: var(--wf-teal);
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────── */
+.band.problem .problem-masthead {
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; gap: var(--space-6);
+  margin-bottom: var(--space-10);
+}
+.band.problem .problem-masthead::after {
+  content: '';
+  height: var(--wf-border-w);
+  background: var(--ch-ink);
+  border-radius: var(--radius-pill);
+}
+/* .eyebrow's page-token colour would be unreadable once the chamber inverts. */
+.band.problem .eyebrow { color: var(--ch-ink-soft); }
+
+/* ── Heading & lead ───────────────────────────────────────────────── */
+.band.problem .band-title {
+  color: var(--ch-ink);
+  /* Bigger than the shared band scale — this chamber is the page's turn, and
+   * the authority comes from size only. Weight stays 400 (shared type layer). */
+  font-size: clamp(2.25rem, 3.1vw + 1rem, 4rem);
+  line-height: 1.02;
+  max-width: 22ch;
+}
+/* Two-tone cadence, as in the hero: the observation recedes, the turn lands.
+ * display:block so the turn always starts its own line instead of depending on
+ * where the measure happens to break. */
+.band.problem .problem-quiet { display: block; color: var(--ch-ink-soft); }
+.band.problem .band-lead { color: var(--ch-ink-soft); max-width: 58ch; }
+
+/* ── The decay figure ─────────────────────────────────────────────── */
+.band.problem .decay {
+  margin: var(--space-12) 0 0;
+  padding-top: var(--space-11);
+  border-top: 1px solid var(--ch-rule);
+}
+
+.band.problem .decay-svg {
+  display: block;
+  width: 100%; height: auto;
+  /* Marks sit at 1%, 35% and 70% of the viewBox, which is where the three
+   * equal step columns begin — the SVG scales uniformly, so that alignment
+   * holds at any chamber width. */
+}
+.band.problem .decay-seg {
+  fill: none;
+  stroke-width: var(--wf-border-w);
+  stroke-linecap: round;
+}
+.band.problem .decay-seg-1 { stroke: var(--ch-ink); }
+.band.problem .decay-seg-2 { stroke: var(--ch-fade-2); stroke-dasharray: 12 9; }
+.band.problem .decay-seg-3 { stroke: var(--ch-fade-3); stroke-dasharray: 1 15; }
+.band.problem .decay-mark { fill: var(--ch-mark); }
+.band.problem .decay-mark-2 { fill: var(--ch-fade-2); }
+.band.problem .decay-mark-3 { fill: var(--ch-fade-3); }
+
+.band.problem .decay-steps {
+  list-style: none;
+  margin: var(--space-7) 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-10);
+}
+.band.problem .decay-when {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-eyebrow); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--step-label);
+}
+.band.problem .decay-what {
+  margin: 0;
+  font-size: var(--fs-section); line-height: 1.45;
+  color: var(--step-ink); text-wrap: pretty;
+}
+/* The ladder: each step is read back one shade further gone than the last. */
+.band.problem .decay-step:nth-child(1) { --step-ink: var(--ch-ink);     --step-label: var(--ch-ink-soft); }
+.band.problem .decay-step:nth-child(2) { --step-ink: var(--ch-fade-2);  --step-label: var(--ch-fade-3); }
+.band.problem .decay-step:nth-child(3) { --step-ink: var(--ch-fade-3);  --step-label: var(--ch-fade-3); }
+
+.band.problem .decay-caption {
+  margin: var(--space-10) 0 0;
+  font-size: var(--fs-caption); line-height: 1.5;
+  color: var(--ch-fade-2);
+}
+.band.problem .decay-figmark {
+  font-size: var(--fs-micro); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ch-ink-soft);
+  margin-right: var(--space-3);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .band.problem .decay-steps { gap: var(--space-8); }
+  .band.problem .decay-what { font-size: var(--fs-body); }
+}
+@media (max-width: 720px) {
+  .band.problem { padding: var(--space-12) var(--space-9); border-radius: var(--radius-lg); }
+  /* Stacked, the horizontal trace has nothing left to say — it is decorative
+   * and aria-hidden, so dropping it loses no content. The same dissolve is
+   * carried by the steps' own rules: solid, then dashed, then dotted. */
+  .band.problem .decay-trace { display: none; }
+  .band.problem .decay-steps { grid-template-columns: 1fr; gap: var(--space-8); }
+  .band.problem .decay-step { padding-top: var(--space-6); border-top: var(--wf-border-w) solid var(--ch-ink); }
+  .band.problem .decay-step:nth-child(2) { border-top-style: dashed; border-top-color: var(--ch-fade-2); }
+  .band.problem .decay-step:nth-child(3) { border-top-style: dotted; border-top-color: var(--ch-fade-3); }
+}

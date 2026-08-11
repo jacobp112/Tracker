@@ -1,0 +1,194 @@
+/* ============================================================
+   REPLACES the "Exams decay curve" block in recreations.css.
+
+   The old block styled .decay-base and .decay-path. Both are retired —
+   delete them, they have no remaining references.
+
+   Draw order is a sequence because the content is a sequence: decay, then
+   the event, then the shallower decay it causes. The counterfactual fades
+   in last so it reads as commentary on the solid line rather than a fourth
+   competing stroke.
+   ============================================================ */
+
+.decay-curve {
+  /* Was 360px, which made the page's most interesting idea its smallest
+     element. It is now the section's visual, not a footnote to it. */
+  max-width: 620px;
+  margin: var(--space-10) 0 0;
+}
+
+.decay-svg {
+  width: 100%;
+  height: auto;
+  /* Endpoint readouts sit outside the plot; keep the ring's glow unclipped. */
+  overflow: visible;
+}
+
+/* ── Frame ─────────────────────────────────────────────────────── */
+.decay-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.decay-axis {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+/* Every number on this page is mono and tabular; axis ticks are numbers. */
+.decay-tick,
+.decay-endpoint {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  /* body sets 'tnum' 0 and it inherits — same re-enable .mono-num needs. */
+  font-feature-settings: 'tnum' 1;
+  font-size: 9px;
+  fill: var(--ink-muted);
+}
+
+.decay-event-label,
+.decay-endpoint-cap {
+  font-family: var(--font-sans);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  fill: var(--ink-muted);
+}
+
+.decay-event {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* ── The curves ────────────────────────────────────────────────── */
+.decay-seg,
+.decay-jump {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0; /* default, incl. no-JS: fully drawn */
+}
+.decay-seg { stroke-width: 2.5; }
+.decay-jump { stroke-width: 2; }
+
+.decay-ghost {
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 4 4;
+  opacity: 0.45; /* default, incl. no-JS */
+}
+
+.decay-node {
+  fill: var(--accent);
+  /* Reads as a node on the line rather than a blob over it. */
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.decay-endpoint.is-tested {
+  fill: var(--accent);
+  font-weight: 700;
+  font-size: 11px;
+}
+.decay-endpoint.is-untested {
+  font-size: 11px;
+}
+
+.decay-caption {
+  margin: var(--space-5) 0 0;
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  max-width: 52ch;
+}
+.decay-caption em {
+  font-style: normal;
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+/* ── Draw sequence ─────────────────────────────────────────────────
+ * JS present, before scroll-in: empty the strokes and hide the annotation.
+ * animate.ts adds .is-drawn to the group root on intersection.
+ *
+ * Offsets are expressed against --dur-draw so the whole sequence retimes
+ * from one token. */
+.decay-curve { --step: var(--dur-draw); }
+
+.js .decay-curve:not(.is-drawn) .decay-seg,
+.js .decay-curve:not(.is-drawn) .decay-jump { stroke-dashoffset: 100; }
+
+.js .decay-curve:not(.is-drawn) .decay-ghost,
+.js .decay-curve:not(.is-drawn) .decay-node,
+.js .decay-curve:not(.is-drawn) .decay-event,
+.js .decay-curve:not(.is-drawn) .decay-event-label,
+.js .decay-curve:not(.is-drawn) .decay-endpoint,
+.js .decay-curve:not(.is-drawn) .decay-endpoint-cap { opacity: 0; }
+
+.js .decay-curve.is-drawn .decay-seg,
+.js .decay-curve.is-drawn .decay-jump {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--dur-draw) var(--ease);
+}
+/* 1. steep decay  2. the event rises  3. the shallower decay it caused */
+.js .decay-curve.is-drawn .decay-seg-a { transition-delay: 0ms; }
+.js .decay-curve.is-drawn .decay-jump  { transition-delay: calc(var(--step) * 0.9); }
+.js .decay-curve.is-drawn .decay-seg-b { transition-delay: calc(var(--step) * 1.3); }
+
+.js .decay-curve.is-drawn .decay-node {
+  opacity: 1;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 1.2);
+}
+.js .decay-curve.is-drawn .decay-event,
+.js .decay-curve.is-drawn .decay-event-label {
+  opacity: 1;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 0.8);
+}
+/* The counterfactual lands last — it is a comment on the solid line. */
+.js .decay-curve.is-drawn .decay-ghost {
+  opacity: 0.45;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 2.1);
+}
+.js .decay-curve.is-drawn .decay-endpoint,
+.js .decay-curve.is-drawn .decay-endpoint-cap {
+  opacity: 1;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 2.3);
+}
+
+/* tokens.css collapses transition-DURATION under reduced motion. It does not
+ * touch transition-DELAY, so without this block the sequence would still sit
+ * through ~2.3 × --dur-draw of dead time before snapping into place — a
+ * two-second blank chart. Zero the delays and assert the final state. */
+@media (prefers-reduced-motion: reduce) {
+  .js .decay-curve .decay-seg,
+  .js .decay-curve .decay-jump {
+    stroke-dashoffset: 0 !important;
+    transition-delay: 0ms !important;
+  }
+  .js .decay-curve .decay-node,
+  .js .decay-curve .decay-event,
+  .js .decay-curve .decay-event-label,
+  .js .decay-curve .decay-endpoint,
+  .js .decay-curve .decay-endpoint-cap {
+    opacity: 1 !important;
+    transition-delay: 0ms !important;
+  }
+  .js .decay-curve .decay-ghost {
+    opacity: 0.45 !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* ── Small screens ─────────────────────────────────────────────────
+ * The endpoint readouts sit in the 90px of viewBox to the right of the plot.
+ * That is a fixed share of the SVG, so it scales down with everything else —
+ * but below ~420px of rendered width the 8.5px caption type stops being
+ * legible. Drop the captions, keep the two percentages. */
+@media (max-width: 560px) {
+  .decay-endpoint-cap { display: none; }
+  .decay-curve { margin-top: var(--space-8); }
+}

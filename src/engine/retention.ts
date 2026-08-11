@@ -1,5 +1,6 @@
 import { CONFIG } from '@/config/constants';
 import type { Topic } from '@/domain/types';
+import { effectiveStrength } from './stability';
 
 /**
  * Retention — Document 2 §2, and the projected due date — §2.1.
@@ -7,13 +8,25 @@ import type { Topic } from '@/domain/types';
  * Everything here is **derived live**, never stored (Document 1 v0.2 §2.3):
  * a topic decays between visits with no event, and that continuous decay is the
  * product's core behaviour.
+ *
+ * As of 2026-08-09, decay uses fractional `elapsedDays` (sub-day precision);
+ * `daysBetween` (whole days) is retained for display only (§2.1 projection, UI ticks).
  */
 
 export const MS_PER_DAY = 86_400_000;
 
-/** Whole days elapsed, per Document 2 §2 ("`t`: whole days elapsed"). */
+/** Whole days elapsed, per Document 2 §2 ("`t`: whole days elapsed"). Retained for UI display (whole-day ticks, projection). */
 export function daysBetween(from: Date, to: Date): number {
   return Math.floor((to.getTime() - from.getTime()) / MS_PER_DAY);
+}
+
+/**
+ * Fractional days elapsed — the decay input (Document 2 §2, amended 2026-08-09).
+ * Unlike `daysBetween` (whole days, for whole-day UI ticks), this is not floored,
+ * so `t` isn't quantised and decay is continuous within a day.
+ */
+export function elapsedDays(from: Date, to: Date): number {
+  return (to.getTime() - from.getTime()) / MS_PER_DAY;
 }
 
 /**
@@ -29,12 +42,15 @@ export function predictRetention(topic: Topic, now: Date = new Date()): number |
   const reviewed = new Date(topic.last_reviewed);
   if (Number.isNaN(reviewed.getTime())) return null;
 
-  if (topic.strength <= 0) return 0;
+  // Retention reads lapse-penalised effective stability, not raw strength, so a
+  // fail SHORTENS the curve (design 2026-08-09 §2). s_eff floors at S_EFF_MIN>0.
+  const s = effectiveStrength(topic);
+  if (s <= 0) return 0;
 
-  const t = daysBetween(reviewed, now);
-  if (t <= 0) return 1; // reviewed today
+  const t = elapsedDays(reviewed, now);
+  if (t <= 0) return 1; // reviewed just now / backdated
 
-  return Math.exp(-t / (topic.k_factor * topic.strength));
+  return Math.exp(-t / (topic.k_factor * s));
 }
 
 /** Retention as a 0–100 percentage, or null. The UI never renders null as 0%. */
@@ -65,12 +81,17 @@ export interface DueProjection {
  */
 export function projectedDue(topic: Topic, now: Date = new Date()): DueProjection | null {
   if (topic.last_reviewed === null || topic.status === 'not_started') return null;
-  if (topic.strength <= 0) return null;
+
+  // Projection solves R(t)=DUE_THRESHOLD on the SAME curve retention reads, so a
+  // lapse resurfaces the topic sooner (design 2026-08-09). s_eff floors at
+  // S_EFF_MIN>0, so a reviewed topic always has a projected date.
+  const s = effectiveStrength(topic);
+  if (s <= 0) return null;
 
   const reviewed = new Date(topic.last_reviewed);
   if (Number.isNaN(reviewed.getTime())) return null;
 
-  const tDue = -topic.k_factor * topic.strength * Math.log(CONFIG.DUE_THRESHOLD);
+  const tDue = -topic.k_factor * s * Math.log(CONFIG.DUE_THRESHOLD);
   const date = new Date(reviewed.getTime() + tDue * MS_PER_DAY);
 
   return { date, overdue: date.getTime() < now.getTime() };

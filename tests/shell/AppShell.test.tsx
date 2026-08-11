@@ -33,10 +33,13 @@ describe('AppShell — Document 3 §4 / E1-S3', () => {
     expect(navs).toHaveLength(2);
   });
 
-  it('reaches Quick add and Settings from the shell', () => {
+  it('reaches Settings from the nav and Add from the topbar', () => {
     renderShell();
-    expect(screen.getByRole('button', { name: /quick add/i })).toBeInTheDocument();
+    // Settings is a primary nav entry (sidebar) + a bottom-tab link.
     expect(screen.getAllByRole('button', { name: /settings/i }).length).toBeGreaterThan(0);
+    // Quick add moved to the topbar's primary "＋ Add" control (the ＋ glyph is
+    // aria-hidden, so the accessible name is just "Add").
+    expect(screen.getByRole('button', { name: /^add$/i })).toBeInTheDocument();
   });
 
   it('marks the active destination with aria-current', () => {
@@ -58,12 +61,12 @@ describe('AppShell — Document 3 §4 / E1-S3', () => {
 });
 
 /*
- * The Study entry is a split control: the label navigates, the chevron
- * discloses. It previously toggled only, which left the /study route
- * unreachable from the desktop sidebar entirely.
+ * Study is a flat primary-nav entry that navigates straight to the /study
+ * index (the old split-control disclosure was removed — courses now live in
+ * their own "Your courses" list below the nav).
  */
 describe('AppShell — the Study nav entry', () => {
-  it('navigates to the Study page when the label is clicked', async () => {
+  it('navigates to the Study page when clicked', async () => {
     const user = userEvent.setup();
     renderShell('#/overview', { courses: COURSES });
 
@@ -71,58 +74,27 @@ describe('AppShell — the Study nav entry', () => {
 
     expect(window.location.hash).toBe('#/study');
   });
-
-  it('discloses the course list from the chevron without navigating away', async () => {
-    const user = userEvent.setup();
-    renderShell('#/overview', { courses: COURSES });
-
-    const disclosure = screen.getByRole('button', { name: /collapse course list/i });
-    expect(disclosure).toHaveAttribute('aria-expanded', 'true');
-
-    await user.click(disclosure);
-
-    expect(screen.getByRole('button', { name: /expand course list/i })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
-    // The disclosure is not navigation — the route must be untouched.
-    expect(window.location.hash).toBe('#/overview');
-  });
-
-  it('points the disclosure at the list it controls', () => {
-    renderShell('#/overview', { courses: COURSES });
-    const disclosure = screen.getByRole('button', { name: /collapse course list/i });
-    const controlled = document.getElementById(disclosure.getAttribute('aria-controls')!);
-    expect(controlled).toBeInTheDocument();
-    expect(within(controlled!).getByRole('button', { name: 'Linear Algebra' })).toBeInTheDocument();
-  });
 });
 
 /*
- * The sidebar header states the user's current context. Off a course route
- * there isn't one, and inventing a course there is a lie about where you are.
+ * The sidebar lists every course with its mastery, on every route, and marks
+ * the row you are currently inside.
  */
-describe('AppShell — course context header', () => {
-  it('names the active course and its mastery on a course route', () => {
+describe('AppShell — the sidebar course list', () => {
+  it('lists every course with its mastery', () => {
+    renderShell('#/overview', { courses: COURSES });
+    expect(screen.getByRole('button', { name: /linear algebra/i })).toBeInTheDocument();
+    expect(screen.getByText('62%')).toBeInTheDocument();
+    expect(screen.getByText('31%')).toBeInTheDocument();
+  });
+
+  it('marks the active course row on a course route', () => {
     renderShell('#/course/c1', {
       route: { name: 'course', courseId: 'c1' },
       courses: COURSES,
       activeCourse: COURSES[0],
     });
-    // Matched on the composed name — a bare /linear algebra/ also hits the
-    // sub-nav entry for the same course.
-    const header = screen.getByRole('button', { name: /linear algebra mastery 62%/i });
-    expect(within(header).getByText('Linear Algebra')).toBeInTheDocument();
-    expect(within(header).getByText(/mastery 62%/i)).toBeInTheDocument();
-  });
-
-  it('claims no active course off a course route, even when courses exist', () => {
-    renderShell('#/overview', { courses: COURSES });
-
-    expect(screen.getByText('All courses')).toBeInTheDocument();
-    expect(screen.getByText('2 courses')).toBeInTheDocument();
-    // The old fallback showed courses[0] here as if you were inside it.
-    expect(screen.queryByText(/mastery/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /linear algebra/i })).toHaveClass('active');
   });
 });
 

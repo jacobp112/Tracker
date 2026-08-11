@@ -1,0 +1,121 @@
+<section class="band exams" aria-labelledby="exams-title">
+        <div class="exams-masthead reveal" style="--i:0">
+          <p class="eyebrow">Why a test counts more</p>
+        </div>
+        <h2 class="band-title reveal" id="exams-title" style="--i:1">Exams don't count more because we say so. They count more because they're evidence.</h2>
+        <p class="band-lead reveal" style="--i:2">A test event tunes the topic's decay rate: retrieval you actually performed is measurement, not assertion. So exams outweigh study sessions by evidence — never by an arbitrary weight.</p>
+
+        <!-- role="img" moved OFF the figure and onto the <svg>. It used to wrap
+             the whole figure, which put a focusable control (the replay button)
+             inside a subtree declared presentational — a control a keyboard user
+             could reach but a screen reader could not explain. The chart is the
+             image; the stat, the key and the button are real text and real
+             controls outside it. .decay-curve stays on the figure because that
+             is the animation root the shared engine and exams.ts both look for. -->
+        <figure class="decay-curve reveal" style="--i:3" data-animate>
+          <div class="decay-plate">
+            <div class="decay-head">
+              <div class="decay-stat">
+                <span class="eyebrow">Point gap at day 30</span>
+                <!-- Counts up through the same shared engine that draws the
+                     curve; no extra wiring. No suffix: the unit lives in the
+                     label above, so the serif numeral stays a numeral. -->
+                <span class="decay-stat-num mono-num" data-countup="63" data-countup-dur="900">63</span>
+              </div>
+              <div class="decay-aside">
+                <ul class="decay-key">
+                  <li class="decay-key-item">
+                    <svg class="decay-key-swatch" viewBox="0 0 26 6" aria-hidden="true"><line class="decay-key-tested" x1="1" y1="3" x2="25" y2="3" /></svg>tested
+                  </li>
+                  <li class="decay-key-item">
+                    <svg class="decay-key-swatch" viewBox="0 0 26 6" aria-hidden="true"><line class="decay-key-untested" x1="1" y1="3" x2="25" y2="3" /></svg>untested
+                  </li>
+                </ul>
+                <!-- Replays the draw sequence. exams.ts hides it under reduced
+                     motion (there is no animation to replay) and the stylesheet
+                     hides it with JS off (it cannot work); it only fires while
+                     the figure is on screen. -->
+                <button type="button" id="decay-replay" class="decay-replay">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="1 4 1 10 7 10" />
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                  </svg>
+                  Replay
+                </button>
+              </div>
+            </div>
+
+            <svg class="decay-svg" viewBox="0 0 480 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A retention curve over 30 days. Retention decays steeply from 100 percent to 42 percent by day 15. A test event on day 15 restores it to 95 percent and flattens the decay that follows: by day 30 the tested topic is at 82 percent, while the same topic with no test event falls to 19 percent — a 63 point gap.">
+              <defs>
+                <!-- Everything after the test event is revealed by scaling this
+                     rect from the event line outward. The rect is full-width by
+                     default, so with JS off nothing is clipped. -->
+                <clipPath id="decay-after">
+                  <rect class="decay-clip" x="218" y="0" width="262" height="200" />
+                </clipPath>
+              </defs>
+
+              <!-- Frame. y: 0–100% linear across 144 units (172 → 28); x: day
+                   0–30 linear across 324 units (56 → 380). Honest, unbroken,
+                   zero-based on both axes. -->
+              <line class="decay-grid" x1="56" y1="28" x2="380" y2="28" />
+              <line class="decay-grid" x1="56" y1="64" x2="380" y2="64" />
+              <line class="decay-grid" x1="56" y1="100" x2="380" y2="100" />
+              <line class="decay-grid" x1="56" y1="136" x2="380" y2="136" />
+              <line class="decay-axis" x1="56" y1="172" x2="380" y2="172" />
+
+              <text class="decay-tick" x="46" y="31" text-anchor="end">100</text>
+              <text class="decay-tick" x="46" y="103" text-anchor="end">50</text>
+              <text class="decay-tick" x="46" y="175" text-anchor="end">0</text>
+
+              <text class="decay-tick" x="56" y="190" text-anchor="start">day 0</text>
+              <text class="decay-tick" x="218" y="190" text-anchor="middle">15</text>
+              <text class="decay-tick" x="380" y="190" text-anchor="end">30</text>
+
+              <!-- The test event: a rule through the plot, labelled above it. -->
+              <line class="decay-event" x1="218" y1="28" x2="218" y2="172" />
+              <text class="decay-event-label" x="218" y="18" text-anchor="middle">test event</text>
+
+              <!-- The gap between the two futures, drawn rather than described:
+                   the tested curve out to day 30, then the counterfactual back. -->
+              <path class="decay-gap" clip-path="url(#decay-after)"
+                    d="M 218,35 C 250,40 310,49 380,54 L 380,145 C 310,136 250,120 218,112 Z" />
+
+              <!-- 1. Decay before any evidence. Steep: 100% → 42% in 15 days. -->
+              <path class="decay-seg decay-seg-a" pathLength="100"
+                    d="M 56,28 C 82,72 140,98 218,112" />
+
+              <!-- 2. The event itself: retrieval restores retention to 95%. -->
+              <path class="decay-jump" pathLength="100"
+                    d="M 218,112 L 218,35" />
+
+              <!-- 3. Decay AFTER evidence: 95% → 82% over the same 15 days.
+                   Roughly half the slope of the counterfactual below — that
+                   difference in SLOPE is the claim, so the numbers are chosen to
+                   show it honestly rather than to flatter it. -->
+              <path class="decay-seg decay-seg-b" pathLength="100"
+                    d="M 218,35 C 250,40 310,49 380,54" />
+
+              <!-- The counterfactual: same topic, no test event. 42% → 19%. -->
+              <path class="decay-ghost" clip-path="url(#decay-after)"
+                    d="M 218,112 C 250,120 310,136 380,145" />
+
+              <circle class="decay-node-ring" cx="218" cy="35" r="3.5" />
+              <circle class="decay-node" cx="218" cy="35" r="3.5" />
+
+              <!-- Endpoint readouts, bracketed so the gap is one measured thing. -->
+              <g class="decay-endpoints">
+                <circle class="decay-end-dot is-tested" cx="380" cy="54" r="3" />
+                <circle class="decay-end-dot is-untested" cx="380" cy="145" r="3" />
+                <path class="decay-bracket" d="M 386,54 L 394,54 M 390,54 L 390,145 M 386,145 L 394,145" />
+                <text class="decay-endpoint is-tested" x="400" y="58">82%</text>
+                <text class="decay-endpoint-cap" x="400" y="70">tested</text>
+                <text class="decay-endpoint is-untested" x="400" y="149">19%</text>
+                <text class="decay-endpoint-cap" x="400" y="161">untested</text>
+              </g>
+            </svg>
+          </div>
+
+          <figcaption class="decay-caption"><span class="decay-figmark">Fig. 4</span> Retention (%) over 30 days, one topic. A test event resets the curve <em>and</em> flattens what follows.</figcaption>
+        </figure>
+      </section>

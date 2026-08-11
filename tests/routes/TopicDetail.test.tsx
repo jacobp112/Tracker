@@ -21,8 +21,8 @@ function masteredTopic(): Topic {
   };
 }
 
-describe('TopicDetail — level stat', () => {
-  it('shows the high-water level adjacent to retention', () => {
+describe('TopicDetail — drawer', () => {
+  it('opens as a labelled drawer showing the high-water level', () => {
     render(
       <TopicDetail
         topic={masteredTopic()} sectionTitle="Complexity"
@@ -30,7 +30,9 @@ describe('TopicDetail — level stat', () => {
         onPromote={() => {}} onQuickReview={() => {}} now={NOW}
       />,
     );
-    expect(screen.getByText(`Lv ${CONFIG.LEVEL.HEALTH_BANDS.length}`)).toBeInTheDocument();
-    expect(screen.getByText('level')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /big-o/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`Level ${CONFIG.LEVEL.HEALTH_BANDS.length}`)),
+    ).toBeInTheDocument();
   });
 });

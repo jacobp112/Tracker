@@ -1,0 +1,94 @@
+/* ══════════════════════════════════════════════════════════════════
+   WISPR FLOW — shared theme layer (landing)
+   ────────────────────────────────────────────────────────────────
+   The Wispr TOKEN system (palette, fonts, radii, no-shadow, raw palette
+   + --cta) lives globally in src/styles/tokens.css, shared with the app.
+   This file holds only the CROSS-CUTTING component styling that applies
+   across sections: the display-serif heading assignment, the button
+   treatment, the flat card/mock border, and the lavender underline util.
+
+   Section-specific styling lives in landing/sections/<name>/<name>.css
+   (nav pill → topbar, chambers → problem/privacy, comparison pair →
+   choose, the hero mock → hero, and so on), scoped so it can't leak.
+
+   Imported after base.css and before the section files.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ══ TYPOGRAPHY ═══════════════════════════════════════════════════
+   Display serif (EB Garamond, weight 400) on the big editorial headings and
+   the big stat numbers only; everything smaller stays Figtree. */
+.hero-headline,
+.band-title,
+.mock-greeting,
+.matrix-stat-num,
+.ring-num,
+.how-track .stage-head h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+/* Authority from scale. (Section files own layout; these are type sizes.) */
+.hero-headline {
+  font-size: clamp(2.75rem, 5vw + 1rem, 5rem);
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+}
+.band-title {
+  font-size: clamp(2rem, 2.6vw + 1rem, 3.25rem);
+  line-height: 1.04;
+}
+/* Card / step / beat sub-headings: Figtree, medium weight. */
+.choose-cards h3,
+.step h3,
+.beat h3,
+.card h3 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ══ BUTTONS ══════════════════════════════════════════════════════
+   2px ink border, radius 12px, no shadow. */
+.btn-primary,
+.btn-secondary {
+  border-width: var(--wf-border-w);
+  border-style: solid;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+.btn-primary { background: var(--cta); color: var(--cta-ink); border-color: var(--border-strong); }
+.btn-primary:hover { background: var(--cta-hover); box-shadow: none; }
+.btn-secondary { background: var(--bg-page); color: var(--ink); border-color: var(--border-strong); }
+.btn-secondary:hover { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--ink); }
+.btn-primary[disabled],
+.btn-secondary[disabled],
+.btn-primary[disabled]:hover,
+.btn-secondary[disabled]:hover {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+/* ══ CARDS & MOCKS ════════════════════════════════════════════════
+   Flat fill + 2px ink border, oversized radius, no shadow. Shared by real
+   cards (.card) and the product recreations (.mock). */
+.card,
+.mock {
+  background: var(--surface);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+/* ══ HAND-DRAWN LAVENDER UNDERLINE ════════════════════════════════
+   Editorial emphasis under one keyword, matching the CTA colour. */
+.ul-accent {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='10' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M2 6 Q 16 1 30 5 T 58 5 T 88 5 T 118 5' fill='none' stroke='%23f0d7ff' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0.32em;
+  padding-bottom: 0.12em;
+}

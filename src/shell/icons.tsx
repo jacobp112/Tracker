@@ -66,6 +66,17 @@ export const MoonIcon = () => (
   </svg>
 );
 
+/** The Cairn brand mark — a stacked pebble cairn (teal base, stone middle,
+ * ember capstone). Fills are the functional brand trio so it re-tints per
+ * theme. Sized by the caller via width/height. */
+export const CairnMark = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 100 120" aria-hidden="true">
+    <rect x="18" y="90" width="64" height="22" rx="11" fill="var(--brand-teal)" />
+    <rect x="26" y="66" width="48" height="20" rx="10" fill="var(--ink-muted)" />
+    <circle cx="50" cy="42" r="20" fill="var(--brand-orange)" />
+  </svg>
+);
+
 export const ChevronDown = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 9l6 6 6-6" />

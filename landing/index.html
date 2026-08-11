@@ -6,25 +6,30 @@
     <title>Cairn — a memory for self-study</title>
     <meta name="description" content="Cairn gives your AI-tutored studying a retention curve and a review schedule — local-first, no accounts, your data in a file you own." />
 
-    <!-- Both themes declared so the browser chrome matches the page in either.
-         Values are --bg-page from tokens.css, light and dark. -->
-    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <!-- One meta, no prefers-color-scheme gate. main.ts rewrites its content
+         from the live --bg-page inside the same render() that owns the toggle's
+         icon and label, so the browser chrome follows the user's chosen theme —
+         not just their OS setting. Starts at the light value; render() runs on
+         load and corrects it to whatever the pre-paint script resolved. -->
+    <meta name="theme-color" content="#ffffeb" />
 
     <!-- TODO: set the real origin before launch. -->
     <link rel="canonical" href="https://example.com/landing/" />
 
-    <!-- TODO: both assets still to be produced from the cairn mark.
-         favicon.svg needs a 3-stone variant with wider gaps — the 4-stone
-         mark's gaps collapse below ~20px. -->
+    <!-- favicon.svg (public/) is the lavender rounded-square 3-stone variant
+         from landing/LOGO — capstone dropped, strokes thickened so the stones
+         stay open at 16px. apple-touch-icon.png is still to be produced (a
+         180×180 PNG; Apple ignores SVG touch icons). -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <!-- Shared-link preview. og.png = 1200×630, still to be produced. -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cairn" />
     <meta property="og:title" content="Cairn — a memory for self-study" />
     <meta property="og:description" content="Your AI can teach you anything. It just can't remember you learned it. Cairn tracks your courses on a real retention curve — local-first, no accounts." />
     <meta property="og:image" content="https://example.com/og.png" />
+    <meta property="og:image:alt" content="Cairn's Overview screen: a course-health ring at 82, with topics due for review on a retention curve." />
     <meta property="og:url" content="https://example.com/landing/" />
     <meta name="twitter:card" content="summary_large_image" />
 
@@ -80,275 +85,26 @@
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
 
-    <!-- <header> and <footer> sit OUTSIDE <main>. Nested inside it they were
-         generic elements: a <header> in <main> is not a banner landmark, and a
-         <footer> in <main> is not contentinfo. -->
-    <header class="topbar reveal">
-      <a class="brand" href="/landing/" aria-label="Cairn — home">
-        <svg class="brand-mark" viewBox="0 0 24 28" width="18" height="21" aria-hidden="true">
-          <ellipse cx="12" cy="24" rx="9" ry="2.6"/>
-          <ellipse cx="12" cy="18" rx="7.5" ry="2.4"/>
-          <ellipse cx="12" cy="12.5" rx="6" ry="2.2"/>
-          <ellipse cx="12" cy="7.5" rx="4.2" ry="2"/>
-        </svg>
-        <span class="brand-word">Cairn</span>
-      </a>
-      <nav class="topnav" aria-label="Main">
-        <a href="#how">How it works</a>
-        <a href="#privacy">Privacy</a>
-        <!-- Icon and label are both painted by main.ts. The name is an
-             aria-label, not a child element: the icon is installed with
-             replaceChildren(), which destroys children, so a label inside the
-             button was wiped on first paint and left it nameless. Both are
-             rewritten together whenever the theme flips. aria-pressed is gone
-             — this control has no pressed state, it names its own outcome. -->
-        <button id="theme-toggle" type="button" aria-label="Switch to dark theme"></button>
-        <a class="btn-primary" href="/">Open the app</a>
-      </nav>
-    </header>
+    <!-- <header> and <footer> sit OUTSIDE <main>: a <header> in <main> is not a
+         banner landmark, and a <footer> in <main> is not contentinfo. Every
+         section is assembled from its own folder at build time by the
+         html-includes hook in vite.config.ts. -->
+    <!-- @include sections/topbar/topbar.html -->
 
-    <main id="main">
-      <section class="hero" aria-labelledby="hero-headline">
-        <div class="hero-copy reveal" style="--i:0">
-          <p class="eyebrow">A memory for self-study</p>
-          <h1 class="hero-headline" id="hero-headline"><span class="line"><span class="line-in">Your AI can teach you anything.</span></span> <span class="line"><span class="line-in">It just can't remember you learned it.</span></span></h1>
-          <p class="hero-sub">Cairn tracks your courses, sections, and topics on a real retention curve — so you always know what's fading and what's due. It runs on your machine, stores everything in one file you own, and never calls an AI itself. You bring the AI; Cairn keeps the memory.</p>
-          <div class="cta-row">
-            <a class="btn-primary" href="/">Open the app</a>
-            <!--
-              DESKTOP CTA — decide and make consistent.
-
-              If the desktop build has NOT shipped: leave as-is. A real
-              <button disabled> is unfocusable and unclickable, unlike the
-              previous <a aria-disabled="true" href="#">, which was both and
-              jumped to the top of the page when clicked.
-
-              If it HAS shipped: replace with
-                <a class="btn-secondary" href="/download/">Download for desktop</a>
-              and update (a) .cta-micro below, (b) the second .choose-cards
-              article, which already describes the build in present tense.
-            -->
-            <button class="btn-secondary" type="button" disabled>Download for desktop</button>
-          </div>
-          <p class="cta-micro">No account — nothing to log into. Runs in your browser. A desktop build isn't released yet.</p>
-        </div>
-        <div class="hero-visual reveal" style="--i:1">
-          <div class="mock mock-hero" id="mock-overview" data-animate role="img" aria-label="Cairn's Overview screen: course health 82 out of 100, with three topics due for review — Bayes' theorem at 41 percent, Eigenvectors at 53 percent, Krebs cycle at 58 percent.">
-            <p class="mock-greeting">Good morning.</p>
-            <div class="mock-hero-body">
-              <!-- --arc must agree with the number below it; recreations.css
-                   reads it instead of hardcoding 82 a second time. -->
-              <div class="ring" style="--arc:82">
-                <svg class="ring-svg" viewBox="0 0 168 168" aria-hidden="true">
-                  <circle class="ring-track" cx="84" cy="84" r="78" />
-                  <circle class="ring-arc" cx="84" cy="84" r="78" pathLength="100" />
-                </svg>
-                <div class="ring-center">
-                  <span class="ring-num mono-num" data-countup="82" data-countup-dur="900">82</span>
-                  <span class="ring-cap">course health</span>
-                </div>
-              </div>
-              <div class="mock-due">
-                <p class="eyebrow">Due for review</p>
-                <div class="mock-row"><span class="mock-dot low" aria-hidden="true"></span><span class="mock-topic">Bayes' theorem</span><span class="mono-num mock-pct">41%</span></div>
-                <div class="mock-row"><span class="mock-dot mid" aria-hidden="true"></span><span class="mock-topic">Eigenvectors</span><span class="mono-num mock-pct">53%</span></div>
-                <div class="mock-row"><span class="mock-dot mid" aria-hidden="true"></span><span class="mock-topic">Krebs cycle</span><span class="mono-num mock-pct">58%</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="band problem reveal" aria-labelledby="problem-title">
-        <h2 class="band-title" id="problem-title">Studying with AI has no memory.</h2>
-        <p class="band-lead">You study a topic with your AI. A week later, nothing remembers you did.</p>
-      </section>
-
-      <section class="band" id="how" aria-labelledby="how-title">
-        <p class="eyebrow reveal">How it works</p>
-        <h2 class="band-title reveal" id="how-title">You bring the AI. Cairn brings the memory.</h2>
-        <div class="steps">
-          <article class="card step reveal" style="--i:0">
-            <span class="step-num mono-num">01</span>
-            <h3>Copy the prompt</h3>
-            <div class="prompt-block">
-              <!--
-                The visible block is an EXCERPT and now says so. Previously it
-                held a literal ellipsis mid-schema and the Copy button copied
-                exactly that — handing the user a truncated prompt their AI
-                cannot satisfy. A silent failure, in a product whose stated
-                principle is that there are none.
-
-                The full prompt lives in the <template> below. clipboard.ts must
-                copy from #prompt-full, not #prompt-text (pass 3 change), and
-                should keep the two in sync from one source at build time if
-                this prompt is also shipped inside the app.
-              -->
-              <code id="prompt-text">You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields.</code>
-              <p class="prompt-note">Excerpt. The button copies the full prompt.</p>
-              <button id="copy-prompt" type="button" aria-describedby="copy-status">Copy</button>
-              <!-- Announced on copy; also gives sighted users confirmation. -->
-              <span class="copy-status" id="copy-status" role="status" aria-live="polite"></span>
-            </div>
-            <template id="prompt-full">You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields. Unknown values must be omitted rather than guessed.
-
-{
-  "title": string,
-  "sections": [
-    {
-      "title": string,
-      "topics": [ { "title": string } ]
-    }
-  ]
-}
-
-Rules:
-- Preserve the syllabus's own section and topic wording; do not rename, merge or invent.
-- Do not add fields that are not in the schema above. Extra fields are rejected.
-- Do not include dates, scores, difficulty ratings or confidence values. Those are measured later, not assumed.
-- If the syllabus has no explicit sections, emit a single section titled "Course".
-
-Here is the syllabus:
-[PASTE SYLLABUS HERE]</template>
-            <p>Cairn hands you a ready-made prompt. Paste it into whatever AI you already use, along with your syllabus, session notes, or exam paper.</p>
-          </article>
-          <article class="card step reveal" style="--i:1">
-            <span class="step-num mono-num">02</span>
-            <h3>Paste the result back</h3>
-            <div class="mock mock-validation" id="mock-schema-check" role="img" aria-label="A validation error: the field topics 3 difficulty is not allowed by the schema. Cairn names the field and the fix instead of failing silently.">
-              <div class="val-head">
-                <span class="val-file mono-num">paste.json</span>
-                <span class="tag tag-danger">rejected</span>
-              </div>
-              <div class="val-error">
-                <span class="val-error-field mono-num">topics[3].difficulty</span>
-                <span class="val-error-msg">is not an allowed field. Remove it — difficulty is measured, not declared.</span>
-              </div>
-              <p class="val-note">Nothing is saved when a paste doesn't fit.</p>
-            </div>
-            <p>Paste the AI's JSON into Cairn. It's checked against a strict schema — no extra fields, no invented dates. If something's wrong, you get a plain-English message naming the field and the fix.</p>
-          </article>
-          <article class="card step reveal" style="--i:2">
-            <span class="step-num mono-num">03</span>
-            <h3>Preview, then commit</h3>
-            <!-- role="img" + label, matching mock-overview. Without it a screen
-                 reader reads a bare jumble: "syllabus.json committed 4 sections
-                 22 topics". -->
-            <div class="mock mock-validation" id="mock-validation" role="img" aria-label="A validation preview of syllabus.json, marked committed: 4 sections and 22 topics accepted. Nothing saved until you say so.">
-              <div class="val-head">
-                <span class="val-file mono-num">syllabus.json</span>
-                <span class="tag tag-success">committed</span>
-              </div>
-              <div class="val-counts">
-                <span class="val-count"><span class="check" aria-hidden="true">✓</span><span class="mono-num">4</span>&nbsp;sections</span>
-                <span class="val-count"><span class="check" aria-hidden="true">✓</span><span class="mono-num">22</span>&nbsp;topics</span>
-              </div>
-              <p class="val-note">Nothing saved until you say so.</p>
-            </div>
-            <p>See exactly what will change. Nothing is saved until you say so — then it's written in one atomic step. Cairn verifies; it never generates.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="band memory reveal" aria-labelledby="memory-title">
-        <p class="eyebrow">The memory model</p>
-        <h2 class="band-title" id="memory-title">It tracks how well you know things — and how that fades.</h2>
-        <div class="mock mock-matrix bars" id="mock-matrix" data-animate role="img" aria-label="Cairn's retention matrix: average retention 74 percent, health 74, up 4 percent over 30 days. Bayes' theorem 41 percent, flagged conceptual. Eigenvectors 53 percent, flagged procedural. Integration by parts 67 percent. Krebs cycle 58 percent, flagged knowledge gap.">
-          <div class="matrix-head">
-            <div class="matrix-stat">
-              <span class="eyebrow">Avg retention</span>
-              <span class="matrix-stat-num mono-num" data-countup="74" data-countup-suffix="%" data-countup-dur="900">74%</span>
-            </div>
-            <div class="chips">
-              <span class="chip chip-health"><span class="mono-num">74</span>&nbsp;health</span>
-              <span class="chip chip-delta up">▲&nbsp;<span class="mono-num">+4%</span>&nbsp;<span class="chip-sub mono-num">30d</span></span>
-            </div>
-          </div>
-          <div class="matrix-rows">
-            <div class="matrix-row">
-              <span class="mock-dot low" aria-hidden="true"></span>
-              <span class="matrix-topic">Bayes' theorem</span>
-              <span class="badge cat-conceptual">conceptual</span>
-              <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:41%"></span></span>
-              <span class="mono-num matrix-pct">41%</span>
-            </div>
-            <div class="matrix-row">
-              <span class="mock-dot mid" aria-hidden="true"></span>
-              <span class="matrix-topic">Eigenvectors</span>
-              <span class="badge cat-procedural">procedural</span>
-              <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:53%"></span></span>
-              <span class="mono-num matrix-pct">53%</span>
-            </div>
-            <div class="matrix-row">
-              <span class="mock-dot high" aria-hidden="true"></span>
-              <span class="matrix-topic">Integration by parts</span>
-              <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:67%"></span></span>
-              <span class="mono-num matrix-pct">67%</span>
-            </div>
-            <div class="matrix-row">
-              <span class="mock-dot mid" aria-hidden="true"></span>
-              <span class="matrix-topic">Krebs cycle</span>
-              <span class="badge cat-knowledge">knowledge gap</span>
-              <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:58%"></span></span>
-              <span class="mono-num matrix-pct">58%</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="band exams reveal" aria-labelledby="exams-title">
-        <h2 class="band-title" id="exams-title">Exams don't count more because we say so. They count more because they're evidence.</h2>
-        <p class="band-lead">Test events tune each topic's decay rate, so exams outweigh study sessions by evidence — not arbitrary weights.</p>
-        <div class="decay-curve" data-animate aria-hidden="true">
-          <svg viewBox="0 0 320 120" class="decay-svg">
-            <path class="decay-base" d="M8,110 L312,110" />
-            <path class="decay-path" pathLength="100" d="M8,18 C 96,34 150,96 312,104" />
-          </svg>
-        </div>
-      </section>
-
-      <section class="band privacy reveal" id="privacy" aria-labelledby="privacy-title">
-        <h2 class="band-title" id="privacy-title">No accounts. No backend. No network. Just your file.</h2>
-        <p class="band-lead">Cairn makes no network requests. There are no accounts, no telemetry, no backend to breach. Everything you track is a single JSON document in your browser's storage. Settings → Export gives you the whole thing; import validates it just as strictly as a fresh paste. The only outside party that ever sees your material is the AI you choose to paste into — and that's your call, not ours.</p>
-      </section>
-
-      <section class="band choose reveal" aria-labelledby="choose-title">
-        <h2 class="band-title" id="choose-title">Two ways in. Same app. Your data stays where you put it.</h2>
-        <div class="choose-cards">
-          <article class="card">
-            <h3>Open the app</h3>
-            <p>Runs in your browser. No account — there's nothing to log into, by design. Your data lives in this browser.</p>
-            <a class="btn-primary" href="/">Open the app</a>
-          </article>
-          <article class="card">
-            <h3>Download for desktop</h3>
-            <!-- Was present tense ("A native build for macOS/Windows… Works
-                 fully offline") next to a "Coming soon" button. Now future
-                 tense throughout. Flip both this and the button when it ships. -->
-            <p>A native build for macOS and Windows, storing your data in a file on your disk and working fully offline. Not released yet.</p>
-            <button class="btn-secondary" type="button" disabled>Not released yet</button>
-          </article>
-        </div>
-        <p class="cta-micro">The two won't sync — there's no server between them. Export a JSON bundle from one and import it into the other whenever you like.</p>
-      </section>
+    <!-- tabindex="-1" so the skip link actually moves focus here; without it
+         href="#main" scrolls but leaves focus at the top of the document. -->
+    <main id="main" tabindex="-1">
+      <!-- @include sections/hero/hero.html -->
+      <!-- @include sections/problem/problem.html -->
+      <!-- @include sections/how/how.html -->
+      <!-- @include sections/memory/memory.html -->
+      <!-- @include sections/exams/exams.html -->
+      <!-- @include sections/privacy/privacy.html -->
+      <!-- @include sections/choose/choose.html -->
     </main>
 
-    <footer class="closer reveal">
-      <a class="brand" href="/landing/" aria-label="Cairn — home">
-        <svg class="brand-mark" viewBox="0 0 24 28" width="18" height="21" aria-hidden="true">
-          <ellipse cx="12" cy="24" rx="9" ry="2.6"/>
-          <ellipse cx="12" cy="18" rx="7.5" ry="2.4"/>
-          <ellipse cx="12" cy="12.5" rx="6" ry="2.2"/>
-          <ellipse cx="12" cy="7.5" rx="4.2" ry="2"/>
-        </svg>
-        <span class="brand-word">Cairn</span>
-      </a>
-      <div class="cta-row">
-        <a class="btn-primary" href="/">Open the app</a>
-        <button class="btn-secondary" type="button" disabled>Download for desktop</button>
-      </div>
-      <p class="foot-note">No trackers on this page either.</p>
-    </footer>
+    <!-- @include sections/footer/footer.html -->
+
 
     <script type="module" src="./main.ts"></script>
   </body>

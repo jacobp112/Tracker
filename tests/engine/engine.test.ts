@@ -47,8 +47,12 @@ describe('E3-S2 — retention guards (Document 2 §2)', () => {
     expect(predictRetention(topic({ last_reviewed: NOW.toISOString() }), NOW)).toBe(1);
   });
 
-  it('returns 0 when strength ≤ 0', () => {
-    expect(predictRetention(topic({ strength: 0 }), NOW)).toBe(0);
+  it('floors a zero-strength reviewed topic at the S_EFF_MIN curve, not 0 (§2, amended 2026-08-09)', () => {
+    // Effective stability floors at S_EFF_MIN>0, so a topic that has been
+    // reviewed can't read a literal 0% — even fully lapsed it retains a floor.
+    // t = 3 days (2026-07-13 → NOW), k = DECAY_K, s_eff = S_EFF_MIN.
+    const expected = Math.exp(-3 / (CONFIG.DECAY_K * CONFIG.S_EFF_MIN));
+    expect(predictRetention(topic({ strength: 0 }), NOW)).toBeCloseTo(expected, 6);
   });
 
   it('a never-reviewed topic is not "due" — it has not started decaying', () => {
@@ -75,23 +79,48 @@ describe('E3-S2 — projected due date (Document 2 §2.1)', () => {
     expect(projectedDue(t, NOW)!.overdue).toBe(true);
   });
 
-  it('is null when retention is undefined — never a fabricated date', () => {
+  it('is null when retention is undefined (never reviewed) — never a fabricated date', () => {
     expect(projectedDue(topic({ last_reviewed: null }), NOW)).toBeNull();
-    expect(projectedDue(topic({ strength: 0 }), NOW)).toBeNull();
+  });
+
+  it('a reviewed zero-strength topic gets a floored due date, not null (§2.1, amended 2026-08-09)', () => {
+    // s_eff floors at S_EFF_MIN>0, so projectedDue reads the floor rather than
+    // returning null — a reviewed topic always has a projected date.
+    expect(projectedDue(topic({ strength: 0 }), NOW)).not.toBeNull();
   });
 });
 
 describe('E3-S3 — strength increments (Document 2 §3)', () => {
-  it.each<[ReviewEvent['kind'], Confidence, number]>([
-    ['test_pass', 3, 1.5],
-    ['test_fail', 3, 0.15],
-    ['study_review', 1, 0.3],
-    ['study_review', 2, 0.3],
-    ['study_review', 3, 0.6],
-    ['study_review', 4, 1.0],
-    ['study_review', 5, 1.0],
-  ])('%s at confidence %i → +%f', (kind, conf, expected) => {
-    expect(strengthIncrement(kind, conf)).toBe(expected);
+  const study = (conf: Confidence): ReviewEvent => ({
+    event_id: 'event_s', date: '2026-07-16T12:00:00Z', kind: 'study_review',
+    source: 'session', source_id: 'session_1', confidence_reported: conf,
+  });
+  it.each<[Confidence, number]>([
+    [1, 0.3],
+    [2, 0.3],
+    [3, 0.6],
+    [4, 1.0],
+    [5, 1.0],
+  ])('study_review at confidence %i → +%f', (conf, expected) => {
+    expect(strengthIncrement(study(conf))).toBe(expected);
+  });
+
+  // Tests are continuous in actual_retention (§2.4, amended 2026-08-09, #7),
+  // anchored so a pass at the 0.80 mark still gains TEST_GAIN_AT_PASS_MARK — no
+  // longer a flat 1.5 / 0.15. Full endpoint/monotonicity coverage lives in
+  // recalculate.test.ts "continuous test gain".
+  const test = (a: number): ReviewEvent => ({
+    event_id: 'event_t', date: '2026-07-16T12:00:00Z',
+    kind: a >= CONFIG.TEST_PASS_MARK ? 'test_pass' : 'test_fail',
+    source: 'exam', source_id: 'exam_1', confidence_reported: 4,
+    test: { score: a * 10, out_of: 10, actual_retention: a },
+  });
+  it('a pass at the 0.80 mark gains exactly TEST_GAIN_AT_PASS_MARK', () => {
+    expect(strengthIncrement(test(0.8))).toBeCloseTo(CONFIG.TEST_GAIN_AT_PASS_MARK, 6);
+  });
+  it('a fail is continuous, not a flat gain (0.5 > 0.2 > 0)', () => {
+    expect(strengthIncrement(test(0.5))).toBeGreaterThan(strengthIncrement(test(0.2)));
+    expect(strengthIncrement(test(0.2))).toBeGreaterThan(strengthIncrement(test(0)));
   });
 });
 

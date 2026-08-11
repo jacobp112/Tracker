@@ -1,0 +1,278 @@
+/* ── Hero ───────────────────────────────────────────────────────────
+ * The opening: masthead rule + copy column + the Overview product recreation
+ * (course-health dial + due-for-review list), captioned as a plate.
+ * Scoped to .hero / .hero-* / .mock-hero / .ring* / .mock-* so nothing here
+ * reaches another section.
+ *
+ * The display-serif TYPE assignment still lives in the shared Wispr layer; the
+ * only type this file touches is hero-local SCALE (always via `.hero …`, never
+ * a bare `.hero-headline`) plus the removal of two local font-weight
+ * overrides that were bolding the display serif against the system rule.
+ * Nothing outside this file changed. */
+
+.hero {
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--space-12) var(--page-gutter) var(--space-14);
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+  column-gap: var(--space-11);
+  row-gap: var(--space-10);
+  align-items: start;
+}
+
+/* ── Masthead ───────────────────────────────────────────────────────
+ * Eyebrow, then a 2px ink rule running to the measure's edge — the signature
+ * border weight doing duty as page furniture. ::after is the rule, so the
+ * markup carries no empty decorative <span>. */
+.hero-masthead {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; gap: var(--space-6);
+}
+.hero-masthead::after {
+  content: '';
+  height: var(--wf-border-w);
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+/* ── Copy column ────────────────────────────────────────────────────
+ * Scale is the hero's only shout: the shared clamp is widened here so the
+ * headline reaches display size on a wide viewport and still fits a phone.
+ * Weight stays 400 — authority from size, never from bolding the serif. */
+.hero .hero-headline {
+  font-size: clamp(2.9rem, 4.6vw + 1rem, 5.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  text-wrap: balance; /* no orphan words across the masked lines */
+}
+/* Two-tone cadence: the setup recedes, the turn lands. --ink-muted on
+ * --bg-page is 4.5:1 in light and higher in dark, so this is a hierarchy cue,
+ * not a legibility trade. */
+.hero-headline .hero-quiet { color: var(--ink-muted); }
+
+/* base.css clips each .line to mask the reveal. At line-height 0.98 that clip
+ * would also shave descenders and the lavender .ul-accent stroke, so the clip
+ * box is padded and the padding is taken back out of the flow. */
+.hero .hero-headline .line { padding-bottom: 0.18em; margin-bottom: -0.12em; }
+/* …and the pre-reveal offset grows to match, so nothing peeks into the padded
+ * strip before it animates. The shared `.is-visible` rule (higher specificity)
+ * still owns the resting state, and the reduced-motion override in base.css is
+ * !important, so both still win. */
+.js .hero .hero-headline .line-in { transform: translateY(130%); }
+
+.hero-sub {
+  font-size: var(--fs-section); color: var(--ink-secondary); max-width: 46ch;
+  margin: var(--space-7) 0 0; line-height: 1.55; text-wrap: pretty;
+}
+
+/* Standfirst: the three product facts, hairline-ruled off the paragraph. */
+.hero-facts {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--space-4) var(--space-7);
+  max-width: 46ch;
+  margin: var(--space-7) 0 0;
+  padding: var(--space-6) 0 0;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-secondary); font-weight: 500; color: var(--ink-secondary);
+}
+.hero-facts li { display: flex; align-items: center; gap: var(--space-4); }
+/* Editorial dingbat, not a status dot — square, rotated, no radius. */
+.hero-facts li::before {
+  content: ''; flex: none;
+  width: var(--space-3); height: var(--space-3);
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+.cta-row { display: flex; gap: var(--space-4); margin-top: var(--space-8); flex-wrap: wrap; align-items: center; }
+.cta-micro { font-size: var(--fs-secondary); color: var(--ink-muted); margin-top: var(--space-5); max-width: 46ch; }
+
+/* ── Overview plate ─────────────────────────────────────────────────
+ * <figure> = frame + caption. The frame carries an offset outline behind the
+ * card: flat, border-only depth in the register-mark idiom — the system's
+ * substitute for the box-shadow it forbids.
+ * cursor-light.ts eases --tilt-x/--tilt-y and the card rotates to them;
+ * `perspective` lives on .hero-frame, `preserve-3d` on the card so the dial
+ * floats. The offset outline stays put, which is what makes the tilt read. */
+.hero-visual {
+  margin: 0; align-self: center;
+  display: grid; gap: var(--space-8);
+  min-width: 0;
+}
+.hero-frame { position: relative; perspective: 1000px; }
+.hero-frame::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  border: var(--wf-border-w) solid var(--border);
+  border-radius: var(--radius-lg);
+  transform: translate(var(--space-5), var(--space-5));
+}
+
+.mock-hero {
+  position: relative; z-index: 1;
+  background: var(--surface);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+}
+/* Promote a layer only while the pointer is over the card (cursor-light.ts). */
+.mock-hero.is-live { will-change: transform; }
+/* Floats the dial off the card face so it parallaxes slightly more. */
+.mock-hero .ring { transform: translateZ(18px); }
+.hero-visual:hover .mock-hero { box-shadow: none; }
+
+/* setupCursorLight is a no-op under reduced motion, but a flat card shouldn't
+ * depend on a JS gate holding. */
+@media (prefers-reduced-motion: reduce) {
+  .mock-hero { transform: none; }
+  .mock-hero .ring { transform: none; }
+}
+
+/* Cursor-aware light: a faint highlight follows the pointer via --x/--y set by
+ * cursor-light.ts. Desktop-pointer only; disabled under reduced motion. Kept
+ * (unlike the static glows removed below) because it exists only while a fine
+ * pointer is on the card — an affordance, not fake elevation. */
+.mock-hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(220px circle at var(--x, 50%) var(--y, 50%),
+    color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%);
+  opacity: 0; transition: opacity var(--dur-standard) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) { .mock-hero:hover::before { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mock-hero::before { display: none; } }
+
+.hero-figcaption {
+  font-size: var(--fs-caption); line-height: 1.5; color: var(--ink-muted);
+  max-width: 46ch; padding-left: var(--space-2);
+}
+.hero-figmark {
+  color: var(--ink-secondary); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-size: var(--fs-micro);
+  margin-right: var(--space-3);
+}
+
+/* ── Mock header ── */
+.mock-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-5);
+  padding-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
+  border-bottom: 1px solid var(--border);
+}
+/* Font family, weight 400 and tracking all come from the shared type layer.
+ * The old local `font-weight: 700` here (and on .ring-num) was bolding the
+ * display serif — the one thing the system forbids outright — so both are
+ * gone and the size does the work instead. */
+.mock-greeting { font-size: clamp(var(--fs-prop), 2.2vw, var(--fs-title)); margin: 0; }
+/* Teal-on-cream in light, lavender-on-espresso in dark: the same solid status
+ * pill in both, straight off --accent/--surface. Lavender stays a fill. */
+.mock-badge {
+  flex: none;
+  background: var(--accent); color: var(--surface);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--fs-micro); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap;
+}
+
+.mock-hero-body { display: grid; grid-template-columns: auto 1fr; gap: var(--space-9); align-items: center; }
+
+/* ── Course-health dial ── */
+.ring { position: relative; width: 176px; height: 176px; flex-shrink: 0; }
+.ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+/* The track is dashed into 50 fine ticks (pathLength=100 → dash units are
+ * percent), so the ring reads as a measured dial rather than a progress bar. */
+.ring-track {
+  fill: none; stroke: var(--track); stroke-width: 11;
+  stroke-dasharray: 0.45 1.55; stroke-linecap: butt;
+}
+.ring-arc {
+  fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
+  /* pathLength=100 makes dash units read as percent; default shows the final arc. */
+  stroke-dasharray: 100; stroke-dashoffset: calc(100 - var(--arc, 0));
+  /* No drop-shadow: the system is shadowless, and the old glow was the one
+   * place the hero disagreed with it. */
+}
+.js .ring:not(.is-drawn) .ring-arc { stroke-dashoffset: 100; }
+.js .ring.is-drawn .ring-arc {
+  stroke-dashoffset: var(--offset);
+  transition: stroke-dashoffset var(--dur-draw) var(--ease);
+}
+.ring-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--space-2);
+}
+.ring-num { font-size: clamp(48px, 5vw, 60px); color: var(--ink); line-height: 1; }
+.ring-cap { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); }
+
+/* ── Due-for-review list ── */
+.mock-due { min-width: 0; }
+.mock-due-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+  padding-bottom: var(--space-4); margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.mock-due-head .eyebrow { margin: 0; }
+/* The single ember note on the page — a count that wants attention, at the one
+ * scale where a warm fill can't compete with the lavender CTA. Raw palette
+ * pair (like --cta/--cta-ink) so it stays legible in both themes. */
+.mock-count {
+  flex: none;
+  background: var(--wf-ember); color: var(--wf-ink);
+  border-radius: var(--radius-pill);
+  min-width: var(--space-7); line-height: var(--space-7);
+  padding: 0 var(--space-3); text-align: center;
+  font-size: var(--fs-micro); font-weight: 700;
+}
+.mock-row {
+  display: flex; align-items: center; gap: var(--space-5);
+  padding: var(--space-4);
+  margin-left: calc(var(--space-4) * -1); margin-right: calc(var(--space-4) * -1);
+  border-radius: var(--radius-md);
+  transition: background-color var(--dur-micro) var(--ease), transform var(--dur-micro) var(--ease);
+}
+.mock-row + .mock-row { border-top: 1px solid var(--border); }
+.mock-row:hover { background: var(--surface-sunken); transform: translateX(var(--space-2)); }
+/* Scale only — the old `box-shadow: 0 0 8px` was a glow the system doesn't have. */
+.mock-row:hover .mock-dot { transform: scale(1.35); }
+.mock-topic { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.mock-topic-name {
+  font-size: var(--fs-row); color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mock-topic-course {
+  font-size: var(--fs-micro); color: var(--ink-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mock-pct {
+  font-size: var(--fs-row); color: var(--ink-secondary);
+  min-width: var(--space-11); text-align: right; flex-shrink: 0;
+}
+.mock-dot {
+  width: var(--space-4); height: var(--space-4); border-radius: var(--radius-pill);
+  flex-shrink: 0; background: var(--accent);
+  transition: transform var(--dur-standard) var(--spring);
+}
+.mock-dot.low { background: var(--danger); }
+.mock-dot.mid { background: var(--warning); }
+.mock-dot.high { background: var(--success); }
+
+/* ── Responsive ─────────────────────────────────────────────────────
+ * Single column early enough that the plate never has to squeeze the dial and
+ * the list into a column too narrow for either. */
+@media (max-width: 880px) {
+  .hero { grid-template-columns: 1fr; row-gap: var(--space-11); }
+  .hero-visual { max-width: 560px; }
+}
+@media (max-width: 720px) {
+  .hero { padding-top: var(--space-12); }
+  .hero-facts { gap: var(--space-4) var(--space-6); }
+}
+@media (max-width: 480px) {
+  .mock-hero-body { grid-template-columns: 1fr; justify-items: center; gap: var(--space-8); }
+  .ring { width: 152px; height: 152px; }
+  .mock-due { width: 100%; }
+}

@@ -2,6 +2,17 @@ import '@testing-library/jest-dom/vitest';
 import { beforeEach, vi } from 'vitest';
 
 /**
+ * Stub Firebase environment variables at setup time (before any test module imports).
+ * The four VITE_FIREBASE_* values are non-secret and needed for Firebase client init
+ * to succeed during module import. Without these stubs, getAuth(app) throws
+ * FirebaseError: auth/invalid-api-key on import when .env is absent (e.g., on CI).
+ */
+vi.stubEnv('VITE_FIREBASE_API_KEY', 'test-api-key');
+vi.stubEnv('VITE_FIREBASE_AUTH_DOMAIN', 'test.firebaseapp.com');
+vi.stubEnv('VITE_FIREBASE_PROJECT_ID', 'test-project');
+vi.stubEnv('VITE_FIREBASE_APP_ID', 'test-app-id');
+
+/**
  * jsdom does not implement matchMedia, but the app queries it for theme
  * (Doc 3 §2.3) and reduced motion (§2.6). Stub it as "no preference" — tests
  * that care about a specific preference override this per-case via setMedia().

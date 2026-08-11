@@ -1,0 +1,384 @@
+/* ── How it works: pinned, scrubbed sequence ───────────────────────
+ * A tall track (.how-track) pins a stage (.how-stage). scrub.ts turns scroll
+ * position through the track into --p (0→1) on the stage; every moving part
+ * derives from --p. Nothing hijacks scroll — the stage just holds still while
+ * the page passes it. This file changes how the stage LOOKS, never what it
+ * does: every hook scrub.ts reads or writes (--p, --lines, data-on,
+ * data-active, data-hit, data-done, .cursor/--cx/--cy/--co/--cs,
+ * .chip-fly/--fx/--fy/--fo/--fs, .rail i) is untouched, and the panel
+ * paddings that POINTER_PATH is calibrated against are deliberately unchanged
+ * so the pointer still lands on the Copy button and the AI input.
+ *
+ * EVERY selector is scoped under .how-track. This section reuses generic class
+ * names that also exist globally (.prompt-block, .val-*, .tag*, .mock-window-bar,
+ * .copy-status), so scoping both stops it leaking outward AND lets it win over
+ * the lower-specificity global rules inside its own subtree — the section owns
+ * its own look regardless of what the rest of the page declares.
+ *
+ * Wispr notes: flat fills + 2px ink borders, no shadows anywhere (the old
+ * cursor drop-shadow and chip box-shadow are gone), no gradients, oversized
+ * radii, and no monospace — the system has no mono face, so --font-mono
+ * resolved to Figtree already; the machine text now says so honestly and gets
+ * tabular figures where numbers line up. */
+
+.how-track { position: relative; height: 420vh; }
+.how-stage {
+  position: sticky; top: 0; height: 100vh; min-height: 620px;
+  display: flex; flex-direction: column; justify-content: center;
+  max-width: var(--content-max); margin: 0 auto; padding: 0 var(--page-gutter);
+  overflow: hidden;
+}
+
+/* ── Stage head ── */
+.how-track .stage-head { margin-bottom: var(--space-10); }
+.how-track .stage-masthead {
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.how-track .stage-masthead::after {
+  content: '';
+  height: var(--wf-border-w);
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+/* Display serif at 400 comes from the shared type layer; only the scale is
+ * set here, and kept in check because the stage has to fit one screen. */
+.how-track .stage-head h2 {
+  font-size: clamp(28px, 2.6vw + 0.5rem, 44px);
+  line-height: 1.04; letter-spacing: -0.025em; margin: 0; max-width: 24ch;
+}
+.how-track .how-quiet { color: var(--ink-muted); }
+
+.how-track .stage-body {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--space-11); align-items: start;
+}
+
+/* ── Panels ──────────────────────────────────────────────────────
+ * Flat Wispr plates: 2px ink border, oversized radius, no shadow — the same
+ * material as the hero's Overview mock. */
+.how-track .panel {
+  background: var(--surface);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  padding: var(--space-7) var(--space-8) var(--space-8);
+  transition: opacity var(--dur-standard) var(--ease),
+    background-color var(--dur-standard) var(--ease),
+    border-color var(--dur-standard) var(--ease),
+    transform var(--dur-standard) var(--ease);
+}
+/* The panel not being acted on recedes. In a flat palette that's a fill and an
+ * edge change (saturate() has nothing to desaturate), with only a light
+ * opacity dip on top so its text stays readable rather than greyed to mush. */
+.how-track .panel[data-active='0'] {
+  background: var(--surface-sunken);
+  border-color: var(--border);
+  opacity: 0.62;
+  filter: none;
+  transform: scale(0.985);
+}
+.how-track .mock-window-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-5);
+  padding-bottom: var(--space-4); margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+.how-track .window-title {
+  font-size: var(--fs-micro); color: var(--ink-muted);
+  letter-spacing: 0.05em; text-transform: lowercase;
+  font-family: var(--font-sans);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Filled accent pill (Cairn) against an outlined ink pill (the AI): the
+ * system's two badge treatments, doing the section's argument. --surface as
+ * the filled tag's text keeps it legible in both themes — cream on teal in
+ * light, espresso on lavender in dark. */
+.how-track .panel-tag {
+  flex: none;
+  font-size: var(--fs-nano); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-5);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.how-track .panel-tag.is-local { background: var(--accent); color: var(--surface); }
+.how-track .panel-tag.is-remote {
+  color: var(--ink-muted);
+  border: 1px solid var(--border-strong);
+}
+.how-track .panel-body { min-height: 232px; position: relative; }
+
+/* ── Cairn panel: prompt block, then the validation views ── */
+.how-track .prompt-block {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--space-4);
+  align-items: start; background: var(--surface-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-5);
+}
+.how-track .prompt-block code {
+  grid-column: 1; grid-row: 1;
+  font-family: var(--font-sans); font-size: var(--fs-caption); line-height: 1.55;
+  color: var(--ink-secondary); min-width: 0; white-space: pre-wrap;
+}
+/* The Copy button is real — the pointer presses it in the scrub, and a visitor
+ * can click it too; how.ts copies the full prompt from #prompt-full. It is the
+ * one genuinely clickable thing in this section, so it takes the lavender
+ * primary fill and the 2px ink edge the system reserves for exactly that. */
+.how-track .copy-btn {
+  position: relative;
+  grid-column: 2; grid-row: 1;
+  font-family: var(--font-sans); font-size: var(--fs-micro); font-weight: 600;
+  background: var(--cta); color: var(--cta-ink);
+  border: var(--wf-border-w) solid var(--border-strong); border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5); cursor: pointer; box-shadow: none;
+  transition: background-color var(--dur-micro) var(--ease), transform var(--dur-micro) var(--ease);
+}
+/* The ripple leaving the button on the scrub's press: scale and opacity are a
+ * pure function of --press (sceneState.press), so it plays forwards, backwards
+ * and from a mid-sequence reload alike. --press is 0 when nothing sets it, so
+ * this is invisible with JS off. */
+.how-track .copy-btn::after {
+  content: ''; position: absolute; inset: calc(var(--wf-border-w) * -1);
+  pointer-events: none; border-radius: inherit;
+  border: var(--wf-border-w) solid var(--cta);
+  opacity: calc(var(--press, 0) * 0.85);
+  transform: scale(calc(1 + var(--press, 0) * 0.55));
+}
+.how-track .copy-btn:hover { background: var(--cta-hover); }
+/* data-hit is the scrub's synthetic press; keep it distinct from :hover. */
+.how-track .copy-btn[data-hit='1'] { background: var(--cta-hover); transform: scale(0.94); }
+.how-track .copy-status {
+  grid-column: 1 / -1; margin: 0;
+  font-size: var(--fs-micro); font-weight: 600; color: var(--success);
+}
+.how-track .copy-status.is-error { color: var(--danger); font-weight: 500; }
+
+/* One stack per panel; its states cross-fade inside it. This replaces
+ * .view-static, which pinned the prompt (and the AI's output bars) to opacity 1
+ * and let the other views sit ON TOP: the prompt block showed through around
+ * the shorter validation card, and the JSON — inset:0 against .panel-body —
+ * started at the panel body's top and overlapped the input above it. The stack
+ * owns the swap area, so the AI's stack can start below its input.
+ * The outgoing state also drops 8px, so a swap reads as a replacement rather
+ * than a dissolve. */
+.how-track .view-stack { position: relative; min-height: 224px; }
+.how-track [data-panel='ai'] .view-stack { min-height: 168px; }
+.how-track .view {
+  position: absolute; inset: 0; opacity: 0; pointer-events: none;
+  transform: translateY(var(--space-4));
+  transition: opacity var(--dur-standard) var(--ease), transform var(--dur-standard) var(--ease);
+}
+.how-track .view[data-on='1'] { opacity: 1; pointer-events: auto; transform: none; }
+
+/* Nested one step in: sunken fill, smaller radius, hairline edge — the outer
+ * plate keeps the ink border to itself. */
+.how-track .val {
+  padding: var(--space-6); border-radius: var(--radius-md);
+  background: var(--surface-sunken); border: 1px solid var(--border);
+}
+.how-track .val.is-bad { border-left: var(--wf-border-w) solid var(--danger); }
+.how-track .val.is-good { border-left: var(--wf-border-w) solid var(--success); }
+.how-track .val-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); margin-bottom: var(--space-5); }
+.how-track .val-file { font-size: var(--fs-secondary); font-family: var(--font-sans); letter-spacing: -0.005em; }
+.how-track .tag {
+  font-size: var(--fs-nano); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-5); border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.how-track .tag-danger { color: var(--danger); background: var(--danger-soft); }
+.how-track .tag-success { color: var(--success); background: var(--success-soft); }
+.how-track .val-field { font-family: var(--font-sans); font-size: var(--fs-caption); color: var(--danger); margin-bottom: var(--space-2); }
+.how-track .val-msg { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.45; margin: 0; }
+.how-track .val-counts { display: flex; gap: var(--space-6); margin-bottom: var(--space-5); }
+.how-track .val-count { font-size: var(--fs-secondary); color: var(--ink-secondary); }
+.how-track .val-count b { color: var(--success); font-weight: 700; }
+
+/* Checks tick through as the scrub advances. --lines is a float; each row
+ * compares its own --i against it, so one variable drives the whole list. */
+.how-track .checks { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6); }
+.how-track .check {
+  display: flex; align-items: center; gap: var(--space-4);
+  font-size: var(--fs-secondary); color: var(--ink-secondary);
+  opacity: clamp(0.18, calc((var(--lines, 0) - var(--i)) * 3), 1);
+}
+.how-track .check i {
+  width: var(--space-6); height: var(--space-6); border-radius: var(--radius-pill); flex-shrink: 0;
+  background: var(--track); display: grid; place-items: center;
+  font-size: var(--fs-nano); font-style: normal; font-weight: 700;
+  /* Lands with a small pop, driven by the same --lines as the row's opacity. */
+  transform: scale(clamp(0.62, calc((var(--lines, 0) - var(--i)) * 2.4), 1));
+  /* --surface, not white: cream on teal in light, espresso on lavender in dark,
+   * and invisible against the empty --track until the check lands. */
+  color: var(--surface);
+  transition: background-color var(--dur-standard) var(--ease);
+}
+.how-track .checks[data-done='1'] i { background: var(--accent); }
+
+/* ── AI panel: the deliberately anonymous one ── */
+.how-track .ai-input {
+  display: flex; align-items: center; gap: var(--space-4);
+  background: var(--surface-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: var(--space-4) var(--space-6);
+  font-family: var(--font-sans); font-size: var(--fs-caption); color: var(--ink-muted);
+  margin-bottom: var(--space-7); white-space: nowrap; overflow: hidden;
+}
+.how-track .ai-text { overflow: hidden; text-overflow: ellipsis; }
+.how-track .ai-caret { width: 1.5px; height: 13px; background: var(--accent); flex-shrink: 0; animation: how-blink 1s steps(2) infinite; }
+/* A caret that blinks in an empty field nobody is typing into is noise. It
+ * blinks only while the prompt is being entered; the attribute is absent with
+ * JS off, so the default above still stands there. */
+.how-track .ai-input[data-typing='0'] .ai-caret { animation: none; opacity: 0.35; }
+@keyframes how-blink { 50% { opacity: 0; } }
+
+/* "Squiggly lines" — abstract shape, not fake AI prose. The page must not put
+ * invented words in an AI's mouth; the shape is the point. */
+.how-track .stream { display: flex; flex-direction: column; gap: var(--space-5); }
+.how-track .sq {
+  height: 7px; border-radius: var(--radius-pill); background: var(--track);
+  width: var(--w); transform-origin: left center;
+  transform: scaleX(clamp(0, calc(var(--lines, 0) - var(--i)), 1));
+  /* The leading bar fades up as it draws, so the stream has a soft edge
+   * instead of seven hard wipes. Same --lines, no extra JS. */
+  opacity: clamp(0.3, calc((var(--lines, 0) - var(--i)) * 1.6), 1);
+}
+.how-track .sq.is-accent { background: color-mix(in srgb, var(--accent) 32%, var(--track)); }
+
+.how-track .json { font-family: var(--font-sans); font-size: var(--fs-caption); line-height: 1.7; color: var(--ink-secondary); white-space: pre; }
+.how-track .json b { color: var(--accent); font-weight: 600; }
+
+/* ── The pointer ─────────────────────────────────────────────────
+ * No drop-shadow: the ink outline is what keeps it visible over either fill,
+ * and the system is shadowless. Colours are tokens here rather than baked
+ * into the SVG, so it themes with the page. */
+.how-track .cursor {
+  position: absolute; left: 0; top: 0; width: 20px; height: 20px; z-index: 20;
+  pointer-events: none; opacity: var(--co, 0);
+  transform: translate(var(--cx, 0px), var(--cy, 0px)) scale(var(--cs, 1));
+  transition: opacity var(--dur-standard) linear;
+}
+.how-track .cursor svg { display: block; }
+.how-track .cursor path { fill: var(--bg-page); stroke: var(--ink); stroke-width: 1.6; }
+
+/* ── The travelling clipboard chip ────────────────────────────────
+ * Lavender fill + 2px ink edge: it carries the same signal as the Copy button
+ * it just came from. Flat — the old coloured box-shadow is gone. */
+.how-track .chip-fly {
+  position: absolute; z-index: 15; pointer-events: none;
+  font-family: var(--font-sans); font-size: var(--fs-micro); font-weight: 600;
+  padding: var(--space-2) var(--space-5); border-radius: var(--radius-pill);
+  background: var(--cta); color: var(--cta-ink);
+  border: var(--wf-border-w) solid var(--border-strong);
+  box-shadow: none; white-space: nowrap;
+  opacity: var(--fo, 0); transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(var(--fs, 1));
+}
+
+/* ── Captions. Real DOM text, not painted into the animation — a screen reader
+ *    gets all four steps in order regardless of scroll. The numeral is a
+ *    broadsheet step figure: display serif at 400, size doing the work. ── */
+.how-track .beats { margin-top: var(--space-11); position: relative; min-height: 104px; }
+.how-track .beat {
+  position: absolute; inset: 0;
+  display: grid; grid-template-columns: auto 1fr; gap: var(--space-7); align-items: start;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity var(--dur-standard) var(--ease), transform var(--dur-standard) var(--ease);
+}
+.how-track .beat[data-on='1'] { opacity: 1; transform: none; }
+.how-track .beat-n {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(34px, 3.2vw, 48px); line-height: 0.9;
+  letter-spacing: -0.02em; color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.how-track .beat-copy {
+  transform: translateY(var(--space-2));
+  transition: transform var(--dur-standard) var(--ease) var(--reveal-step);
+}
+.how-track .beat[data-on='1'] .beat-copy { transform: none; }
+.how-track .beat h3 { font-size: var(--fs-prop); margin: 0 0 var(--space-2); letter-spacing: -0.015em; }
+.how-track .beat p { font-size: var(--fs-body); color: var(--ink-secondary); margin: 0; max-width: 62ch; line-height: 1.5; }
+
+/* ── Progress rail ───────────────────────────────────────────────
+ * A measure, not a loading bar: ticks at the three beat boundaries. */
+.how-track .rail {
+  position: relative; margin-top: var(--space-9);
+  height: var(--wf-border-w); background: var(--border); border-radius: var(--radius-pill);
+}
+.how-track .rail i {
+  display: block; height: 100%; border-radius: var(--radius-pill);
+  background: var(--accent); transform: scaleX(var(--p, 0)); transform-origin: left;
+}
+/* The playhead rides --p, which the stage already publishes — custom
+ * properties inherit, so this needs nothing from scrub.ts. */
+.how-track .rail-head {
+  position: absolute; top: 50%; left: calc(var(--p, 0) * 100%);
+  width: var(--space-5); height: var(--space-5);
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-pill);
+  background: var(--accent); border: var(--wf-border-w) solid var(--border-strong);
+}
+.how-track .rail-tick {
+  position: absolute; left: calc(var(--t) * 100%);
+  width: var(--wf-border-w); height: var(--space-4);
+  top: calc((var(--space-4) - var(--wf-border-w)) / -2);
+  background: var(--border-strong); border-radius: var(--radius-pill);
+}
+
+/* ── Fallbacks ────────────────────────────────────────────────────
+ * Reduced motion, narrow screens, SHORT viewports, and no-JS all get the same
+ * thing: no pinning, all four states stacked and legible. scrub.ts paints the
+ * same final frame for reduced motion and narrow; the no-JS block below stands
+ * in when the script never runs.
+ *
+ * The max-height clause is new. It is safe without a matching change in
+ * scrub.ts: these rules unpin the track and force every state to its final
+ * form at a specificity the scrub's attributes cannot undo, so a scrubbing
+ * script on a short-but-wide viewport is simply writing values nothing reads. */
+@media (prefers-reduced-motion: reduce), (max-width: 860px), (max-height: 640px) {
+  .how-track { height: auto; }
+  .how-stage { position: static; height: auto; min-height: 0; padding-block: var(--space-12); overflow: visible; }
+  .how-track .stage-body { grid-template-columns: 1fr; gap: var(--space-8); }
+  .how-track .panel[data-active='0'] {
+    opacity: 1; filter: none; transform: none;
+    background: var(--surface); border-color: var(--border-strong);
+  }
+  .how-track .panel-body { min-height: 0; }
+  .how-track .view { position: static; opacity: 1; pointer-events: auto; margin-top: var(--space-6); transform: none; }
+  .how-track .view-stack,
+  .how-track [data-panel='ai'] .view-stack { min-height: 0; }
+  .how-track .beat-copy { transform: none; }
+  .how-track .sq { opacity: 1; }
+  .how-track .check i { transform: none; }
+  .how-track .cursor, .how-track .chip-fly, .how-track .rail { display: none; }
+  .how-track .beats { min-height: 0; display: flex; flex-direction: column; gap: var(--space-9); margin-top: var(--space-10); }
+  .how-track .beat { position: static; opacity: 1; transform: none; }
+  .how-track .sq { transform: none; }
+  .how-track .check { opacity: 1; }
+}
+@media (max-width: 560px) {
+  .how-track .beat { grid-template-columns: 1fr; gap: var(--space-3); }
+  .how-track .beat-n { font-size: 30px; }
+}
+
+/* No-JS: the head script adds .js before first paint, so this only matches with
+ * scripting genuinely off. --p and --lines are never set, so unpin and force
+ * every state to its final, legible form — same shape as the media query above. */
+html:not(.js) .how-track { height: auto; }
+html:not(.js) .how-stage { position: static; height: auto; min-height: 0; padding-block: var(--space-12); overflow: visible; }
+html:not(.js) .how-track .stage-body { grid-template-columns: 1fr; gap: var(--space-8); }
+html:not(.js) .how-track .panel[data-active='0'] {
+  opacity: 1; filter: none; transform: none;
+  background: var(--surface); border-color: var(--border-strong);
+}
+html:not(.js) .how-track .panel-body { min-height: 0; }
+html:not(.js) .how-track .view { position: static; opacity: 1; pointer-events: auto; margin-top: var(--space-6); transform: none; }
+html:not(.js) .how-track .view-stack,
+html:not(.js) .how-track [data-panel='ai'] .view-stack { min-height: 0; }
+html:not(.js) .how-track .beat-copy { transform: none; }
+html:not(.js) .how-track .sq { opacity: 1; }
+html:not(.js) .how-track .check i { transform: none; }
+html:not(.js) .how-track .cursor, html:not(.js) .how-track .chip-fly, html:not(.js) .how-track .rail { display: none; }
+html:not(.js) .how-track .beats { min-height: 0; display: flex; flex-direction: column; gap: var(--space-9); }
+html:not(.js) .how-track .beat { position: static; opacity: 1; transform: none; }
+html:not(.js) .how-track .sq { transform: none; }
+html:not(.js) .how-track .check { opacity: 1; }

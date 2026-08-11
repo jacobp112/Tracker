@@ -21,3 +21,10 @@ seed.html
 *.xlsx
 docs/Landing/AutoClicker.exe
 docs/Landing/ACLib/
+
+# Design-import scratch — mockups/uploads pulled in during reintegration, not source
+landing/files to merge/
+
+# Local environment variables (secrets and per-machine config)
+.env
+.env.local

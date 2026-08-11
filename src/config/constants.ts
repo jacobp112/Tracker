@@ -45,6 +45,18 @@ export const CONFIG = {
     CONF_HIGH: 1.0,
   },
 
+  /** Lapse penalty & effective stability (design 2026-08-09 §2.6). Harness-tuned. */
+  S_EFF_MIN: 0.25,
+  LAPSE_RECOVERY: 1.25,
+  PENALTY_FLOOR: 0.4,
+  /** Weight on a smeared exam's penalty deviation (1.0 = full penalty). Not
+   *  harness-tunable — smeared events are excluded as scoring targets. */
+  SMEAR_PENALTY_WEIGHT: 1.0,
+  /** Continuous test strength-gain anchors (§2.4). Unchanged at the 0.80 mark. */
+  TEST_GAIN_MIN: 0.15,
+  TEST_GAIN_AT_PASS_MARK: 1.5,
+  TEST_GAIN_MAX: 2.0,
+
   /** Strength seeded on first promotion out of Not Started (§7). */
   SEED_STRENGTH: 1.0,
 
@@ -117,10 +129,74 @@ export const CONFIG = {
      */
     SESSION_MINUTES: 30,
   },
+
+  /**
+   * Performance layer (engine/performance.ts) — all derived, never stored
+   * (design 2026-08-10). Weights are the semantic knobs; thresholds are the
+   * min-data guards below which a metric returns null rather than a number.
+   */
+  PERFORMANCE: {
+    /** Min qualifying attempts before a headline metric shows a number. */
+    MIN_INDEPENDENT_N: 5,
+    MIN_TRANSFER_N: 5,
+    MIN_COLD_N: 5,
+    MIN_CALIBRATION_N: 5,
+    /** Min distinct sub-scores present before Performance Health is defined. */
+    MIN_HEALTH_INPUTS: 2,
+    /** Min quality observations before Performance Quality shows a number. */
+    MIN_QUALITY_N: 5,
+    /** Min novel-task observations before Novel-Task Success shows a number. */
+    MIN_NOVEL_N: 5,
+    /** Novelty at/above this counts as a "novel task" (3 = genuinely unfamiliar). */
+    NOVEL_THRESHOLD: 3,
+    /** A prerequisite with surfaced health below this is flagged unstable
+     *  (design §E — the second health band; diagnostic only, tunable). */
+    PREREQ_UNSTABLE_HEALTH: 45,
+    /** Dashboard trend windows, in days (design §13). */
+    TREND_SHORT_DAYS: 7,
+    TREND_LONG_DAYS: 30,
+    /** Ordinal maxima, for normalising each dimension to 0–1. */
+    DIFFICULTY_MAX: 5,
+    NOVELTY_MAX: 4,
+    INDEPENDENCE_MAX: 3,
+    TRANSFER_MAX: 3,
+    QUALITY_MAX: 5,
+    /** Performance Health composite weights (design §D, user-approved). */
+    HEALTH_WEIGHTS: {
+      accuracy: 0.3,
+      difficulty: 0.2,
+      novelty: 0.15,
+      transfer: 0.2,
+      quality: 0.15,
+    },
+    /** Cold Performance composite weights (proposed; tunable). Over cold attempts:
+     *  difficulty & novelty are success-gated like Performance Health (§18 — a
+     *  failed hard/novel cold attempt banks no difficulty/novelty credit);
+     *  correctness/independence/transfer/quality are direct present-value inputs. */
+    COLD_WEIGHTS: {
+      correctness: 0.3,
+      difficulty: 0.15,
+      novelty: 0.15,
+      independence: 0.15,
+      transfer: 0.15,
+      quality: 0.1,
+    },
+  },
 } as const;
 
 /** Health weights must sum to 1, or `health` is no longer a 0–100 score. */
 const WEIGHT_SUM = CONFIG.W_RET + CONFIG.W_ERR + CONFIG.W_CAL + CONFIG.W_CONF + CONFIG.W_CARD;
 if (Math.abs(WEIGHT_SUM - 1) > 1e-9) {
   throw new Error(`Document 2 §6 health weights must sum to 1, got ${WEIGHT_SUM}`);
+}
+
+/** Performance-layer weight tables must each sum to 1 (0–100 composites). */
+for (const [name, table] of [
+  ['HEALTH_WEIGHTS', CONFIG.PERFORMANCE.HEALTH_WEIGHTS],
+  ['COLD_WEIGHTS', CONFIG.PERFORMANCE.COLD_WEIGHTS],
+] as const) {
+  const sum = Object.values(table).reduce((a, b) => a + b, 0);
+  if (Math.abs(sum - 1) > 1e-9) {
+    throw new Error(`CONFIG.PERFORMANCE.${name} must sum to 1, got ${sum}`);
+  }
 }

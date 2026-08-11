@@ -1,11 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { navigate, type Route } from '@/router';
 import { useTheme } from '@/theme/useTheme';
 import { SHORTCUT_LABEL } from '@/hooks/useCommandShortcut';
-import { IconButton } from '@/components/primitives';
 import {
-  AddIcon,
-  ChevronDown,
+  CairnMark,
   ExamsIcon,
   MoonIcon,
   OverviewIcon,
@@ -24,12 +22,45 @@ function activeFor(route: Route): NavName {
   return route.name;
 }
 
-const TABS = [
-  { name: 'overview' as const, label: 'Overview', href: '#/overview', Icon: OverviewIcon },
-  { name: 'study' as const, label: 'Study', href: '#/study', Icon: StudyIcon },
-  { name: 'exams' as const, label: 'Exams', href: '#/exams', Icon: ExamsIcon },
-  { name: 'settings' as const, label: 'Settings', href: '#/settings', Icon: SettingsIcon },
+const NAV = [
+  { name: 'overview' as const, label: 'Overview', to: '/overview', Icon: OverviewIcon },
+  { name: 'performance' as const, label: 'Performance', to: '/performance', Icon: OverviewIcon },
+  { name: 'study' as const, label: 'Study', to: '/study', Icon: StudyIcon },
+  { name: 'exams' as const, label: 'Exams', to: '/exams', Icon: ExamsIcon },
+  { name: 'settings' as const, label: 'Settings', to: '/settings', Icon: SettingsIcon },
 ];
+
+/** Course-row accent, cycled so the sidebar stack reads as hand-stacked. */
+const COURSE_ACCENTS = [
+  'var(--brand-teal)',
+  'var(--brand-lavender)',
+  'var(--brand-orange)',
+  'var(--ink-muted)',
+];
+
+/** Topbar title + subtitle per route. Course uses the live course name. */
+function heading(route: Route, activeCourse?: CourseSummary): { title: string; sub: string } {
+  switch (route.name) {
+    case 'overview':
+      return { title: 'Overview', sub: 'Your study at a glance' };
+    case 'study':
+      return { title: 'Study', sub: 'Every course you’re tracking' };
+    case 'course':
+      return { title: activeCourse?.title ?? 'Course', sub: 'Course dashboard' };
+    case 'add-course':
+      return { title: 'Add a course', sub: 'Paste a plan to get started' };
+    case 'exams':
+      return { title: 'Exams', sub: 'Papers & readiness' };
+    case 'add-exam':
+      return { title: 'Add an exam result', sub: 'Log a graded paper' };
+    case 'quick-add':
+      return { title: 'Quick add', sub: 'Paste to add anything' };
+    case 'settings':
+      return { title: 'Settings', sub: 'Preferences & your data' };
+    default:
+      return { title: 'Cairn', sub: '' };
+  }
+}
 
 export interface CourseSummary {
   courseId: string;
@@ -39,9 +70,11 @@ export interface CourseSummary {
 }
 
 /**
- * App shell — Document 3 §4.
- * Desktop: persistent sidebar. Below 768px: bottom tab bar (the mockup omits
- * mobile nav; §4 governs). Everything here is reachable by keyboard.
+ * App shell — Document 3 §4 + the approved redesign mockup.
+ * Desktop: persistent sidebar (Cairn mark, primary nav, the live course list,
+ * an in-sidebar light/dark toggle). Below 768px it collapses to a bottom tab
+ * bar. Everything here is reachable by keyboard. Routing/logic is unchanged;
+ * this owns only the chrome.
  */
 export function AppShell({
   route,
@@ -60,149 +93,115 @@ export function AppShell({
   onOpenSearch?: () => void;
   children: ReactNode;
 }) {
-  const { theme, toggle } = useTheme();
-  const [studyOpen, setStudyOpen] = useState(true);
+  const { theme, set } = useTheme();
   const active = activeFor(route);
+  const { title, sub } = heading(route, activeCourse);
 
   return (
     <div className="app">
       <aside className="sidebar">
-        <button className="course-switch" type="button" onClick={() => navigate('/study')}>
-          <div className="course-icon" aria-hidden="true">
-            {activeCourse?.initials ?? '—'}
-          </div>
-          <div className="course-meta">
-            <div className="course-name">
-              {activeCourse?.title ?? (courses.length > 0 ? 'All courses' : 'No course yet')}
-              <ChevronDown />
-            </div>
-            <div className="course-mastery">
-              {activeCourse
-                ? `Mastery ${activeCourse.masteryPct}%`
-                : courses.length > 0
-                  ? `${courses.length} course${courses.length === 1 ? '' : 's'}`
-                  : 'Add one to start'}
-            </div>
-          </div>
+        <button className="brand-lockup" type="button" onClick={() => navigate('/overview')}>
+          <CairnMark className="brand-mark" />
+          <span className="brand-word">Cairn</span>
         </button>
 
-        <button className="cmdk" type="button" onClick={onOpenSearch}>
-          <SearchIcon />
-          <span className="cmdk-label">Search</span>
-          <span className="cmdk-key">{SHORTCUT_LABEL}</span>
-        </button>
-
-        <nav aria-label="Primary">
-          <button
-            type="button"
-            className={`nav-item ${active === 'overview' ? 'active' : ''}`}
-            onClick={() => navigate('/overview')}
-            aria-current={active === 'overview' ? 'page' : undefined}
-          >
-            <OverviewIcon />
-            Overview
-          </button>
-
-          {/* Split control: the label navigates, the chevron discloses the course
-            * list. A single button doing both meant Study could never reach the
-            * Study page — it only ever toggled. */}
-          <div className={`nav-group ${studyOpen ? '' : 'collapsed'}`}>
-            <div className={`nav-item nav-item-split ${active === 'study' ? 'active' : ''}`}>
-              <button
-                type="button"
-                className="nav-item-main"
-                onClick={() => navigate('/study')}
-                aria-current={active === 'study' ? 'page' : undefined}
-              >
-                <StudyIcon />
-                Study
-              </button>
-              <button
-                type="button"
-                className="nav-disclosure"
-                onClick={() => setStudyOpen((o) => !o)}
-                aria-expanded={studyOpen}
-                aria-controls="study-sub-nav"
-                aria-label={studyOpen ? 'Collapse course list' : 'Expand course list'}
-              >
-                <ChevronDown className="nav-chevron" />
-              </button>
-            </div>
-            <div className="sub-nav" id="study-sub-nav">
-              <div className="sub-nav-inner">
-                {courses.length === 0 ? (
-                  <span className="sub-item" style={{ color: 'var(--ink-muted)', cursor: 'default' }}>
-                    No courses yet
-                  </span>
-                ) : (
-                  courses.map((c) => (
-                    <button
-                      key={c.courseId}
-                      type="button"
-                      className={`sub-item ${
-                        route.name === 'course' && route.courseId === c.courseId ? 'active' : ''
-                      }`}
-                      onClick={() => navigate(`/course/${c.courseId}`)}
-                    >
-                      {c.title}
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className={`nav-item ${active === 'exams' ? 'active' : ''}`}
-            onClick={() => navigate('/exams')}
-          >
-            <ExamsIcon />
-            Exams
-          </button>
-          <div className="nav-divider" />
-
-          <button
-            type="button"
-            className={`nav-item nav-action ${active === 'quick-add' ? 'active' : ''}`}
-            onClick={() => navigate('/add')}
-          >
-            <AddIcon />
-            Quick add
-          </button>
+        <nav className="nav-primary" aria-label="Primary">
+          {NAV.map(({ name, label, to, Icon }) => (
+            <button
+              key={name}
+              type="button"
+              className={`nav-item ${active === name ? 'active' : ''}`}
+              onClick={() => navigate(to)}
+              aria-current={active === name ? 'page' : undefined}
+            >
+              <Icon />
+              {label}
+            </button>
+          ))}
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="nav-divider" />
+
+        <div className="course-list">
+          <p className="course-list-label">Your courses</p>
+          {courses.length === 0 ? (
+            <p className="course-list-empty">No courses yet</p>
+          ) : (
+            <div className="course-list-scroll">
+              {courses.map((c, i) => {
+                const isActive = route.name === 'course' && route.courseId === c.courseId;
+                return (
+                  <button
+                    key={c.courseId}
+                    type="button"
+                    className={`course-row ${isActive ? 'active' : ''}`}
+                    onClick={() => navigate(`/course/${c.courseId}`)}
+                    title={`${c.title} — ${c.masteryPct}% mastery`}
+                    style={{ ['--course-accent' as string]: COURSE_ACCENTS[i % COURSE_ACCENTS.length] }}
+                  >
+                    <span className="course-tile" aria-hidden="true">
+                      {c.initials}
+                    </span>
+                    <span className="course-row-name">{c.title}</span>
+                    <span className="course-row-mastery mono-num">{c.masteryPct}%</span>
+                    <span className="course-row-track" aria-hidden="true">
+                      <span
+                        className="course-row-fill"
+                        style={{ width: `${c.masteryPct}%` }}
+                      />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="nav-divider" />
+
+        <div className="theme-switch" role="group" aria-label="Theme">
+          <span
+            className="theme-switch-thumb"
+            aria-hidden="true"
+            data-theme-pos={theme}
+          />
           <button
             type="button"
-            className={`nav-item ${active === 'settings' ? 'active' : ''}`}
-            onClick={() => navigate('/settings')}
+            className={`theme-seg ${theme === 'light' ? 'active' : ''}`}
+            onClick={() => set('light')}
+            aria-pressed={theme === 'light'}
           >
-            <SettingsIcon />
-            Settings
+            <SunIcon />
+            Light
+          </button>
+          <button
+            type="button"
+            className={`theme-seg ${theme === 'dark' ? 'active' : ''}`}
+            onClick={() => set('dark')}
+            aria-pressed={theme === 'dark'}
+          >
+            <MoonIcon />
+            Dark
           </button>
         </div>
       </aside>
 
       <div className="main">
         <header className="topbar">
-          <div className="brand">StudyOS</div>
+          <div className="topbar-title">
+            <h1 className="topbar-h1">{title}</h1>
+            {sub && <p className="topbar-sub">{sub}</p>}
+          </div>
           <div className="topbar-right">
             {action}
-            {/* The sidebar's ⌘K row is hidden below 768px, so without this the
-              * palette would be desktop-only. The topbar is visible at every
-              * width. */}
-            <IconButton label={`Search (${SHORTCUT_LABEL})`} onClick={onOpenSearch}>
+            <button className="topbar-search" type="button" onClick={onOpenSearch}>
               <SearchIcon />
-            </IconButton>
-            <IconButton
-              label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="theme-toggle"
-              onClick={toggle}
-            >
-              <SunIcon />
-              <MoonIcon />
-            </IconButton>
+              <span className="topbar-search-label">Search or jump to…</span>
+              <span className="topbar-search-key">{SHORTCUT_LABEL}</span>
+            </button>
+            <button className="topbar-add" type="button" onClick={() => navigate('/add')}>
+              <span aria-hidden="true">＋</span> Add
+            </button>
           </div>
         </header>
 
@@ -211,10 +210,10 @@ export function AppShell({
 
       {/* Bottom tab bar — Document 3 §4, shown below 768px via CSS. */}
       <nav className="tabbar" aria-label="Primary">
-        {TABS.map(({ name, label, href, Icon }) => (
+        {NAV.map(({ name, label, to, Icon }) => (
           <a
             key={name}
-            href={href}
+            href={`#${to}`}
             className={`tab ${active === name ? 'active' : ''}`}
             aria-current={active === name ? 'page' : undefined}
           >
@@ -222,6 +221,15 @@ export function AppShell({
             {label}
           </a>
         ))}
+        <button
+          type="button"
+          className="tab tab-theme"
+          onClick={() => set(theme === 'dark' ? 'light' : 'dark')}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          Theme
+        </button>
       </nav>
     </div>
   );

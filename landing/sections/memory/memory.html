@@ -1,0 +1,83 @@
+      <section class="band memory" aria-labelledby="memory-title">
+        <!-- Same masthead device as the other sections: eyebrow + a 2px ink
+             rule drawn by ::after, so no empty element enters the a11y tree. -->
+        <div class="memory-masthead reveal" style="--i:0">
+          <p class="eyebrow">The memory model</p>
+        </div>
+        <h2 class="band-title reveal" id="memory-title" style="--i:1">It tracks how well you know things — and how that fades.</h2>
+        <p class="band-lead reveal" style="--i:2">Every topic carries its own retention estimate, decayed on a real forgetting curve between the times you actually work on it. One number per topic, and one line marking where review falls due.</p>
+
+        <figure class="memory-figure reveal" style="--i:3">
+          <!-- Animation hooks are untouched: data-animate + id for the shared
+               engine, .bars on the group root so it receives .is-filled, --w per
+               fill, and the count-up dataset. lib/animate.ts is attached
+               read-only and is not modified. -->
+          <div class="mock mock-matrix bars" id="mock-matrix" data-animate role="img" aria-label="Cairn's retention matrix: average retention 74 percent, health 74, up 4 percent over 30 days. Topics below 60 percent are due for review. Bayes' theorem 41 percent, flagged conceptual. Eigenvectors 53 percent, flagged procedural. Integration by parts 67 percent, not flagged. Krebs cycle 58 percent, flagged knowledge gap.">
+            <div class="matrix-head">
+              <div class="matrix-stat">
+                <span class="eyebrow">Avg retention</span>
+                <span class="matrix-stat-num mono-num" data-countup="74" data-countup-suffix="%" data-countup-dur="900">74%</span>
+              </div>
+              <div class="chips">
+                <span class="chip chip-health"><span class="mono-num">74</span>&nbsp;health</span>
+                <span class="chip chip-delta up"><svg class="chip-arrow" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0.8 L7.4 6.6 L0.6 6.6 Z" /></svg><span class="mono-num">+4%</span>&nbsp;<span class="chip-sub">30d</span></span>
+              </div>
+            </div>
+
+            <!-- Column header. It carries the SAME slot classes as a data row,
+                 so the header can never drift out of alignment with the tracks
+                 it labels. Outside .matrix-rows, so the :nth-child stagger below
+                 still counts data rows from 1. -->
+            <div class="matrix-cols">
+              <span class="col-dot"></span>
+              <span class="matrix-topic">Topic</span>
+              <span class="matrix-diag">Diagnosis</span>
+              <span class="col-track">Retention</span>
+              <span class="matrix-pct">%</span>
+            </div>
+
+            <div class="matrix-rows">
+              <div class="matrix-row">
+                <span class="mock-dot low" aria-hidden="true"></span>
+                <span class="matrix-topic">Bayes' theorem</span>
+                <span class="matrix-diag"><span class="badge cat-conceptual">conceptual</span></span>
+                <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:41%"></span></span>
+                <span class="mono-num matrix-pct">41%</span>
+              </div>
+              <div class="matrix-row">
+                <span class="mock-dot mid" aria-hidden="true"></span>
+                <span class="matrix-topic">Eigenvectors</span>
+                <span class="matrix-diag"><span class="badge cat-procedural">procedural</span></span>
+                <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:53%"></span></span>
+                <span class="mono-num matrix-pct">53%</span>
+              </div>
+              <div class="matrix-row">
+                <span class="mock-dot high" aria-hidden="true"></span>
+                <span class="matrix-topic">Integration by parts</span>
+                <!-- Empty, but never absent: the fixed slot is what keeps this
+                     row's track the same length as every other row's. -->
+                <span class="matrix-diag"></span>
+                <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:67%"></span></span>
+                <span class="mono-num matrix-pct">67%</span>
+              </div>
+              <div class="matrix-row">
+                <span class="mock-dot mid" aria-hidden="true"></span>
+                <span class="matrix-topic">Krebs cycle</span>
+                <span class="matrix-diag"><span class="badge cat-knowledge">knowledge gap</span></span>
+                <span class="bar" aria-hidden="true"><span class="bar-fill" style="--w:58%"></span></span>
+                <span class="mono-num matrix-pct">58%</span>
+              </div>
+            </div>
+
+            <!-- The key for the one channel that is colour-only. Every fact it
+                 explains is also in the numbers and in the aria-label. -->
+            <p class="matrix-legend">
+              <span class="legend-key"><span class="mock-dot low"></span>at risk</span>
+              <span class="legend-key"><span class="mock-dot mid"></span>due</span>
+              <span class="legend-key"><span class="mock-dot high"></span>holding</span>
+              <span class="legend-note">The notch on each track is 60% — below it, review falls due.</span>
+            </p>
+          </div>
+          <figcaption class="memory-figcaption"><span class="memory-figmark">Fig. 3</span> One course, thirty days after the first session.</figcaption>
+        </figure>
+      </section>

@@ -32,7 +32,6 @@ export function AddCourse({
         <span className="current">Add course</span>
       </div>
       <div className="page-head">
-        <h1>Add a course</h1>
         <p>
           Paste your syllabus into the prompt below, then bring the JSON back here. You never build a
           schema — your AI does it.

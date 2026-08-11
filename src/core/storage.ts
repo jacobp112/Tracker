@@ -1,4 +1,5 @@
-import { emptyStore, SCHEMA_VERSION, type Store } from '@/domain/types';
+import { emptyStore, SCHEMA_VERSION, type Store, type SessionRecord } from '@/domain/types';
+import { recomputeLapseContamination } from './migrations';
 
 /**
  * Local-first persistence. v1 is single-user and local (Document 4 §13.4), so
@@ -53,11 +54,27 @@ export function loadStore(): Store {
  */
 function migrate(parsed: unknown): Store {
   const p = (parsed ?? {}) as Record<string, unknown>;
-  return {
+  const savedVersion = typeof p.schema_version === 'string' ? p.schema_version : '0.0.0';
+  const result: Store = {
     schema_version: SCHEMA_VERSION,
     courses: Array.isArray(p.courses) ? (p.courses as Store['courses']) : [],
     exams: Array.isArray(p.exams) ? (p.exams as Store['exams']) : [],
+    sessions: [] as SessionRecord[],
   };
+
+  // Additive migration: legacy stores predate per-session durations.
+  if (!Array.isArray((p as { sessions?: unknown }).sessions)) {
+    (result as { sessions: SessionRecord[] }).sessions = [];
+  } else {
+    result.sessions = p.sessions as SessionRecord[];
+  }
+
+  // v3.1.0 — purge kFactor/drift_history contamination from uniform-fallback
+  // exams (design 2026-08-09 §4). Lexicographic compare is safe for these x.y.z
+  // versions. Idempotent, so a store already at 3.1.0+ is left untouched.
+  if (savedVersion < '3.1.0') recomputeLapseContamination(result);
+
+  return result;
 }
 
 /**

@@ -1,0 +1,191 @@
+/* ── Footer / closer ─────────────────────────────────────────────────
+ * The footer is the mark. Three stacked stones at the lockup's own widths and
+ * offsets, an ember summit dot, and the page's last words set inside them —
+ * a cairn standing on the bottom edge of the page.
+ *
+ * The band inverts like the problem and privacy chambers (dark in the light
+ * theme, cream in the dark one) through the same local --ch-* ladder. The
+ * STONES do not invert: their fills are the fixed brand colours, and every edge
+ * is currentColor — cream strokes on the dark band, ink strokes once it flips —
+ * which is exactly the contract the inline mark relies on. Each stone's text
+ * colour is pinned to its own fill, so it is theme-independent by construction.
+ *
+ * Scoped to .closer and its own .cairn-* / .closer-* / .foot-note descendants.
+ * No global token is touched, and nothing here restyles the shared .brand /
+ * .brand-mark used by the header. */
+
+.closer {
+  --ch-bg: var(--wf-ink);
+  --ch-ink: var(--wf-cream);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-cream) 78%, var(--wf-ink));
+  --ch-ink-mute: color-mix(in srgb, var(--wf-cream) 58%, var(--wf-ink));
+  --ch-rule: color-mix(in srgb, var(--wf-cream) 24%, var(--wf-ink));
+
+  max-width: none; margin-top: var(--space-14);
+  padding: var(--space-14) var(--page-gutter) var(--space-12);
+  background: var(--ch-bg);
+  /* The band's ink: the stones' edges and the ground copy both read from it,
+   * which is what makes one set of shapes correct on both sides of the flip. */
+  color: var(--ch-ink);
+  border-radius: var(--radius-chamber) var(--radius-chamber) 0 0;
+}
+
+[data-theme='dark'] .closer {
+  --ch-bg: var(--wf-cream);
+  --ch-ink: var(--wf-ink);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-ink) 80%, var(--wf-cream));
+  --ch-ink-mute: color-mix(in srgb, var(--wf-ink) 68%, var(--wf-cream));
+  --ch-rule: color-mix(in srgb, var(--wf-ink) 22%, var(--wf-cream));
+}
+
+.closer-inner { max-width: 880px; margin: 0 auto; }
+
+/* ── The cairn ──────────────────────────────────────────────────────
+ * Widths and offsets are the mark's own, in percent of the box:
+ *   top   x28 w38   ·   mid x24 w58   ·   base x8 w84   ·   dot centre x82
+ * so the silhouette — including its deliberate slight lean — is preserved
+ * rather than re-drawn. Pills, because the mark's stones are pills (rx is half
+ * their height at every level). */
+.closer-cairn {
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-6);
+}
+.cairn-course { display: flex; align-items: center; }
+
+.cairn-stone {
+  margin: 0;
+  /* The edge is the band's ink — cream strokes on the dark band, ink strokes
+   * once it inverts. It cannot be `currentColor` here: each stone pins its own
+   * text colour to its fill, so currentColor inside a stone is its TEXT. */
+  border: var(--wf-border-w) solid var(--ch-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+  text-align: center;
+}
+
+/* Top stone — the summit is the action. Lavender is the page's only
+ * primary-action fill, and this is the page's last primary action. */
+.closer .stone-top {
+  flex: 0 0 38%; margin-left: 28%;
+  padding: var(--space-6) var(--space-10);
+  background: var(--wf-lavender); color: var(--wf-ink);
+  font-family: var(--font-sans); font-size: var(--fs-body); font-weight: 600;
+  letter-spacing: 0.01em; text-decoration: none;
+  transition: background-color var(--dur-standard) var(--ease);
+}
+.closer .stone-top:hover { background: var(--cta-hover); }
+
+/* The summit marker. The one ember on the page, and the only place the logo
+ * spec allows it — clear of the top stone's 66% edge, centred on 82%. */
+.cairn-summit {
+  flex: none; width: var(--space-9); height: var(--space-9);
+  margin-left: calc(16% - (var(--space-9) / 2));
+  border-radius: var(--radius-pill);
+  background: var(--wf-ember);
+  border: var(--wf-border-w) solid var(--ch-ink);
+}
+
+/* Middle stone — the promise, in Figtree so the serif stays the wordmark's. */
+.closer .stone-mid {
+  width: 58%; margin-left: 24%;
+  padding: var(--space-6) var(--space-10);
+  background: var(--wf-teal); color: var(--wf-cream);
+  font-family: var(--font-sans); font-size: var(--fs-section); font-weight: 500;
+  line-height: 1.3;
+}
+
+/* Base stone — the foundation carries the name. */
+.closer .stone-base {
+  width: 84%; margin-left: 8%;
+  padding: var(--space-7) var(--space-12);
+  background: var(--wf-cream); color: var(--wf-ink);
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-5) var(--space-8); flex-wrap: wrap;
+}
+.closer .closer-wordmark {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(32px, 4vw, 44px); line-height: 1;
+  letter-spacing: -0.03em; color: var(--wf-ink); text-decoration: none;
+}
+.closer .closer-tagline {
+  font-family: var(--font-sans); font-size: var(--fs-eyebrow); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--wf-ink) 62%, var(--wf-cream));
+}
+
+/* ── The ground ─────────────────────────────────────────────────────
+ * Its own classes rather than the hero's .cta-row / .cta-micro: a section
+ * should not have to load another section's stylesheet to lay out its own
+ * buttons. */
+.closer .closer-ground {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-8); flex-wrap: wrap;
+  margin-top: var(--space-13);
+  padding-top: var(--space-7);
+  border-top: 1px solid var(--ch-rule);
+}
+.closer .closer-ground-actions { display: flex; flex-direction: column; gap: var(--space-4); }
+.closer .btn-secondary,
+.closer .btn-secondary:hover {
+  background: transparent; color: var(--ch-ink); border-color: var(--ch-ink);
+}
+.closer .btn-secondary[disabled],
+.closer .btn-secondary[disabled]:hover {
+  background: transparent;
+  color: var(--ch-ink-mute);
+  border-color: var(--ch-rule);
+  cursor: not-allowed;
+}
+.closer .closer-fineprint { display: flex; flex-direction: column; gap: var(--space-3); max-width: 46ch; }
+.closer .closer-micro,
+.closer .closer-colophon,
+.closer .foot-note {
+  margin: 0; font-size: var(--fs-caption); line-height: 1.5; color: var(--ch-ink-mute);
+}
+
+/* ── Built on reveal ────────────────────────────────────────────────
+ * The stones settle into place from the bottom up — a cairn being stacked —
+ * using the page's existing reveal state (.is-visible on this footer), not a
+ * competing framework and not the header's brand animation, which is left
+ * entirely alone. .js-gated, so with JS off the cairn is simply built. */
+.js .closer .cairn-stone,
+.js .closer .cairn-summit { transform: translateY(10px); opacity: 0; }
+.js .closer.is-visible .cairn-stone,
+.js .closer.is-visible .cairn-summit {
+  transform: none; opacity: 1;
+  transition: transform var(--dur-reveal) var(--ease) var(--stone-delay, 0ms),
+    opacity var(--dur-reveal) var(--ease) var(--stone-delay, 0ms);
+}
+.js .closer .stone-base { --stone-delay: 0ms; }
+.js .closer .stone-mid { --stone-delay: var(--reveal-step); }
+.js .closer .stone-top { --stone-delay: calc(var(--reveal-step) * 2); }
+.js .closer .cairn-summit { --stone-delay: calc(var(--reveal-step) * 3); }
+
+/* tokens.css forces .reveal itself visible under reduced motion, but these are
+ * its children — assert their final state too, or the cairn never arrives. */
+@media (prefers-reduced-motion: reduce) {
+  .js .closer .cairn-stone,
+  .js .closer .cairn-summit {
+    transform: none !important; opacity: 1 !important; transition-delay: 0ms !important;
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────
+ * The silhouette widens as the band narrows: below a phone's width a 38%
+ * summit stone cannot hold a label, so the stack keeps its lean but loses its
+ * taper. */
+@media (max-width: 860px) {
+  .closer .stone-top { flex-basis: 52%; margin-left: 22%; }
+  .cairn-summit { margin-left: calc(12% - (var(--space-9) / 2)); }
+  .closer .stone-mid { width: 74%; margin-left: 16%; }
+  .closer .stone-base { width: 92%; margin-left: 4%; padding-inline: var(--space-10); }
+}
+@media (max-width: 600px) {
+  .closer { padding: var(--space-12) var(--page-gutter); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .closer-cairn { gap: var(--space-5); }
+  .closer .stone-top { flex-basis: 74%; margin-left: 8%; }
+  .cairn-summit { margin-left: calc(8% - (var(--space-9) / 2)); width: var(--space-8); height: var(--space-8); }
+  .closer .stone-mid { width: 92%; margin-left: 4%; font-size: var(--fs-body); }
+  .closer .stone-base { width: 100%; margin-left: 0; border-radius: var(--radius-lg); }
+  .closer .closer-ground { margin-top: var(--space-11); }
+}

@@ -39,7 +39,6 @@ export function AddExam({
         <span className="current">Add exam result</span>
       </div>
       <div className="page-head">
-        <h1>Add an exam result</h1>
         <p>
           Paste your marked paper into the prompt, then bring the JSON back here. The exam can span
           topics from any of your courses.

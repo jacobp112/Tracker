@@ -1,5 +1,5 @@
 import { CONFIG } from '@/config/constants';
-import type { Confidence, ReviewEvent, Topic, TopicStatus } from '@/domain/types';
+import type { ReviewEvent, Topic, TopicStatus } from '@/domain/types';
 import { predictRetention } from './retention';
 
 /**
@@ -12,19 +12,31 @@ import { predictRetention } from './retention';
  * the one automatic seeding rule in `promote`.
  */
 
-/** Document 2 §3 — strength increment for an event. */
-export function strengthIncrement(kind: ReviewEvent['kind'], confidence: Confidence): number {
+/**
+ * Document 2 §3 — strength increment for an event.
+ *
+ * Study reviews keep the confidence buckets. Tests are **continuous** in
+ * `actual_retention` (design 2026-08-09 §2.4, #7): a hard fail and a near-miss
+ * no longer collapse to the same flat gain. The piecewise-linear shape is
+ * anchored so it is exactly `TEST_GAIN_AT_PASS_MARK` at the 0.80 mark (unchanged
+ * there), `TEST_GAIN_MIN` at 0, and `TEST_GAIN_MAX` at 1 — mirroring the
+ * `penaltyFrom` anchoring so gain and penalty agree at the mark.
+ */
+export function strengthIncrement(event: ReviewEvent): number {
   const g = CONFIG.STRENGTH_GAIN;
-  switch (kind) {
-    case 'test_pass':
-      return g.TEST_PASS;
-    case 'test_fail':
-      return g.TEST_FAIL;
-    case 'study_review':
-      if (confidence <= 2) return g.CONF_LOW;
-      if (confidence === 3) return g.CONF_MID;
-      return g.CONF_HIGH; // 4–5
+  if (event.kind === 'study_review') {
+    const c = event.confidence_reported;
+    if (c <= 2) return g.CONF_LOW;
+    if (c === 3) return g.CONF_MID;
+    return g.CONF_HIGH; // 4–5
   }
+  // test_pass / test_fail — continuous in actual_retention, anchored at the mark.
+  const a = event.test!.actual_retention;
+  const mark = CONFIG.TEST_PASS_MARK;
+  return a <= mark
+    ? CONFIG.TEST_GAIN_MIN + (CONFIG.TEST_GAIN_AT_PASS_MARK - CONFIG.TEST_GAIN_MIN) * (a / mark)
+    : CONFIG.TEST_GAIN_AT_PASS_MARK +
+        (CONFIG.TEST_GAIN_MAX - CONFIG.TEST_GAIN_AT_PASS_MARK) * ((a - mark) / (1 - mark));
 }
 
 /**
@@ -73,7 +85,7 @@ export function applyEvent(topic: Topic, event: ReviewEvent, now: Date = new Dat
 
   // Drift must be measured against the curve as it stood *before* this event
   // lands (Document 2 §4.1: "predicted via §2 just before the event").
-  if (event.test && (event.kind === 'test_pass' || event.kind === 'test_fail')) {
+  if (!event.smeared && event.test && (event.kind === 'test_pass' || event.kind === 'test_fail')) {
     const predicted = predictRetention(topic, new Date(event.date));
     if (predicted !== null) {
       const drift = event.test.actual_retention - predicted;
@@ -83,7 +95,7 @@ export function applyEvent(topic: Topic, event: ReviewEvent, now: Date = new Dat
   }
 
   // strength only ever grows (Document 2 §3)
-  next.strength = topic.strength + strengthIncrement(event.kind, event.confidence_reported);
+  next.strength = topic.strength + strengthIncrement(event);
   next.conf = event.confidence_reported;
   next.last_reviewed = event.date;
 

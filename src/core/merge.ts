@@ -1,6 +1,7 @@
 import { CONFIG } from '@/config/constants';
 import type { SchemaName } from '@/domain/schemas';
 import type {
+  AssessmentEvidence,
   Confidence,
   Course,
   ErrorLogEntry,
@@ -40,6 +41,30 @@ export function makeId(prefix: string): string {
  *  (Document 1 v0.2 §2.4). */
 export function testKind(earned: number, possible: number): 'test_pass' | 'test_fail' {
   return earned >= CONFIG.TEST_PASS_MARK * possible ? 'test_pass' : 'test_fail';
+}
+
+/**
+ * Resolve the assessment block for an exam-sourced event, applying the exam-level
+ * cold fallback (design 2026-08-10 §C — three cases):
+ *  1. per-breakdown assessment.cold present → it wins (leave as-is). An explicit
+ *     `cold: false` is a real tutor judgment and counts as present (=== undefined
+ *     is the fill trigger, not falsiness).
+ *  2. per-breakdown assessment exists but has no cold → exam-level cold fills it.
+ *  3. no per-breakdown assessment at all → construct a minimal { cold: true }.
+ * Returns undefined when there is nothing to attach (no per-topic assessment and
+ * the exam isn't cold). Never mutates the caller's block.
+ */
+export function resolveExamAssessment(
+  entryAssessment: AssessmentEvidence | undefined,
+  examCold: boolean,
+): AssessmentEvidence | undefined {
+  if (entryAssessment) {
+    const copy: AssessmentEvidence = { ...entryAssessment };
+    if (examCold && copy.cold === undefined) copy.cold = true; // case 2 (case 1: untouched)
+    return copy;
+  }
+  if (examCold) return { cold: true }; // case 3
+  return undefined;
 }
 
 function findTopicRef(store: Store, topicId: string): Topic | undefined {
@@ -104,6 +129,7 @@ function mergeSession(draft: Store, session: StudySession): void {
       source_id: session.session_id,
       confidence_reported: entry.confidence_reported,
       ...(entry.notes ? { notes: entry.notes } : {}),
+      ...(entry.assessment ? { assessment: { ...entry.assessment } } : {}),
     };
 
     // Errors land before the recalculation so the engine sees the true active
@@ -138,6 +164,8 @@ function mergeExam(draft: Store, exam: Exam): void {
 
     const confidence: Confidence | undefined = entry?.confidence_reported ?? exam.confidence_reported;
 
+    const assessment = resolveExamAssessment(entry?.assessment, exam.cold === true);
+
     const event: ReviewEvent = {
       event_id: makeId('event'),
       date: exam.date,
@@ -154,6 +182,9 @@ function mergeExam(draft: Store, exam: Exam): void {
         // Computed here, never user-supplied (Document 1 v0.2 §2.4).
         actual_retention: earned / possible,
       },
+      smeared: !entry, // uniform fallback (no per-topic breakdown) → smeared
+      fanout: exam.linked_topic_ids.length, // stamped now for a future 1/√N option
+      ...(assessment ? { assessment } : {}),
     };
 
     topic.error_log.push(...toErrorEntries(entry?.errors, exam.date, 'exam', exam.exam_id));

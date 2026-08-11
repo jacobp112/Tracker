@@ -1,0 +1,247 @@
+/* ── Memory / retention matrix ──────────────────────────────────────
+ * The "It tracks how well you know things" band's product recreation: an
+ * average-retention stat, health/delta chips, and per-topic bars with
+ * diagnostic badges. Scoped to .band.memory / .memory-* / .mock-matrix and its
+ * own descendants (.matrix-*, .chip*, .bar*, .badge, .cat-*, .col-*, .legend-*).
+ *
+ * .mock-matrix is used as the scoping root for everything inside the plate: it
+ * is this section's own class and it sits on the same element as .bars, so the
+ * animation hooks below stay short without reaching any other section. The
+ * shared names that MUST stay shared are left alone — .bars and .bar-fill are
+ * the contract with lib/animate.ts (attached read-only, unmodified) and with
+ * the reduced-motion rule in tokens.css.
+ *
+ * Chart rules this file is built around:
+ *   · every track is the same length, so fills are directly comparable. The
+ *     topic column and the diagnostic slot are both FIXED, so an optional badge
+ *     can never lengthen or shorten the track next to it;
+ *   · colour carries meaning only — dots run low→high on danger/warning/
+ *     success, fills are --accent, badges use the categorical --cat-* tokens,
+ *     and the threshold notch is neutral ink. Nothing here is decorative colour. */
+
+/* ── Section furniture ── */
+.band.memory .memory-masthead {
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.band.memory .memory-masthead::after {
+  content: '';
+  height: var(--wf-border-w);
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+.band.memory .memory-figure { margin: var(--space-11) 0 0; display: grid; gap: var(--space-6); }
+.band.memory .memory-figcaption {
+  font-size: var(--fs-caption); line-height: 1.5; color: var(--ink-muted);
+  padding-left: var(--space-2);
+}
+.band.memory .memory-figmark {
+  font-size: var(--fs-micro); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-secondary); margin-right: var(--space-3);
+}
+
+/* ── The plate ──────────────────────────────────────────────────────
+ * Flat Wispr surface: 2px ink border, oversized radius, no shadow — the same
+ * material as the hero's Overview mock. (Fill, radius and padding come from the
+ * shared .mock rule; only the ink edge is restated, because base.css's .mock
+ * has no border of its own.) */
+.mock-matrix {
+  --dot-size: var(--space-4);
+  /* The review threshold, in track percent. One variable so the notch on every
+   * track and the legend below can never disagree. */
+  --due-at: 60%;
+  border: var(--wf-border-w) solid var(--border-strong);
+  box-shadow: none;
+}
+
+/* ── Head: the stat, and the two summary chips ── */
+.mock-matrix .matrix-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--space-6); flex-wrap: wrap;
+  padding-bottom: var(--space-6); margin-bottom: var(--space-7);
+  border-bottom: 1px solid var(--border);
+}
+.mock-matrix .matrix-stat { display: flex; flex-direction: column; gap: var(--space-2); }
+/* Family, weight 400 and tracking come from the shared type layer. The old
+ * local `font-weight: 700` bolded the display serif — the one thing the system
+ * forbids outright — so it is gone and the size does the work instead. This is
+ * the second-largest number on the page after the hero's ring, which is what
+ * "average retention" deserves to be. */
+.mock-matrix .matrix-stat-num {
+  font-size: clamp(40px, 4.4vw, 60px); line-height: 1; color: var(--ink);
+}
+
+.mock-matrix .chips { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+/* Summary chips are pills; diagnostic badges below are 8px-radius tags. The
+ * shape difference is the hierarchy: one reads the whole course, the other
+ * annotates a single row. */
+.mock-matrix .chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--fs-caption); font-weight: 600;
+  padding: var(--space-2) var(--space-5); border-radius: var(--radius-pill);
+}
+.mock-matrix .chip-health { background: var(--accent-soft); color: var(--accent); }
+.mock-matrix .chip-delta.up { background: var(--success-soft); color: var(--success); }
+.mock-matrix .chip-sub { opacity: 0.7; }
+/* Inline SVG rather than ▲: the glyph is missing from Figtree and fell back to
+ * whatever the system had, at whatever size that face drew it. */
+.mock-matrix .chip-arrow { width: 8px; height: 8px; fill: currentColor; flex: none; }
+
+/* ── Column header ──────────────────────────────────────────────────
+ * Carries the same slot classes as a data row, so the labels and the tracks
+ * they describe are governed by one set of widths and cannot drift apart. */
+.mock-matrix .matrix-cols {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 0 var(--space-3) var(--space-4);
+  margin: 0 calc(var(--space-3) * -1);
+  border-bottom: 1px solid var(--border);
+}
+.mock-matrix .matrix-cols .matrix-topic,
+.mock-matrix .matrix-cols .matrix-diag,
+.mock-matrix .matrix-cols .col-track,
+.mock-matrix .matrix-cols .matrix-pct {
+  font-size: var(--fs-nano); font-weight: 700; color: var(--ink-muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.mock-matrix .matrix-cols .matrix-diag { justify-content: flex-end; }
+.mock-matrix .col-dot { flex: none; width: var(--dot-size); }
+
+/* ── Rows ── */
+.mock-matrix .matrix-rows { display: flex; flex-direction: column; }
+.mock-matrix .matrix-row {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5) var(--space-3);
+  margin-left: calc(var(--space-3) * -1); margin-right: calc(var(--space-3) * -1);
+  border-radius: var(--radius-md);
+  transition: background-color var(--dur-micro) var(--ease);
+}
+.mock-matrix .matrix-row + .matrix-row { border-top: 1px solid var(--border); }
+.mock-matrix .matrix-row:hover { background-color: var(--surface-sunken); }
+
+/* A fixed diagnostic slot (present even when empty) keeps every bar track
+ * identical, so the fills — which are percentages OF THE TRACK — stay
+ * comparable. Comparing topics is the whole job of this chart. */
+.mock-matrix .matrix-topic {
+  font-size: var(--fs-row); color: var(--ink);
+  flex: 0 1 260px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mock-matrix .matrix-diag { flex: 0 0 116px; display: flex; justify-content: flex-end; }
+.mock-matrix .matrix-pct {
+  font-size: var(--fs-row); color: var(--ink-secondary);
+  flex-shrink: 0; min-width: var(--space-11); text-align: right;
+}
+
+.mock-matrix .badge {
+  font-size: var(--fs-micro); font-weight: 600; padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-chip); white-space: nowrap;
+}
+.mock-matrix .cat-conceptual { color: var(--cat-conceptual); background: color-mix(in srgb, var(--cat-conceptual) 14%, transparent); }
+.mock-matrix .cat-procedural { color: var(--cat-procedural); background: color-mix(in srgb, var(--cat-procedural) 14%, transparent); }
+.mock-matrix .cat-knowledge { color: var(--cat-knowledge_gap); background: color-mix(in srgb, var(--cat-knowledge_gap) 14%, transparent); }
+
+/* ── Tracks ─────────────────────────────────────────────────────────
+ * ONE declaration governs the track's width and the header label above it, so
+ * the two cannot be changed independently. */
+.mock-matrix .bar,
+.mock-matrix .matrix-cols .col-track { flex: 1 1 auto; min-width: 40px; }
+.mock-matrix .bar {
+  position: relative;
+  height: var(--space-3); border-radius: var(--radius-pill); background: var(--track);
+}
+.mock-matrix .bar-fill { display: block; height: 100%; width: var(--w); background: var(--accent); border-radius: inherit; }
+/* The review threshold, drawn identically on every track — because the tracks
+ * are identical, the notches line up into a single column, and a row's status
+ * is readable as "left or right of the line" without reading its number. Ink,
+ * not a new hue; static, so it needs no animation fallback. */
+.mock-matrix .bar::after {
+  content: ''; position: absolute; left: var(--due-at);
+  top: calc(var(--space-1) * -1); bottom: calc(var(--space-1) * -1);
+  width: var(--wf-border-w); border-radius: var(--radius-pill);
+  background: var(--ink-muted);
+}
+
+/* ── Dots ───────────────────────────────────────────────────────────
+ * Defined here rather than inherited from the hero's file: the two sections
+ * are not allowed to depend on each other's stylesheets. */
+.mock-matrix .mock-dot {
+  width: var(--dot-size); height: var(--dot-size); border-radius: var(--radius-pill);
+  flex: none; background: var(--accent);
+}
+.mock-matrix .mock-dot.low { background: var(--danger); }
+.mock-matrix .mock-dot.mid { background: var(--warning); }
+.mock-matrix .mock-dot.high { background: var(--success); }
+
+/* ── Legend ── */
+.mock-matrix .matrix-legend {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: var(--space-6) 0 0; padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-micro); color: var(--ink-muted);
+}
+.mock-matrix .legend-key { display: inline-flex; align-items: center; gap: var(--space-3); }
+.mock-matrix .legend-note { color: var(--ink-muted); opacity: 0.85; }
+
+/* ── Scroll-in animation ────────────────────────────────────────────
+ * Data animates once on scroll-in through the SHARED engine (lib/animate.ts,
+ * unmodified): it adds .is-filled to #mock-matrix.bars, and everything below is
+ * CSS hanging off that one class. Bars fill on a composite-only transform, then
+ * the delta chip and diagnostic badges settle in.
+ *
+ * The per-row stagger is now a variable on the ROW rather than three copies of
+ * a transition-delay on .bar-fill, so the dot can land with its own bar without
+ * a second set of nth-child rules. No-JS shows the final chart via the base
+ * .bar-fill { width: var(--w) } rule above — every rule here is .js-gated. */
+.js .mock-matrix .matrix-row:nth-child(2) { --row-delay: var(--reveal-step); }
+.js .mock-matrix .matrix-row:nth-child(3) { --row-delay: calc(var(--reveal-step) * 2); }
+.js .mock-matrix .matrix-row:nth-child(4) { --row-delay: calc(var(--reveal-step) * 3); }
+
+.js .mock-matrix .bar-fill { transform: scaleX(0); transform-origin: left center; }
+.js .mock-matrix.is-filled .bar-fill {
+  transform: scaleX(1);
+  transition: transform var(--dur-data) var(--ease) var(--row-delay, 0ms);
+}
+.js .mock-matrix .mock-dot { transform: scale(0.4); }
+.js .mock-matrix.is-filled .mock-dot {
+  transform: none;
+  transition: transform var(--dur-standard) var(--spring) var(--row-delay, 0ms);
+}
+/* The legend's own dots are a key, not data — they never animate. */
+.js .mock-matrix .legend-key .mock-dot { transform: none; }
+
+.js .mock-matrix .chip-delta, .js .mock-matrix .badge { opacity: 0; transform: translateY(2px); }
+.js .mock-matrix.is-filled .chip-delta, .js .mock-matrix.is-filled .badge {
+  opacity: 1; transform: none;
+  transition: opacity var(--dur-standard) var(--ease) calc(var(--reveal-step) * 4),
+    transform var(--dur-standard) var(--ease) calc(var(--reveal-step) * 4);
+}
+
+/* tokens.css collapses transition-DURATION under reduced motion but not
+ * transition-DELAY — without this the bars sit blank through four steps then
+ * pop. Reduced motion snaps every element straight to its final state. */
+@media (prefers-reduced-motion: reduce) {
+  .js .mock-matrix .bar-fill { transform: scaleX(1); transition-delay: 0ms !important; }
+  .js .mock-matrix .mock-dot { transform: none; transition-delay: 0ms !important; }
+  .js .mock-matrix .chip-delta, .js .mock-matrix .badge {
+    opacity: 1; transform: none; transition-delay: 0ms !important;
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────
+ * Both breakpoints drop a whole COLUMN — header label and every row's cell
+ * together — so the remaining tracks stay equal to one another. */
+@media (max-width: 720px) {
+  /* Below this the fixed diagnostic slot costs more than the alignment buys. */
+  .mock-matrix .matrix-diag { display: none; }
+  .mock-matrix .matrix-topic { flex: 1 1 auto; }
+}
+@media (max-width: 560px) {
+  /* Bar and dot both encode retention, so the bar is the redundant channel to
+   * shed when the row runs out of width; the label and number survive. */
+  .mock-matrix .bar,
+  .mock-matrix .matrix-cols .col-track { display: none; }
+  .mock-matrix .matrix-legend .legend-note { display: none; }
+  .mock-matrix .matrix-stat-num { font-size: 40px; }
+}
