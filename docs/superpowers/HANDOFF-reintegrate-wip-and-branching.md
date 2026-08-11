@@ -2,16 +2,21 @@
 
 ---
 
-## ✅ REINTEGRATION COMPLETE (2026-08-11, session 2) — read this first
+## ✅ REINTEGRATION COMPLETE + COLD-CHECK WIRED (2026-08-11, session 2) — read this first
 
-Goals 1–4 below are **done, committed, and the full suite is green** on
-`feat/performance-metrics`. Three commits on top of `e74242d`:
+Goals 1–4 below are **done and committed**, plus the cold-assessment entry point
+(previously deferred) is now wired. Full suite green on `feat/performance-metrics`.
+**Five commits on top of `e74242d`:**
 
 - `3ac0ed1` feat(app) — stashed app UI redesign + Performance re-wire (src + tests, 32 files)
 - `b1e7b6b` feat(landing) — landing redesign WIP + brand assets (35 files)
 - `d74095e` docs — DATA-FLOW.md, start-session focus spec/plan, `.gitignore` scratch rule (4 files)
+- `7ed4051` docs(handoff) — this completion record
+- `6069f25` feat(ui) — cold-assessment entry point in the exam flow (AddFlow toggle + test)
 
-**Verification:** `npm run typecheck` green; `npm test` → **91 files pass / 1 skipped / 0 fail, 586 tests pass** (baseline was 561 pass / 18 fail). The 18 UI failures (app-smoke, CourseDashboard, TopicDetail) are resolved with no regressions; the read-side-only invariant, Performance, router, and AppShell tests all stay green.
+**Verification (as of `6069f25`):** `npm run typecheck` green; `npm test` → **92 files pass / 1 skipped / 0 fail, 588 tests pass** (baseline was 561 pass / 18 fail). The 18 UI failures (app-smoke, CourseDashboard, TopicDetail) are resolved with no regressions; the read-side-only invariant, Performance, router, and AppShell tests all stay green.
+
+**Cold-check wiring (`6069f25`):** `src/routes/AddFlow.tsx`'s **exam** kind now has an "Exam result" / "Cold check" toggle. Cold check swaps the copy-out prompt to `coldAssessmentPrompt(store)` and shows a run-it-cold explainer. Cold checks are reported as exams (`cold: true`) and reuse the existing exam ingest/commit pipeline unchanged — presentation only, engine untouched. Pinned by `tests/routes/AddFlow.test.tsx`.
 
 **One correction to the plan below (hazard 1 / hazard 3):** the reintegration was **not** a "pop + re-apply 4 lines" on the committed shell. The *intended* `src/shell/AppShell.tsx` is the **stash's** NAV-style shell (flat primary nav + `course-list` + segmented theme switch), which **replaces** the committed `d8db98c` TABS/`course-switch`/`sidebar-footer` shell. The stash's `AppShell.test.tsx` was updated to match it, so component+test are internally consistent and green. The Performance nav/route was re-applied *into the stash's NAV structure* (one `NAV` entry → renders in both sidebar and bottom tab bar; one route case in `App.tsx`). Reconciliation surface was only these 2 files (App.tsx, AppShell.tsx); the collision files `cairnMock.ts`/`Celebration.tsx` were byte-identical (mod CRLF) so nothing was lost.
 
@@ -21,11 +26,15 @@ Goals 1–4 below are **done, committed, and the full suite is green** on
 - `stash@{0}` is **retained** (fully superseded by the commits above; drop with `git stash drop stash@{0}`).
 - tag `pre-reintegration-backup` (@ `e74242d`) is **retained** (delete with `git tag -d pre-reintegration-backup`).
 
-**Still open (all deferred, none blocking):**
-- **Goal 5 — merge sequence to main.** Human chose **collapse into one integration branch**: `main` (3.0.0) → land the **3.1.0 engine rewrite first** → then merge this integration branch. NOT started (higher-risk; deferred for budget). Do NOT merge Performance to `main` ahead of the engine rewrite.
-- **Cold-assessment UI entry point** (`coldAssessmentPrompt` → a "start a cold check" action in AddFlow/AddExam) — not wired.
-- **Per-course Performance scope selector** — engine already scopes (`courseReviewEvents`); small additive UI win. `Performance.tsx` currently renders one global aggregate.
-- Calibration predict-first flow — **still a deliberate product decision, do NOT bolt on.** Trend charts, `presentMean` DRY nit — see below.
+**Still open (all deferred, none blocking) — suggested order for the next session:**
+1. **Goal 5 — merge sequence to main (the big one).** Human chose **collapse into one integration branch**: `main` (3.0.0) → land the **3.1.0 engine rewrite first** → then merge this integration branch. NOT started (higher-risk; deferred for budget). Do NOT merge Performance to `main` ahead of the engine rewrite. The 3.1.0 engine rewrite lives on `rewrite-baseline-and-leveling` (@ `4e03ed1`); trace its lineage vs `main` before sequencing. Propose the merge/rebase plan to the human before executing.
+2. **Per-course Performance scope selector** — engine already scopes (`courseReviewEvents` in `performance-view.ts`); small additive, read-only UI win on `Performance.tsx`, which currently renders one global aggregate across all courses. Safe to do on the current base.
+3. **Trend charts (7/30/lifetime)** — engine support exists (`metricTrend`); pure UI addition, YAGNI-deferred.
+4. `presentMean` DRY nit (shared by Cold/Health) and other logged minor style nits.
+
+**Do NOT build:** the calibration predict-first flow — a deliberate product decision (adds friction to every assessed item); needs a call with the study plan in view, not momentum. See "Pipeline reachability" below.
+
+**Done since the original handoff:** ✅ cold-assessment UI entry point (`6069f25`).
 
 ---
 
