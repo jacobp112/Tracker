@@ -28,6 +28,24 @@ function storeOfCourses(courses: Array<{ id: string; title: string; topics: Topi
   });
   return s;
 }
+function storeOfSections(sections: Array<{ id: string; title: string; topics: Topic[] }>): Store {
+  const s = emptyStore();
+  s.courses.push({ schema_version: '3.2.0', course_id: 'course_1', title: 'C',
+    created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+    sections: sections.map((sec, i) => ({ section_id: sec.id, title: sec.title, order: i, topics: sec.topics })) });
+  return s;
+}
+function storeOfCoursesWithSections(
+  courses: Array<{ id: string; title: string; sections: Array<{ id: string; title: string; topics: Topic[] }> }>
+): Store {
+  const s = emptyStore();
+  courses.forEach((c) => {
+    s.courses.push({ schema_version: '3.2.0', course_id: c.id, title: c.title,
+      created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+      sections: c.sections.map((sec, secIdx) => ({ section_id: sec.id, title: sec.title, order: secIdx, topics: sec.topics })) });
+  });
+  return s;
+}
 
 describe('Performance page', () => {
   it('shows an empty state when there is no assessment data', () => {
@@ -72,7 +90,7 @@ describe('Performance page', () => {
     // Scope to Beta (no assessment data) → the 100 is gone and a scoped empty message shows.
     await user.click(screen.getByRole('radio', { name: 'Beta' }));
     expect(screen.queryByText('100')).not.toBeInTheDocument();
-    expect(screen.getByText(/no performance data for this course yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no performance data for this selection yet/i)).toBeInTheDocument();
     // The scoped no-data branch must not render the Trends panel either.
     expect(screen.queryByRole('heading', { name: /^trends$/i })).not.toBeInTheDocument();
   });
@@ -159,5 +177,80 @@ describe('Performance trends panel', () => {
   it('does not render the Trends panel when there is no assessment data', () => {
     render(<Performance store={storeOf(topicWith('topic_a', [makeEvent(undefined)]))} />);
     expect(screen.queryByRole('heading', { name: /^trends$/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('Performance section scope', () => {
+  it('shows a section selector for a multi-section course and scopes to the chosen section', async () => {
+    const user = userEvent.setup();
+    // Intro section has 5 transfer obs (→ Transfer Ability 100); Advanced has none.
+    const intro = topicWith('topic_a', Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 })));
+    const advanced = topicWith('topic_b', [makeEvent(undefined)]);
+    render(<Performance store={storeOfSections([
+      { id: 'section_1', title: 'Intro', topics: [intro] },
+      { id: 'section_2', title: 'Advanced', topics: [advanced] },
+    ])} />);
+
+    // Sole course → section selector is visible immediately (Whole course + both sections).
+    expect(screen.getByRole('radio', { name: 'Whole course' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Intro' })).toBeInTheDocument();
+    // Whole course aggregates Intro's five transfer obs → 100 present.
+    expect(screen.getAllByText('100').length).toBeGreaterThan(0);
+
+    // Scope to Advanced (no data) → 100 gone, scoped-empty message shows.
+    await user.click(screen.getByRole('radio', { name: 'Advanced' }));
+    expect(screen.queryAllByText('100')).toHaveLength(0);
+    expect(screen.getByText(/no performance data for this selection yet/i)).toBeInTheDocument();
+
+    // Scope to Intro → 100 returns.
+    await user.click(screen.getByRole('radio', { name: 'Intro' }));
+    expect(screen.getAllByText('100').length).toBeGreaterThan(0);
+  });
+
+  it('shows no section selector for a single-section course', () => {
+    const events = Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 }));
+    render(<Performance store={storeOfSections([{ id: 'section_1', title: 'Only', topics: [topicWith('topic_a', events)] }])} />);
+    expect(screen.queryByRole('radio', { name: 'Whole course' })).not.toBeInTheDocument();
+  });
+
+  it('resets section scope to Whole course when the selected course changes', async () => {
+    const user = userEvent.setup();
+    // Two courses, each with two sections
+    const introTopic = topicWith('topic_intro', Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 })));
+    const advancedTopic = topicWith('topic_adv', [makeEvent(undefined)]);
+    const basicsTopic = topicWith('topic_basics', [makeEvent(undefined)]);
+    const deepTopic = topicWith('topic_deep', [makeEvent(undefined)]);
+
+    const store = storeOfCoursesWithSections([
+      {
+        id: 'course_a',
+        title: 'A',
+        sections: [
+          { id: 'section_a1', title: 'Intro', topics: [introTopic] },
+          { id: 'section_a2', title: 'Advanced', topics: [advancedTopic] },
+        ],
+      },
+      {
+        id: 'course_b',
+        title: 'B',
+        sections: [
+          { id: 'section_b1', title: 'Basics', topics: [basicsTopic] },
+          { id: 'section_b2', title: 'Deep', topics: [deepTopic] },
+        ],
+      },
+    ]);
+
+    render(<Performance store={store} />);
+
+    // Select course_a, then drill into its "Advanced" section.
+    await user.click(screen.getByRole('radio', { name: 'A' }));
+    await user.click(screen.getByRole('radio', { name: 'Advanced' }));
+    expect(screen.getByRole('radio', { name: 'Advanced' })).toHaveAttribute('aria-checked', 'true');
+
+    // Switch to course_b → section selector should revert to "Whole course" checked,
+    // and course_a's "Advanced" section option should no longer be present.
+    await user.click(screen.getByRole('radio', { name: 'B' }));
+    expect(screen.getByRole('radio', { name: 'Whole course' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('radio', { name: 'Advanced' })).not.toBeInTheDocument();
   });
 });

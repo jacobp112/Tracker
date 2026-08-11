@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { TopicDetail } from '@/routes/TopicDetail';
 import { CONFIG } from '@/config/constants';
 import type { Topic } from '@/domain/types';
+import { makeEvent } from '../engine/assessment-fixtures';
+import type { ReviewEvent } from '@/domain/types';
 
 const NOW = new Date('2026-07-20T12:00:00Z');
 
@@ -34,5 +36,34 @@ describe('TopicDetail — drawer', () => {
     expect(
       screen.getByText(new RegExp(`Level ${CONFIG.LEVEL.HEALTH_BANDS.length}`)),
     ).toBeInTheDocument();
+  });
+});
+
+function assessedTopic(events: ReviewEvent[]): Topic {
+  return { ...masteredTopic(), topic_id: 't2', title: 'Recursion', review_history: events };
+}
+
+describe('TopicDetail — assessment diagnostics', () => {
+  it('shows the diagnostics card with raw values for an assessed topic', () => {
+    const events = [
+      makeEvent({ independence: 3, difficulty: 4, novelty: 3, transfer_level: 3, performance_quality: 4 }, { test: { score: 10, out_of: 10 } }),
+      makeEvent({ independence: 3, difficulty: 5, novelty: 4, transfer_level: 3, performance_quality: 4 }, { test: { score: 8, out_of: 10 } }),
+    ];
+    render(
+      <TopicDetail topic={assessedTopic(events)} sectionTitle="Core"
+        onClose={() => {}} onResolveError={() => {}} onPromote={() => {}} onQuickReview={() => {}} now={NOW} />,
+    );
+    expect(screen.getByText(/assessment diagnostics/i)).toBeInTheDocument();
+    expect(screen.getByText(/n=2/i)).toBeInTheDocument();          // independent accuracy row
+    expect(screen.getByText(/transfer/i)).toBeInTheDocument();     // transfer/quality row
+  });
+
+  it('omits the diagnostics card for a topic with no assessment data', () => {
+    // masteredTopic()'s single event has a `test` block but no `assessment`.
+    render(
+      <TopicDetail topic={masteredTopic()} sectionTitle="Core"
+        onClose={() => {}} onResolveError={() => {}} onPromote={() => {}} onQuickReview={() => {}} now={NOW} />,
+    );
+    expect(screen.queryByText(/assessment diagnostics/i)).not.toBeInTheDocument();
   });
 });
