@@ -38,6 +38,17 @@ export function courseReviewEvents(store: Store, courseId: string): ReviewEvent[
   return course.sections.flatMap((s) => s.topics.flatMap((t) => t.review_history));
 }
 
+/** Every review event within one section of one course (empty if either id
+ *  doesn't resolve). Scoped by BOTH ids: section_ids are not guaranteed unique
+ *  across courses (tutor/manual JSON), so the section is resolved within its
+ *  course, mirroring courseReviewEvents one level deeper. */
+export function sectionReviewEvents(store: Store, courseId: string, sectionId: string): ReviewEvent[] {
+  const course = store.courses.find((c) => c.course_id === courseId);
+  const section = course?.sections.find((s) => s.section_id === sectionId);
+  if (!section) return [];
+  return section.topics.flatMap((t) => t.review_history);
+}
+
 export interface PerformanceSummary {
   performanceHealth: number | null;
   cold: ColdPerformance | null;

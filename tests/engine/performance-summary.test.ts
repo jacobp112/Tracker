@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allReviewEvents, courseReviewEvents, performanceSummary } from '@/engine/performance-view';
+import { allReviewEvents, courseReviewEvents, sectionReviewEvents, performanceSummary } from '@/engine/performance-view';
 import { emptyStore, type Store, type Topic, type ReviewEvent } from '@/domain/types';
 import { makeEvent } from './assessment-fixtures';
 
@@ -21,8 +21,21 @@ function storeOf(...topics: Topic[]): Store {
   return s;
 }
 
+function storeOfSections(): Store {
+  const s = emptyStore();
+  s.courses.push({
+    schema_version: '3.2.0', course_id: 'course_1', title: 'C',
+    created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+    sections: [
+      { section_id: 'section_1', title: 'Intro', order: 0, topics: [topicWith('topic_a', [makeEvent({ difficulty: 1 })])] },
+      { section_id: 'section_2', title: 'Advanced', order: 1, topics: [topicWith('topic_b', [makeEvent({ difficulty: 2 }), makeEvent({ difficulty: 3 })])] },
+    ],
+  });
+  return s;
+}
+
 describe('event flattening', () => {
-  it('allReviewEvents flattens every topic’s history across courses', () => {
+  it('allReviewEvents flattens every topic history across courses', () => {
     const store = storeOf(topicWith('topic_a', [makeEvent({ difficulty: 1 })]), topicWith('topic_b', [makeEvent({ difficulty: 2 }), makeEvent({ difficulty: 3 })]));
     expect(allReviewEvents(store)).toHaveLength(3);
   });
@@ -30,6 +43,16 @@ describe('event flattening', () => {
     const store = storeOf(topicWith('topic_a', [makeEvent({ difficulty: 1 })]));
     expect(courseReviewEvents(store, 'course_1')).toHaveLength(1);
     expect(courseReviewEvents(store, 'course_missing')).toEqual([]);
+  });
+  it('sectionReviewEvents scopes to one section within its course', () => {
+    const store = storeOfSections();
+    expect(sectionReviewEvents(store, 'course_1', 'section_1')).toHaveLength(1);
+    expect(sectionReviewEvents(store, 'course_1', 'section_2')).toHaveLength(2);
+  });
+  it('sectionReviewEvents is empty for an unknown course or section id', () => {
+    const store = storeOfSections();
+    expect(sectionReviewEvents(store, 'course_missing', 'section_1')).toEqual([]);
+    expect(sectionReviewEvents(store, 'course_1', 'section_missing')).toEqual([]);
   });
 });
 
