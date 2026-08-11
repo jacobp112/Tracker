@@ -86,6 +86,20 @@ const REVIEW_EVENT: SchemaObject = {
     fanout: { type: 'integer', minimum: 1 },
     notes: { type: 'string', maxLength: 500 },
     assessment: ASSESSMENT_EVIDENCE,
+    // Phase 1 (design §4/§H, §B). Optional/additive; a store or bundle that has
+    // decomposed assessment evidence must re-validate. additionalProperties:false
+    // still rejects anything hallucinated.
+    provenance: { type: 'string', enum: ['past_paper', 'ai_generated', 'diagnostic', 'custom'] },
+    assessment_ref: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['assessment_id'],
+      properties: {
+        assessment_id: { type: 'string' },
+        attempt_id: { type: 'string' },
+        question_id: { type: 'string' },
+      },
+    },
   },
   // Document 1 v0.2 §2.4: `test` is required when kind is a test, forbidden otherwise.
   allOf: [
@@ -110,6 +124,10 @@ const ERROR_LOG_ENTRY: SchemaObject = {
     description: { type: 'string', maxLength: 500 },
     resolved: { type: 'boolean' },
     resolved_date: { anyOf: [ISO_DATETIME, { type: 'null' }] },
+    // Phase 1 (design §I.1/§I.3). Optional/additive; app-owned recurrence link and
+    // intrinsic severity. `pattern_` prefix mirrors the other id patterns.
+    pattern_id: ID_PATTERN('pattern'),
+    severity: { type: 'string', enum: ['low', 'medium', 'high'] },
   },
 };
 

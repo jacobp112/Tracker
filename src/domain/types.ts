@@ -6,7 +6,7 @@
  * layer, so these types use the storage names verbatim.
  */
 
-export const SCHEMA_VERSION = '3.2.0';
+export const SCHEMA_VERSION = '3.3.0';
 
 /** Document 2 §7 ladder. Stored snake_case; Document 3 owns the display labels. */
 export type TopicStatus = 'not_started' | 'learning' | 'practising' | 'mastered';
@@ -18,6 +18,21 @@ export type ReviewKind = 'study_review' | 'test_pass' | 'test_fail';
 export type ReviewSource = 'session' | 'exam' | 'manual_review';
 
 export type ErrorType = 'conceptual' | 'procedural' | 'careless' | 'knowledge_gap';
+
+/**
+ * Assessment provenance (design §4/§H). A *component* of an event's evidence tier,
+ * combined with sitting conditions — never an arbitrary multiplier. Optional and
+ * additive on `ReviewEvent`; legacy events have none. Populated by the assessment
+ * decomposition path (later phases), not emitted by the course/session/exam AI.
+ */
+export type AssessmentProvenance = 'past_paper' | 'ai_generated' | 'diagnostic' | 'custom';
+
+/**
+ * Intrinsic error severity (design §I.3) — the *slow-moving damage* of an error,
+ * distinct from urgency (when to act, derived live in Phase 2). AI-proposed,
+ * app-stored, learner-editable. Three levels; urgency adds CRITICAL on top.
+ */
+export type ErrorSeverity = 'low' | 'medium' | 'high';
 
 /** Confidence is 1–5 (Document 1 v0.2 §1.3a) — never a percentage. */
 export type Confidence = 1 | 2 | 3 | 4 | 5;
@@ -107,6 +122,23 @@ export interface ReviewEvent {
    * never feeds retention/health/levels (§A read-side-only invariant).
    */
   assessment?: AssessmentEvidence;
+  /**
+   * Provenance of the assessment that produced this event (design §4/§H).
+   * Optional/additive; absent on study reviews and legacy events. A component of
+   * `evidenceTier`, never a multiplier on retention/health.
+   */
+  provenance?: AssessmentProvenance;
+  /**
+   * Back-link to the question-level assessment that produced this event (design
+   * §B). Present only for events decomposed from an AssessmentAttempt (later
+   * phases); lets "which question produced this evidence" be answered without
+   * duplicating marks. Never invented for legacy exam/session events.
+   */
+  assessment_ref?: {
+    assessment_id: string;
+    attempt_id?: string;
+    question_id?: string;
+  };
 }
 
 export interface ErrorLogEntry {
@@ -115,9 +147,46 @@ export interface ErrorLogEntry {
   source: 'session' | 'exam';
   source_id: string;
   error_type: ErrorType;
+  /** Natural-language description of THIS occurrence — explanatory evidence only.
+   *  It is NOT the pattern's identity; recurrence is keyed on the semantic
+   *  `ErrorPattern.signature`, never on this prose (design §I.1). */
   description: string;
   resolved: boolean;
   resolved_date: string | null;
+  /**
+   * The recurrence pattern this occurrence belongs to (design §I.1). Optional and
+   * additive — legacy occurrences have none and are NEVER auto-clustered (never
+   * invent recurrence, §24). App-owned; assigned by the Phase 2 matcher.
+   */
+  pattern_id?: string;
+  /** Intrinsic severity of this occurrence (design §I.3). AI-proposed, editable. */
+  severity?: ErrorSeverity;
+}
+
+/**
+ * Recurrence identity for errors (design §I.1). One `ErrorPattern` groups the
+ * occurrences (`ErrorLogEntry`s, across topics) of the *same underlying mistake*.
+ *
+ * `signature` is a NORMALISED SEMANTIC KEY for the error mechanism — the app's
+ * canonical identity for "this kind of mistake" — NOT the AI's natural-language
+ * description (that stays on each `ErrorLogEntry.description` as explanatory
+ * evidence). The tutor may PROPOSE a structured signature; the application owns
+ * the resulting `pattern_id`, and matching considers semantic signature + topic/
+ * context rather than exact string equality (Phase 2). The lifecycle STATUS is
+ * derived live (Phase 2), not stored here, so it can never go stale.
+ */
+export interface ErrorPattern {
+  pattern_id: string;
+  /** Normalised semantic mechanism key — canonical identity, not prose. */
+  signature: string;
+  error_type: ErrorType;
+  /** Topics this pattern has shown up on (a pattern can span topics). */
+  topic_ids: string[];
+  severity: ErrorSeverity;
+  /** `error_id`s of the occurrences that belong to this pattern. */
+  occurrence_ids: string[];
+  first_seen: string;
+  last_seen: string;
 }
 
 export interface Topic {
@@ -237,6 +306,13 @@ export interface Store {
   courses: Course[];
   exams: Exam[];
   sessions: SessionRecord[];
+  /**
+   * Error recurrence patterns (design §I.1). Small, localStorage-resident. The
+   * grouping identity + attributes only — occurrences stay in each topic's
+   * `error_log`; the lifecycle status is derived live (Phase 2). Additive: absent
+   * in ≤3.2.0 stores, defaulted to [] on load.
+   */
+  error_patterns: ErrorPattern[];
 }
 
 export function emptyStore(): Store {
@@ -245,6 +321,7 @@ export function emptyStore(): Store {
     courses: [],
     exams: [],
     sessions: [],
+    error_patterns: [],
   };
 }
 

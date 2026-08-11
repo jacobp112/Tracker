@@ -114,6 +114,11 @@ export function importBundle(input: string): ImportResult {
     else errors.push(...prefix(`Exam "${exam.title ?? exam.exam_id}"`, errs));
   }
 
+  // Error patterns are app-owned domain objects (no ingestion schema); restore
+  // them verbatim so the round-trip is identity-preserving (E8-S1). Absent in
+  // ≤3.2.0 bundles → [].
+  draft.error_patterns = Array.isArray(src.error_patterns) ? src.error_patterns : [];
+
   if (errors.length > 0) return { ok: false, errors };
 
   // Import must run the same v3.1.0 migration as the load path (design §4): a

@@ -31,6 +31,36 @@ export function independenceTier(e: ReviewEvent): IndependenceTier | undefined {
   return 'assisted'; // 0 | 1
 }
 
+/**
+ * Evidence tier for a single event, 0–6 (design §H). The evidence hierarchy that
+ * downstream engines GATE on (readiness certification, verified error resolution)
+ * — never a multiplier on retention/health. Independence is THE gate for the
+ * certifying tiers (≥4): an attempt with no independence rating can never reach
+ * them, and `smeared` collapses everything to 0 (provenance-unverifiable). `cold`
+ * and `provenance` only elevate an already-independent attempt; they never lift
+ * one that carries no independence signal.
+ *
+ * NOTE: the top tier (6) also implies timed/closed-book sitting conditions in the
+ * full model; those live on the AssessmentAttempt (later phases), so until an
+ * attempt exists this reads past-paper + cold + independent as the gold benchmark.
+ */
+export function evidenceTier(e: ReviewEvent): number {
+  if (e.smeared === true) return 0;
+  const i = e.assessment?.independence;
+  const cold = e.assessment?.cold === true;
+  if (i === 3) {
+    if (cold && e.provenance === 'past_paper') return 6;
+    if (cold) return 5;
+    return 4;
+  }
+  if (i === 2) return 3;
+  if (i === 0 || i === 1) return 2;
+  // No independence signal — cannot certify independence. A real test outcome
+  // floors at 2 (unverifiable assistance); a bare study review at 1.
+  if (e.kind === 'test_pass' || e.kind === 'test_fail') return 2;
+  return 1;
+}
+
 /** Arithmetic mean, or null for an empty set (never a false zero). */
 export function mean(xs: number[]): number | null {
   return xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length;

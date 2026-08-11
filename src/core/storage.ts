@@ -60,6 +60,11 @@ function migrate(parsed: unknown): Store {
     courses: Array.isArray(p.courses) ? (p.courses as Store['courses']) : [],
     exams: Array.isArray(p.exams) ? (p.exams as Store['exams']) : [],
     sessions: [] as SessionRecord[],
+    // Additive (v3.3.0): legacy stores predate error-recurrence patterns. Absent →
+    // []; never fabricated from old occurrences (never invent recurrence, §24).
+    error_patterns: Array.isArray((p as { error_patterns?: unknown }).error_patterns)
+      ? (p.error_patterns as Store['error_patterns'])
+      : [],
   };
 
   // Additive migration: legacy stores predate per-session durations.
