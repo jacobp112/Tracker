@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { topicDiagnostics } from '@/engine/performance-view';
+import { transferAbility, performanceQuality } from '@/engine/performance';
 import { makeEvent } from './assessment-fixtures';
 
 describe('topicDiagnostics — raw, unguarded per-topic view', () => {
@@ -17,6 +18,11 @@ describe('topicDiagnostics — raw, unguarded per-topic view', () => {
     expect(d.avgQuality).toBeCloseTo(80);           // quality 4/5 → 80
     expect(d.difficulty.length).toBeGreaterThan(0); // independent-only spread present
     expect(d.novelty.length).toBeGreaterThan(0);
+
+    // The guarded composites return null for this same 2-event input — the raw
+    // diagnostics above deliberately bypass that min-N gate.
+    expect(transferAbility(events)).toBeNull();
+    expect(performanceQuality(events)).toBeNull();
   });
 
   it('returns honest zeros/nulls/empties when there is no assessment data', () => {
