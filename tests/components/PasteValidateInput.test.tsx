@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PasteValidateInput } from '@/components/PasteValidateInput';
-import { COURSE_PROMPT } from '@/domain/prompts';
+import { coursePrompt } from '@/domain/prompts';
 import { emptyStore } from '@/domain/types';
 
 const VALID_COURSE = JSON.stringify({
@@ -40,7 +40,7 @@ function setup(onCommit = vi.fn()) {
     <PasteValidateInput
       schemaName="course"
       store={emptyStore()}
-      prompt={COURSE_PROMPT}
+      prompt={coursePrompt(emptyStore())}
       confirmLabel="Add course"
       onCommit={onCommit}
     />,

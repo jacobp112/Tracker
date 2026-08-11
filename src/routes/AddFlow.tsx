@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { useToast, type ToastAction } from '@/components/feedback';
 import { detectSchema } from '@/core/detect';
 import { COMMIT_VERB, ingest, SCHEMA_LABEL, type Preview } from '@/core/pipeline';
-import { coldAssessmentPrompt, COURSE_PROMPT, examPrompt, sessionPrompt } from '@/domain/prompts';
+import { coldAssessmentPrompt, coursePrompt, examPrompt, sessionPrompt } from '@/domain/prompts';
 import { courseTopics } from '@/engine/course';
 import type { SchemaName } from '@/domain/schemas';
 import type { Course, Store } from '@/domain/types';
@@ -84,15 +84,15 @@ export function AddFlow({
 
   const promptFor = (): string => {
     if (promptOverride) return promptOverride;
-    if (kind === 'course') return COURSE_PROMPT;
+    if (kind === 'course') return coursePrompt(store);
     if (kind === 'exam') return examCold ? coldAssessmentPrompt(store) : examPrompt(store);
     if (kind === 'session') {
       const course = store.courses.find((c) => c.course_id === courseId) ?? store.courses[0];
-      if (!course) return COURSE_PROMPT;
+      if (!course) return coursePrompt(store);
       const topics = courseTopics(course).map((r) => ({ topic_id: r.topic.topic_id, title: r.topic.title }));
       return sessionPrompt(course.course_id, topics);
     }
-    return COURSE_PROMPT;
+    return coursePrompt(store);
   };
 
   const copyPrompt = () => {

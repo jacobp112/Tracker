@@ -29,7 +29,15 @@ const ASSESSMENT_RUBRIC = `an OPTIONAL object rating HOW the attempt went, beyon
     - quality_rationale: one short sentence justifying performance_quality. Optional.
   Do NOT include any prediction field — a judgement made after seeing the outcome is not a prediction. Omit the whole assessment object for a topic you cannot judge this way.`;
 
-export const COURSE_PROMPT = `You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields.
+export function coursePrompt(store: Store): string {
+  const existing = allTopics(store)
+    .map(({ topic, course }) => `${topic.topic_id} → ${topic.title} (${course.title})`)
+    .join('\n');
+  const crossCourseBlock = existing
+    ? `\n\nEXISTING topics already in the tracker — you MAY cite any of these topic_ids as a prerequisite when this new course genuinely builds on that already-tracked material. Do NOT redefine them; only reference their ids.\n${existing}`
+    : '';
+
+  return `You are converting a course syllabus into a structured JSON object for a study tracker. Output only valid JSON matching this exact schema — no markdown fences, no commentary, no extra fields.
 
 Schema (v3.2.0):
 - Root: {schema_version, course_id, title, created_at, source, sections[]}
@@ -47,11 +55,12 @@ Schema (v3.2.0):
   - cards: always 0.
   - last_reviewed: always null.
   - drift_history, review_history, error_log: always empty arrays [].
-  - prerequisites: OPTIONAL array of topic_id values FROM THIS COURSE that this topic depends on — the upstream concepts to master first. Use [] or omit if none. Only reference topic_ids you define in this same course. This lets the tracker trace whether errors in a topic stem from shaky foundations upstream.
+  - prerequisites: OPTIONAL array of topic_id values this topic depends on — the upstream concepts to master first. Reference topic_ids you define in THIS course, and/or any id from the EXISTING topics listed below when this course builds on already-tracked material. Use [] or omit if none. This lets the tracker trace whether errors in a topic stem from shaky foundations upstream.
 
-Break the syllabus into sections matching its natural structure (chapters/weeks/units), and topics matching individual concepts/skills within each section — granular enough that a topic represents something masterable in a single study session, not an entire chapter. Where the syllabus implies a dependency (B builds on A), record it in B's prerequisites.
+Break the syllabus into sections matching its natural structure (chapters/weeks/units), and topics matching individual concepts/skills within each section — granular enough that a topic represents something masterable in a single study session, not an entire chapter. Where the syllabus implies a dependency (B builds on A), record it in B's prerequisites — including when A is an already-tracked topic listed below.${crossCourseBlock}
 
 Here is the syllabus: [PASTE SYLLABUS HERE]`;
+}
 
 /** Document 4 §3.1 — the app injects the active course id and topic list. */
 export function sessionPrompt(courseId: string, topics: Array<{ topic_id: string; title: string }>): string {
