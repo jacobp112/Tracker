@@ -18,6 +18,15 @@ of UI work; a botched pop is expensive.
 - **The stash:** `stash@{0}` — labelled *"wispr-flow landing WIP + floating docs, base d8db98c"* — **90 files, +15022 / −1865**. This is the unfinished UI redesign (landing + app) plus assorted untracked docs. It originally belonged to branch `redesign/wispr-flow-landing`.
 - **Why "the UI changed" (beyond the Performance page):** the working tree is the committed mid-refactor base `d8db98c` — already the "Cairn / Wispr Flow" cream-broadsheet redesign (`src/theme/cairnMock.ts` + `getCairnTheme`). The *further* in-progress UI refinements live in the stash, not the tree. Popping the stash restores them.
 
+## Pipeline reachability — what actually feeds the Performance layer
+
+Nothing here is broken; this is a **scope boundary** that was invisible until the pipeline was traced end to end. Status as of `74cf0b2`:
+
+- **Schema / merge / engine / UI: correct and tested.** The tracker stores, derives, and renders assessment data; the read-side-only invariant is proven byte-for-byte (Phase 6).
+- **Prompts: now updated to feed it.** `src/domain/prompts.ts` was the file nobody touched for six phases — the copy-out prompts never asked the tutor for the assessment fields the schema accepts, so the layer shipped **inert**. It is now fixed: `sessionPrompt`/`examPrompt` carry the shared `ASSESSMENT_RUBRIC`, the exam prompt has exam-level `cold`, the course prompt asks for `prerequisites`, and there is a new `coldAssessmentPrompt`. A seam test (`tests/domain/prompts.test.ts`) now pins prompts↔schema lockstep so this can't silently regress again.
+- **Calibration: structurally not-yet-feedable — a deliberate future product decision, NOT a defect.** The strict foresight rule (a prediction must precede the outcome) can't be satisfied by the current single-paste-at-session-end flow — any `predicted_success` in that JSON is hindsight, which calibration correctly discards. The retrospective dimensions (difficulty/novelty/independence/transfer/quality/cold) are fine to emit at session end; a genuine *prediction* needs a **predict-first interaction step** the app doesn't have. The prompts therefore deliberately **omit** prediction fields. Do NOT bolt on a predict-first flow to "finish" this — it changes the shape of every study session (friction on every assessed item for one metric) and deserves a deliberate call with the study plan in view. Leave calibration unpopulated and flagged; the metric, its tests, and its honesty rule are all correct and ready for whenever that flow is designed.
+- **Cold-assessment UI entry point: not wired.** `coldAssessmentPrompt` exists and is schema-correct, but nothing surfaces it (a "start a cold check" action). Wiring it belongs with the UI reintegration — `AddFlow`/`AddExam` are in the stash zone.
+
 ## Branch lineage (the ordering is load-bearing)
 
 ```
@@ -73,5 +82,8 @@ Then propose a **reintegration + merge-sequence plan** to the human before poppi
 
 ## Deliberately-deferred items (not bugs — pick up if in scope)
 
+- **Per-course / per-section / per-topic Performance scoping.** The dashboard currently renders one **global** aggregate across all courses — a single number across three subjects isn't decision-useful. The engine already scopes per-course (`courseReviewEvents` in `performance-view.ts`); a course scope selector on `Performance.tsx` is a small, safe, additive fix (do it against the current base). Per-topic performance belongs in the redesigned `TopicDetail` drawer (stash zone), and note the min-data guards mean topic-level composites will often read "—" until a topic accrues ≥5 assessed attempts — surface raw per-topic diagnostics (difficulty/novelty spread, independent accuracy) there rather than the full composite. A `sectionReviewEvents` helper is a trivial add for section granularity.
+- **Calibration predict-first flow** — see "Pipeline reachability" above. A real product decision, not a task to complete under momentum.
+- **Cold-assessment UI entry point** — `coldAssessmentPrompt` exists; wire a "start a cold check" action during the UI reintegration.
 - The Performance dashboard's **7 / 30 / lifetime trend charts** — the engine support exists (`metricTrend` in `src/engine/performance-view.ts`), the UI was deferred (YAGNI). Pure UI addition when wanted.
 - A few logged **deferred-minor style nits** (e.g. a `presentMean` DRY extraction shared by Cold/Health) noted during Phase 3/5 reviews.
