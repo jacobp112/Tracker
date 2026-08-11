@@ -54,6 +54,22 @@ describe('event flattening', () => {
     expect(sectionReviewEvents(store, 'course_missing', 'section_1')).toEqual([]);
     expect(sectionReviewEvents(store, 'course_1', 'section_missing')).toEqual([]);
   });
+  it('resolves the section within its own course when a section_id collides across courses', () => {
+    const s = emptyStore();
+    s.courses.push({
+      schema_version: '3.2.0', course_id: 'course_a', title: 'A',
+      created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+      sections: [{ section_id: 'section_1', title: 'A-Intro', order: 0, topics: [topicWith('topic_a', [makeEvent({ difficulty: 1 })])] }],
+    });
+    s.courses.push({
+      schema_version: '3.2.0', course_id: 'course_b', title: 'B',
+      created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+      sections: [{ section_id: 'section_1', title: 'B-Intro', order: 0, topics: [topicWith('topic_b', [makeEvent({ difficulty: 2 }), makeEvent({ difficulty: 3 })])] }],
+    });
+    // Same section_id in both courses; each query must return only its own course's events.
+    expect(sectionReviewEvents(s, 'course_a', 'section_1')).toHaveLength(1);
+    expect(sectionReviewEvents(s, 'course_b', 'section_1')).toHaveLength(2);
+  });
 });
 
 describe('performanceSummary', () => {
