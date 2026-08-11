@@ -16,9 +16,11 @@ import './styles/dashboard.css';
 import './styles/overview.css';
 import './styles/ingest.css';
 import './styles/exams.css';
-/* Wispr Flow app reskin — LAST, so its flat-with-borders component overrides
- * win the cascade over the stylesheets above. */
+/* Wispr Flow app reskin — its flat-with-borders component overrides win the
+ * cascade over the stylesheets above. */
 import './styles/wispr-app.css';
+/* Cairn mockup animations + micro-interactions (data-* scoped) — LAST. */
+import './styles/cairn-mock.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element #root not found');

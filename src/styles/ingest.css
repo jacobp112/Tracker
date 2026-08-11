@@ -37,7 +37,7 @@
   min-height: 180px;
   resize: vertical;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: var(--wf-border-w) solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: var(--space-6);
   font-family: var(--font-mono);

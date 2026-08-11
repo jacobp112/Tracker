@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSessionContext, startSessionPrompt } from '@/engine/session';
+import { buildSessionContext, sessionWrapUpPrompt, startSessionPrompt } from '@/engine/session';
 import type { Course, Section, Topic } from '@/domain/types';
 
 const NOW = new Date('2026-08-07T12:00:00Z');
@@ -12,13 +12,12 @@ const sec: Section = { section_id: 's', title: 'Elasticity', order: 0, topics: [
 const course: Course = { schema_version: '2.0.0', course_id: 'c', title: 'Micro', created_at: '', source: 'ai_generated', sections: [sec] };
 const build = (intent: any, scope: any) => startSessionPrompt(buildSessionContext(course, sec, focal, intent, scope, NOW), intent, scope);
 
-describe('startSessionPrompt', () => {
-  it('clean_slate omits learner + errors blocks but keeps topic + OUTPUT', () => {
+describe('startSessionPrompt (opening briefing)', () => {
+  it('clean_slate omits learner + errors blocks but keeps the topic', () => {
     const p = build('new_content', 'clean_slate');
     expect(p).toContain('Elasticity');
     expect(p).not.toContain('UNRESOLVED ERRORS');
     expect(p).not.toContain('LEARNER');
-    expect(p).toContain('OUTPUT');
   });
   it('topic scope includes learner + unresolved errors', () => {
     const p = build('remediate', 'topic');
@@ -26,22 +25,56 @@ describe('startSessionPrompt', () => {
     expect(p).toContain('UNRESOLVED ERRORS');
     expect(p).toContain('confuses elastic/inelastic');
   });
-  it('OUTPUT always tells the AI not to estimate time and to set duration_minutes to 0', () => {
+  it('kicks off a live tutoring session and explicitly defers the JSON', () => {
     const p = build('retention', 'topic');
-    expect(p).toMatch(/duration_minutes.*0/);
-    expect(p.toLowerCase()).toMatch(/app records the time|do not estimate/);
+    expect(p).toContain('BEGIN');
+    // It must tell the model to start tutoring, not to emit a log.
+    expect(p.toLowerCase()).toMatch(/tutor|teach|start the session/);
+    expect(p.toLowerCase()).toContain('do not output');
   });
-  it('the OUTPUT block itself (not just AVOID) pins the timekeeper instruction', () => {
+  it('carries NO session-log schema — that is what made the AI dump JSON immediately', () => {
     const p = build('retention', 'topic');
-    const output = p.slice(p.indexOf('OUTPUT'));
-    // This must live in the OUTPUT section specifically — the AVOID block's
-    // NO_TIME line is a separate, deletable instruction that must not be the
-    // only place this constraint is asserted (C1: an AI that skips it emits
-    // duration_minutes > 0, which used to fail Ajv validation).
-    expect(output).toContain('the app records the real time');
-    expect(output).toMatch(/duration_minutes["\s]*:\s*0/);
+    expect(p).not.toContain('duration_minutes');
+    expect(p).not.toContain('topics_covered');
+    expect(p).not.toContain('schema_version');
+    expect(p).not.toContain('OUTPUT');
   });
   it('intent drives INSTRUCTIONS + AVOID copy', () => {
     expect(build('remediate', 'topic')).toContain('Do not move on until each error is corrected.');
+  });
+  it('remediate ALWAYS carries the unresolved errors, even under clean_slate scope', () => {
+    // remediate is defined by the error log; without the errors its instruction
+    // ("Focus entirely on the unresolved errors…") references nothing. It must
+    // override the scope and keep the errors block.
+    const p = build('remediate', 'clean_slate');
+    expect(p).toContain('UNRESOLVED ERRORS');
+    expect(p).toContain('confuses elastic/inelastic');
+    expect(p).toContain('listed above'); // errors render before INSTRUCTIONS
+  });
+});
+
+describe('sessionWrapUpPrompt (import step)', () => {
+  const topics = [{ topic_id: 'f', title: 'Elasticity' }, { topic_id: 'g', title: 'Supply' }];
+  it('requests the session-log JSON with the real course id and topic ids', () => {
+    const p = sessionWrapUpPrompt('course_micro', topics);
+    expect(p).toContain('course_micro');
+    expect(p).toContain('schema_version');
+    expect(p).toContain('topics_covered');
+    expect(p).toContain('f → Elasticity');
+    expect(p).toContain('g → Supply');
+    expect(p.toLowerCase()).toContain('output only');
+  });
+  it('pins the timekeeper instruction: duration_minutes 0 + app records the real time', () => {
+    const p = sessionWrapUpPrompt('c', topics);
+    // C1: the app is the only timekeeper. The wrap-up must instruct 0 so the
+    // pasted log validates (schema allows 0) and the app overwrites with the
+    // measured minutes on commit.
+    expect(p).toMatch(/duration_minutes["\s]*:\s*0/);
+    expect(p).toContain('the app records the real time');
+  });
+  it('states confidence is 1-5, not a percentage', () => {
+    const p = sessionWrapUpPrompt('c', topics);
+    expect(p.toLowerCase()).toMatch(/1-5|1–5/);
+    expect(p.toLowerCase()).toContain('not a percentage');
   });
 });

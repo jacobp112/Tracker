@@ -121,14 +121,24 @@ export function Overview({
     return null; // roughly flat — holding steady, no badge
   })();
 
-  // streak calendar — last 28 days
-  const streakCells = Array.from({ length: 28 }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - (27 - i));
-    const c = counts.get(toLocalDateKey(d)) ?? 0;
-    const v = c === 0 ? 0 : Math.min(3, c);
-    return { date: d.getDate(), v };
-  });
+  // streak calendar — the current calendar month, laid out like a wall calendar
+  // (Sun–Sat columns, blanks before the 1st) so days sit under their real
+  // weekday and read in order.
+  const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const monthCells: Array<{ day: number | null; v: number; isToday: boolean }> = (() => {
+    const y = now.getFullYear();
+    const mo = now.getMonth();
+    const lead = new Date(y, mo, 1).getDay(); // 0 = Sunday
+    const daysInMonth = new Date(y, mo + 1, 0).getDate();
+    const todayNum = now.getDate();
+    const cells: Array<{ day: number | null; v: number; isToday: boolean }> = [];
+    for (let i = 0; i < lead; i++) cells.push({ day: null, v: 0, isToday: false });
+    for (let dnum = 1; dnum <= daysInMonth; dnum++) {
+      const c = counts.get(toLocalDateKey(new Date(y, mo, dnum))) ?? 0;
+      cells.push({ day: dnum, v: c === 0 ? 0 : Math.min(3, c), isToday: dnum === todayNum });
+    }
+    return cells;
+  })();
 
   // weekly bars — last 7 days
   const weekCells = Array.from({ length: 7 }, (_, i) => {
@@ -250,7 +260,7 @@ export function Overview({
           >
             your rhythm
           </span>
-          <div style={{ flex: 1, minWidth: '200px' }}>
+          <div style={{ flexShrink: 0 }}>
             <h2 style={panelTitle(theme)}>
               Streak calendar{' '}
               <span style={{ fontSize: '13px', fontWeight: 600, color: theme.muted, fontFamily: SANS }}>
@@ -258,20 +268,31 @@ export function Overview({
               </span>
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 26px)', gap: '5px' }}>
-              {streakCells.map((c, i) => (
-                <div
-                  key={i}
-                  data-cell
-                  title={`Day ${c.date}`}
-                  style={{
-                    width: '26px', height: '26px', borderRadius: '6px', background: intensity(c.v, theme),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px',
-                    fontWeight: 600, color: c.v >= 2 ? theme.onAccent : theme.muted, fontFamily: SANS,
-                  }}
-                >
-                  {c.date}
+              {WEEKDAY_LABELS.map((w, i) => (
+                <div key={`h${i}`} style={{ width: '26px', textAlign: 'center', fontSize: '10px', fontWeight: 700, color: theme.muted, fontFamily: SANS }}>
+                  {w}
                 </div>
               ))}
+              {monthCells.map((c, i) =>
+                c.day === null ? (
+                  <div key={i} aria-hidden />
+                ) : (
+                  <div
+                    key={i}
+                    data-cell
+                    title={`Day ${c.day}`}
+                    style={{
+                      width: '26px', height: '26px', borderRadius: '6px', boxSizing: 'border-box',
+                      background: intensity(c.v, theme),
+                      border: c.isToday ? `2px solid ${theme.pine}` : 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px',
+                      fontWeight: c.isToday ? 700 : 600, color: c.v >= 2 ? theme.onAccent : theme.muted, fontFamily: SANS,
+                    }}
+                  >
+                    {c.day}
+                  </div>
+                ),
+              )}
             </div>
           </div>
           <div style={{ width: '2px', alignSelf: 'stretch', background: theme.border, opacity: 0.3, minHeight: '90px' }} />
@@ -279,8 +300,8 @@ export function Overview({
             <h2 style={panelTitle(theme)}>This week</h2>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
               {weekCells.map((c, i) => (
-                <div key={i}>
-                  <div style={{ width: '30px', height: '90px', display: 'flex', alignItems: 'flex-end', background: theme.surfaceAlt, borderRadius: '6px', overflow: 'hidden' }}>
+                <div key={i} style={{ flex: 1 }}>
+                  <div style={{ width: '100%', height: '90px', display: 'flex', alignItems: 'flex-end', background: theme.surfaceAlt, borderRadius: '6px', overflow: 'hidden' }}>
                     <div
                       style={{
                         width: '100%', height: `${(c.value / maxWeek) * 100}%`,

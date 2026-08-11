@@ -90,7 +90,6 @@ export function QuickAdd({
   return (
     <div className="content">
       <div className="page-head reveal" style={{ ['--i' as string]: 0 }}>
-        <h1>Quick add</h1>
         <p>
           Paste any JSON your AI gave you — course, session, or exam.
           It's recognised automatically.

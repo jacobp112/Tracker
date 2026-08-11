@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import App from '@/App';
+import { AuthProvider } from '@/auth/useAuth';
 import { mergeInto } from '@/core/merge';
 import { commit, ingest } from '@/core/pipeline';
 import { STORE_KEY } from '@/core/storage';
@@ -124,13 +125,20 @@ afterEach(() => {
 
 function mountAt(hash: string) {
   window.location.hash = hash;
-  return render(<App />);
+  // Settings reads useAuth for its Account section, so the app tree needs the
+  // provider it has in production (main.tsx).
+  return render(
+    <AuthProvider>
+      <App />
+    </AuthProvider>,
+  );
 }
 
 describe('App smoke — every route renders with real data', () => {
   it('Overview', () => {
     mountAt('#/overview');
-    expect(screen.getByRole('heading', { name: /good (morning|afternoon|evening)/i })).toBeInTheDocument();
+    // Title lives in the shell topbar; the content leads with the stat grid.
+    expect(screen.getByRole('heading', { name: /^overview$/i })).toBeInTheDocument();
     expect(screen.getByText(/recent activity/i)).toBeInTheDocument();
     expect(screen.getByText('Retrievable now')).toBeInTheDocument();
   });
@@ -142,16 +150,17 @@ describe('App smoke — every route renders with real data', () => {
 
   it('Course dashboard', () => {
     mountAt('#/course/course_smoke0001');
-    // The page h1 is the course's own name.
-    expect(screen.getByRole('heading', { name: 'Advanced Theory' })).toBeInTheDocument();
-    expect(screen.getByText('Retention matrix')).toBeInTheDocument();
-    // A real topic row from the seeded course.
-    expect(screen.getByRole('button', { name: 'Closures' })).toBeInTheDocument();
+    // The course name appears in both the shell topbar and the in-content header.
+    expect(screen.getAllByRole('heading', { name: 'Advanced Theory' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('group', { name: 'Avg retention' })).toBeInTheDocument();
+    // A real topic row from the seeded course (the row is a labelled button).
+    expect(screen.getByRole('button', { name: /closures/i })).toBeInTheDocument();
   });
 
   it('Add course', () => {
     mountAt('#/study/add');
-    expect(screen.getByRole('heading', { name: /add a course/i })).toBeInTheDocument();
+    // The add flow is now a modal over the Study index.
+    expect(screen.getByRole('dialog', { name: /add a course/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/paste the json/i)).toBeInTheDocument();
   });
 
@@ -181,18 +190,16 @@ describe('App smoke — every route renders with real data', () => {
   });
 });
 
-describe('App smoke — the sidebar only claims a course when you are in one', () => {
-  it('shows the course and its mastery on the course route', () => {
-    mountAt('#/course/course_smoke0001');
-    expect(screen.getByText(/mastery \d+%/i)).toBeInTheDocument();
+describe('App smoke — the sidebar lists your courses', () => {
+  it('lists the course in the sidebar on any route', () => {
+    mountAt('#/exams');
+    // The "Your courses" list shows every course as a row, regardless of route.
+    expect(screen.getByRole('button', { name: /advanced theory/i })).toBeInTheDocument();
   });
 
-  it('does not present an arbitrary course as context on other routes', () => {
-    mountAt('#/exams');
-    // The seeded store has a course, so the old `courses[0]` fallback rendered
-    // "Advanced Theory / Mastery 50%" here as though it were where you are.
-    expect(screen.queryByText(/mastery \d+%/i)).not.toBeInTheDocument();
-    expect(screen.getByText('All courses')).toBeInTheDocument();
+  it('marks the active course row on a course route', () => {
+    mountAt('#/course/course_smoke0001');
+    expect(screen.getByRole('button', { name: /advanced theory/i })).toHaveClass('active');
   });
 });
 
@@ -201,11 +208,12 @@ describe('App smoke — empty store shows guiding empty states (Doc 3 §7)', () 
 
   it('Overview tells the user to add a course', () => {
     mountAt('#/overview');
-    expect(screen.getByText(/add a course to start tracking retention/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add your first course/i })).toBeInTheDocument();
   });
 
   it('Exams tells the user to add a result', () => {
     mountAt('#/exams');
-    expect(screen.getByText(/no exam results yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no exams yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add an exam result/i })).toBeInTheDocument();
   });
 });

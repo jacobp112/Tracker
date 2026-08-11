@@ -215,7 +215,8 @@ function NumberField({
 
 /* ── style builders ───────────────────────────────────────────────── */
 function overlay(): CSSProperties {
-  return { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' };
+  // No backdrop-filter blur — paint-bound, see global.css .card rationale.
+  return { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: '20px' };
 }
 function card(t: CairnTheme): CSSProperties {
   return { position: 'relative', width: '560px', maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto', background: t.surface, border: `2px solid ${t.border}`, borderRadius: '24px 8px 24px 8px', padding: '30px', boxShadow: `9px 10px 0 ${t.shadow}`, boxSizing: 'border-box', transform: 'rotate(-0.4deg)', animation: 'palette-in .22s cubic-bezier(.2,.8,.3,1)' };

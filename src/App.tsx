@@ -25,6 +25,7 @@ import { TokenSheet } from '@/routes/TokenSheet';
 import { TopicDetail } from '@/routes/TopicDetail';
 import { clearFocusDraft, loadFocusDraft, saveFocusDraft, type FocusDraft } from '@/core/focusDraft';
 import { courseHealth, courseTopics } from '@/engine/course';
+import { sessionWrapUpPrompt } from '@/engine/session';
 import { projectedDue } from '@/engine/retention';
 import type { Course, SessionIntent, SessionScope, Store } from '@/domain/types';
 import type { PomodoroConfig, TimerMode } from '@/hooks/useStudyTimer';
@@ -530,6 +531,11 @@ function AppInner() {
           store={store}
           commitValue={commitValue}
           undoLast={undoLast}
+          promptOverride={(() => {
+            const c = store.courses.find((c) => c.course_id === flow.draft.course_id);
+            const topics = c ? courseTopics(c).map((r) => ({ topic_id: r.topic.topic_id, title: r.topic.title })) : [];
+            return sessionWrapUpPrompt(flow.draft.course_id, topics);
+          })()}
           onClose={() => setFlow({ phase: 'idle' })}
           onCommitOverride={(value) => {
             const error = commitSession(value, {

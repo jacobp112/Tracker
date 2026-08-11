@@ -98,8 +98,10 @@ export function TopicDetail({
         aria-hidden={!open}
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0, background: open ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0)',
-          backdropFilter: open ? 'blur(4px)' : 'none', WebkitBackdropFilter: open ? 'blur(4px)' : 'none',
+          // No backdrop-filter blur: re-blurring the whole page behind the drawer
+          // on every scroll/paint frame is paint-bound and froze the renderer
+          // (matches the .card rationale in global.css). A plain dim reads fine.
+          position: 'fixed', inset: 0, background: open ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0)',
           pointerEvents: open ? 'auto' : 'none', transition: 'background 0.25s', zIndex: 60,
         }}
       />

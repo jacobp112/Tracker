@@ -130,6 +130,20 @@
 
   /* Signature border weight. One token so every 2px ink edge agrees. */
   --wf-border-w: 2px;
+
+  /* ── Hard-offset "sticker" shadow — the redesign's signature elevation.
+   * A crisp, un-blurred ink offset (no feather) that gives cards and active
+   * nav their pasted-on, tactile feel. The colour (--shadow-ink) is set per
+   * theme; these composites reference it so both themes agree on geometry. */
+  --shadow-hard-sm: 2px 2px 0 var(--shadow-ink);
+  --shadow-hard: 5px 6px 0 var(--shadow-ink);
+  --shadow-hard-lg: 8px 10px 0 var(--shadow-ink);
+
+  /* Playful hand-stacked tilts — reused by cards/nav so the lean is consistent. */
+  --tilt-neg: -0.7deg;
+  --tilt-pos: 0.6deg;
+  --tilt-sub: -0.3deg;
+  --tilt-nav: -1deg;
 }
 
 /* ---------- LIGHT · the cream broadsheet (default) ---------- */
@@ -142,11 +156,11 @@
   --ink-secondary: #45463d;
   --ink-muted: #77776a;
 
-  /* Surfaces & Backgrounds */
+  /* Surfaces & Backgrounds — white cards on the cream page (mockup-exact). */
   --bg-page: #ffffeb;
-  --bg-sidebar: #f7f6e2;
-  --surface: #ffffeb;
-  --surface-sunken: #f0efd9;
+  --bg-sidebar: #ffffff;
+  --surface: #ffffff;
+  --surface-sunken: #f7f6e4;
 
   /* Borders & Edges — --border-strong is the signature ink edge; --edge is
    * transparent because the flat palette has no glass inset highlight. */
@@ -161,6 +175,19 @@
   --accent-soft: rgba(3, 79, 70, 0.10);
   --accent-ring: rgba(3, 79, 70, 0.30);
   --accent-gradient: none;
+
+  /* Functional brand trio — referenced directly by data-viz (rings, bars,
+   * pills, dots) so the SAME token resolves to a legible value in each theme.
+   * Mirrors the mockup's theme.pine / theme.lavender / theme.orange. */
+  --brand-teal: #034f46;
+  --brand-lavender: #f0d7ff;
+  --brand-orange: #ffa946;
+  --on-teal: #ffffeb; /* ink on a teal fill */
+
+  /* Hard-shadow ink + distinctive focus/selection (mockup uses warm orange). */
+  --shadow-ink: #1a1a1a;
+  --focus: #ffa946;
+  --select: #f0d7ff;
 
   /* Semantic states */
   --success: #034f46;
@@ -199,52 +226,64 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  /* Inks */
-  --ink: #ffffeb;
+  /* Inks — softened cream, not pure white, so headings don't glare. */
+  --ink: #f5f3e6;
   --ink-secondary: #d4d1c0;
-  --ink-muted: #9a9589;
+  --ink-muted: #a6a394;
 
-  /* Surfaces & Backgrounds — warm near-black, not stark #000. */
-  --bg-page: #1e1b15;
-  --bg-sidebar: #262219;
-  --surface: #262219;
-  --surface-sunken: #2e2a1f;
+  /* Surfaces & Backgrounds — deep warm espresso, layered surface > sunken. */
+  --bg-page: #15150f;
+  --bg-sidebar: #1e1e16;
+  --surface: #1e1e16;
+  --surface-sunken: #242419;
 
-  /* Borders & Edges */
+  /* Borders & Edges — the 2px "ink" edge is a warm graphite in dark, not
+   * bright cream: a hard white edge on every card reads as harsh glare. */
   --border: rgba(255, 255, 236, 0.14);
-  --border-strong: #ffffeb;
+  --border-strong: #4d4b3c;
   --edge: transparent;
   --edge-strong: transparent;
 
   /* Brand Accents — lavender reads as the accent on the dim canvas. */
-  --accent: #f0d7ff;
-  --accent-2: #f0d7ff;
-  --accent-soft: rgba(240, 215, 255, 0.14);
-  --accent-ring: rgba(240, 215, 255, 0.40);
+  --accent: #e2c2ff;
+  --accent-2: #e2c2ff;
+  --accent-soft: rgba(226, 194, 255, 0.14);
+  --accent-ring: rgba(226, 194, 255, 0.40);
   --accent-gradient: none;
 
-  /* Semantic states */
-  --success: #7bd3a6;
-  --success-soft: rgba(123, 211, 166, 0.16);
-  --warning: #ffb454;
-  --warning-soft: rgba(255, 180, 84, 0.16);
-  --danger: #f0876a;
-  --danger-soft: rgba(240, 135, 106, 0.16);
+  /* Functional brand trio — brightened for the dim canvas (mockup values). */
+  --brand-teal: #3ddbc0;
+  --brand-lavender: #e2c2ff;
+  --brand-orange: #ffb85c;
+  --on-teal: #0d1512; /* dark ink on the bright mint fill */
+
+  /* Hard-shadow ink + distinctive focus/selection. */
+  --shadow-ink: #000000;
+  --focus: #3ddbc0;
+  --select: #3d3a5c;
+
+  /* Semantic states — mint success matches the functional teal; coral danger. */
+  --success: #3ddbc0;
+  --success-soft: rgba(61, 219, 192, 0.16);
+  --warning: #ffb85c;
+  --warning-soft: rgba(255, 184, 92, 0.16);
+  --danger: #ff8a70;
+  --danger-soft: rgba(255, 138, 112, 0.16);
 
   --track: rgba(255, 255, 236, 0.12);
 
   /* Categorical error types */
-  --cat-conceptual: #7bd3a6;
+  --cat-conceptual: #3ddbc0;
   --cat-procedural: #d4d1c0;
-  --cat-careless: #f0876a;
-  --cat-knowledge_gap: #ffb454;
+  --cat-careless: #ff8a70;
+  --cat-knowledge_gap: #ffb85c;
 
-  /* Sequential ramp — warm dim → teal */
-  --cell-0: #2a251c;
-  --cell-1: #3a4a3f;
-  --cell-2: #4f7d6e;
-  --cell-3: #6fb39c;
-  --cell-4: #7bd3a6;
+  /* Sequential ramp — warm dim → mint (mockup dark heat stops) */
+  --cell-0: #242419;
+  --cell-1: #254038;
+  --cell-2: #2d6a58;
+  --cell-3: #39a789;
+  --cell-4: #3ddbc0;
 
   /* Elevation — shadowless in dark too. */
   --shadow-card: none;

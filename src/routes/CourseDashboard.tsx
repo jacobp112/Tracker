@@ -94,40 +94,45 @@ export function CourseDashboard({
     for (const d of activitySeries(course)) m.set(d.date, d.count);
     return m;
   }, [course]);
-  const GRID = 91;
-  const cellDate = (i: number) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - (GRID - 1 - i));
-    return d;
-  };
-  const grid = Array.from({ length: GRID }, (_, i) => {
-    const d = cellDate(i);
-    const c = counts.get(toLocalDateKey(d)) ?? 0;
-    return { date: d, level: c === 0 ? 0 : Math.min(4, c) };
+  // Sunday-aligned 13-week window (GitHub-style): each row is a fixed weekday
+  // (row 0 = Sunday) so the M/W/F labels are truthful and the month ruler lines
+  // up with the week columns.
+  const cols = 13;
+  const CELL = 24; // heatmap cell size (px) — sized up so the wide panel isn't mostly empty
+  const GAP = 5; // gap between cells (px)
+  const anchor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const gridStart = new Date(anchor);
+  gridStart.setDate(gridStart.getDate() - ((cols - 1) * 7 + anchor.getDay()));
+  const grid = Array.from({ length: cols * 7 }, (_, i) => {
+    const d = new Date(gridStart);
+    d.setDate(d.getDate() + i);
+    const future = d.getTime() > anchor.getTime();
+    const c = future ? 0 : counts.get(toLocalDateKey(d)) ?? 0;
+    return { date: d, level: c === 0 ? 0 : Math.min(4, c), future };
   });
+  const pastCells = grid.filter((g) => !g.future);
   let curStreak = 0;
-  for (let i = grid.length - 1; i >= 0; i--) {
-    if (grid[i]!.level > 0) curStreak++;
+  for (let i = pastCells.length - 1; i >= 0; i--) {
+    if (pastCells[i]!.level > 0) curStreak++;
     else break;
   }
   let longStreak = 0,
     run = 0;
-  grid.forEach((g) => {
+  pastCells.forEach((g) => {
     if (g.level > 0) {
       run++;
       longStreak = Math.max(longStreak, run);
     } else run = 0;
   });
-  const activeDays = grid.filter((g) => g.level > 0).length;
+  const activeDays = pastCells.filter((g) => g.level > 0).length;
 
-  const cols = Math.ceil(GRID / 7);
   const monthLabels: Array<{ col: number; label: string }> = [];
   let lastMonth = -1;
   for (let col = 0; col < cols; col++) {
-    const d = cellDate(col * 7);
-    if (d.getMonth() !== lastMonth) {
-      lastMonth = d.getMonth();
-      monthLabels.push({ col, label: d.toLocaleDateString(undefined, { month: 'short' }) });
+    const top = grid[col * 7];
+    if (top && top.date.getMonth() !== lastMonth) {
+      lastMonth = top.date.getMonth();
+      monthLabels.push({ col, label: top.date.toLocaleDateString(undefined, { month: 'short' }) });
     }
   }
 
@@ -233,27 +238,36 @@ export function CourseDashboard({
           <h2 style={panelTitleFlush(theme)}>Study activity</h2>
           <span style={heatRangeTag(theme)}>Last 90 days</span>
         </div>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-          <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 13px)', gap: '4px', fontSize: '10px', lineHeight: '13px', color: theme.muted, textAlign: 'right', paddingTop: '20px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+          <div style={{ display: 'grid', gridTemplateRows: `repeat(7, ${CELL}px)`, gap: `${GAP}px`, fontSize: '10px', lineHeight: `${CELL}px`, color: theme.muted, textAlign: 'right', paddingTop: '20px', flexShrink: 0 }}>
             {['', 'M', '', 'W', '', 'F', ''].map((l, i) => (
               <span key={i}>{l}</span>
             ))}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1, minWidth: 0, overflowX: 'auto', paddingBottom: '4px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 13px)`, gap: '4px', height: '14px', alignItems: 'end' }}>
+          {/* Columns are 1fr so the heatmap fills the wide panel; the month ruler
+              shares the same 1fr geometry so labels stay aligned, and each cell is
+              centred in its (wider) column so they spread evenly rather than
+              clumping left or leaving a void. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: `${GAP}px`, height: '14px', alignItems: 'end' }}>
               {monthLabels.map((m, i) => (
-                <span key={i} style={{ gridColumn: String(m.col + 1), gridRow: '1', fontSize: '10px', fontWeight: 600, color: theme.muted, whiteSpace: 'nowrap' }}>
+                <span key={i} style={{ gridColumn: String(m.col + 1), gridRow: '1', fontSize: '10px', fontWeight: 600, color: theme.muted, whiteSpace: 'nowrap', textAlign: 'center' }}>
                   {m.label}
                 </span>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 13px)', gridAutoFlow: 'column', gap: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(7, ${CELL}px)`, gridAutoFlow: 'column', gap: `${GAP}px`, justifyItems: 'center' }}>
               {grid.map((g, i) => (
                 <div
                   key={i}
                   data-cell
-                  title={`${fmtDate(g.date)} — ${g.level === 0 ? 'no study' : 'studied'}`}
-                  style={{ width: '13px', height: '13px', borderRadius: '3px', background: heatColor(g.level, isDark), border: `1px solid ${g.level === 0 ? theme.border : 'transparent'}`, boxSizing: 'border-box' }}
+                  title={g.future ? undefined : `${fmtDate(g.date)} — ${g.level === 0 ? 'no study' : 'studied'}`}
+                  style={{
+                    width: `${CELL}px`, height: `${CELL}px`, borderRadius: '4px', boxSizing: 'border-box',
+                    background: g.future ? 'transparent' : heatColor(g.level, isDark),
+                    border: `1px solid ${g.future ? 'transparent' : g.level === 0 ? theme.border : 'transparent'}`,
+                    opacity: g.future ? 0 : 1,
+                  }}
                 />
               ))}
             </div>

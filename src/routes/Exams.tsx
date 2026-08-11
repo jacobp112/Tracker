@@ -1,157 +1,175 @@
-import type { CSSProperties } from 'react';
-import { Button, Card } from '@/components/primitives';
-import { EmptyState } from '@/components/feedback';
+import { type CSSProperties } from 'react';
 import type { Store } from '@/domain/types';
-import { examViews, type ExamEffect } from '@/engine/exams';
+import { examViews } from '@/engine/exams';
 import { navigate } from '@/router';
-import { ExamsIcon } from '@/shell/icons';
+import { useTheme } from '@/theme/useTheme';
+import { errorTypeColor, errorTypeLabel, getCairnTheme, scoreColor, type CairnTheme } from '@/theme/cairnMock';
 
-// 1. Infer types from the engine function so we can cleanly type our extracted components
+const SERIF = "'EB Garamond', var(--font-display)";
+const SANS = 'var(--font-sans)';
+
 type ExamView = ReturnType<typeof examViews>[number];
-type ExamGroup = ExamView['groups'][number];
-type ExamTopic = ExamGroup['topics'][number];
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 export interface ExamsProps {
   store: Store;
 }
 
-// 2. Extracted formatter for cleaner usage
-const dateFormatter = new Intl.DateTimeFormat(undefined, { 
-  month: 'short', 
-  day: 'numeric' 
-});
-
-function fmtDate(iso: string): string {
-  return dateFormatter.format(new Date(iso));
-}
-
 /**
- * Exams screen — Document 3 §5.4, Document 4 E5-S3.
+ * Exams — rebuilt to the approved mockup: rotated graded-paper cards with a
+ * rotated score chip, a pass-mark track, and per-part rows (name + track,
+ * marks, error-type tag, boosted / flagged-weak). Real examViews data.
  */
 export function Exams({ store }: ExamsProps) {
+  const { theme: mode } = useTheme();
+  const isDark = mode === 'dark';
+  const theme = getCairnTheme(isDark);
   const views = examViews(store);
 
-  return (
-    <div className="content">
-      <div 
-        className="page-head split reveal" 
-        style={{ '--i': 0 } as CSSProperties}
-      >
-        <div>
-          <h1>Exams</h1>
-          <p>Every exam and the effect it had on your topics.</p>
+  if (views.length === 0) {
+    return (
+      <div style={contentStyle()}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '60px 20px', maxWidth: '420px', margin: '0 auto' }}>
+          <svg width="140" height="170" viewBox="0 0 100 120" style={{ display: 'block', margin: '0 0 20px', animation: 'cairn-wobble 2.4s ease-in-out infinite', transformOrigin: '50% 100%' }}>
+            <ellipse cx="50" cy="112" rx="30" ry="4" fill="#000000" opacity={isDark ? 0.28 : 0.18} />
+            <rect x="18" y="90" width="64" height="22" rx="11" fill={theme.pine} transform="rotate(-3 50 101)" />
+            <rect x="26" y="66" width="48" height="20" rx="10" fill={theme.lavender} transform="rotate(3 50 76)" />
+            <circle cx="50" cy="42" r="20" fill={theme.orange} />
+          </svg>
+          <h2 style={{ fontFamily: SERIF, fontWeight: 400, fontSize: '32px', color: theme.ink, margin: '0 0 8px' }}>No exams yet.</h2>
+          <p style={{ fontSize: '15px', color: theme.muted, margin: '0 0 24px' }}>
+            Add one and we’ll track its effect on your topics as marks come in.
+          </p>
+          <button type="button" data-press onClick={() => navigate('/exams/add')} style={ctaStyle(theme)}>
+            ＋ Add an exam result
+          </button>
         </div>
-        <Button onClick={() => navigate('/exams/add')}>+ Add exam result</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={contentStyle()}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: theme.muted }}>
+          {views.length} {views.length === 1 ? 'paper' : 'papers'} logged
+        </span>
+        <button type="button" data-press onClick={() => navigate('/exams/add')} style={addBtn(theme)}>
+          ＋ Add paper
+        </button>
       </div>
 
-      <div 
-        className="section reveal" 
-        style={{ '--i': 1 } as CSSProperties}
-      >
-        {views.length === 0 ? (
-          <Card>
-            <EmptyState
-              icon={<ExamsIcon />}
-              title="No exam results yet. Add one to see its effect on your topics."
-              action={<Button onClick={() => navigate('/exams/add')}>Add exam result</Button>}
-            />
-          </Card>
-        ) : (
-          <div className="stack">
-            {views.map((view) => (
-              <ExamResultCard key={view.exam.exam_id} view={view} />
-            ))}
-          </div>
-        )}
-      </div>
+      {views.map((view, i) => (
+        <ExamCard key={view.exam.exam_id} view={view} i={i} theme={theme} />
+      ))}
     </div>
   );
 }
 
-// --- Extracted Sub-Components ---
-
-function ExamResultCard({ view }: { view: ExamView }) {
+function ExamCard({ view, i, theme }: { view: ExamView; i: number; theme: CairnTheme }) {
   const { exam, scorePct, groups } = view;
+  const ratio = scorePct / 100;
+  const col = scoreColor(ratio, theme);
+  const topicCount = groups.reduce((a, g) => a + g.topics.length, 0);
 
   return (
-    <Card className="exam-card">
-      <div className="exam-head">
-        <div className="exam-title">{exam.title}</div>
-        <div className="exam-meta">
-          <time dateTime={exam.date}>{fmtDate(exam.date)}</time>
-          <span className="exam-score mono-num">
+    <div
+      data-card
+      style={{
+        background: theme.surface, border: `2px solid ${theme.border}`,
+        borderRadius: i % 2 === 0 ? '16px 40px 16px 40px' : '40px 16px 40px 16px', padding: '22px 24px',
+        marginBottom: '20px', boxShadow: `5px 6px 0 ${theme.shadow}`, transform: `rotate(${i % 2 === 0 ? '-0.3deg' : '0.3deg'})`,
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '18px', marginBottom: '14px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: '23px', color: theme.ink, margin: '0 0 8px', lineHeight: 1.15 }}>{exam.title}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-block', fontSize: '11px', fontWeight: 700, color: theme.ink, background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: '9999px', padding: '2px 10px' }}>
+              {fmtDate(exam.date)}
+            </span>
+            <span style={{ fontSize: '12px', fontWeight: 500, color: theme.muted }}>
+              Covers: {groups.map((g) => g.courseTitle).join(', ')} ({topicCount} {topicCount === 1 ? 'topic' : 'topics'})
+            </span>
+          </div>
+        </div>
+        <div
+          style={{
+            flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            minWidth: '92px', padding: '10px 14px', borderRadius: '9999px', background: col,
+            color: ratio >= 0.8 ? theme.onAccent : '#1a1a1a', border: `2px solid ${theme.border}`,
+            boxShadow: `3px 3px 0 ${theme.shadow}`, transform: 'rotate(-3deg)',
+          }}
+        >
+          <span style={{ fontFamily: SERIF, fontSize: '22px', lineHeight: 1.05, whiteSpace: 'nowrap' }}>
             {exam.score}/{exam.max_score}
           </span>
-          <span className="exam-pct mono-num">{scorePct}%</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, opacity: 0.75, marginTop: '1px' }}>{scorePct}%</span>
         </div>
+      </div>
+
+      <div style={{ position: 'relative', height: '8px', borderRadius: '9999px', background: theme.surfaceAlt, border: `1px solid ${theme.border}`, marginBottom: '16px', overflow: 'visible' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${scorePct}%`, borderRadius: '9999px', background: col }} />
+        <div style={{ position: 'absolute', top: '-4px', bottom: '-4px', left: '70%', width: '2px', background: theme.ink, opacity: 0.45, borderRadius: '2px' }} />
       </div>
 
       {groups.map((group) => (
-        <ExamCourseGroup 
-          key={group.courseId ?? group.courseTitle} 
-          group={group} 
-        />
-      ))}
-    </Card>
-  );
-}
-
-function ExamCourseGroup({ group }: { group: ExamGroup }) {
-  const topicCount = group.topics.length;
-  const topicLabel = topicCount === 1 ? 'topic' : 'topics';
-
-  return (
-    <div className="exam-group">
-      <div className="exam-covers">
-        Covers: {group.courseTitle} ({topicCount} {topicLabel})
-      </div>
-      {group.topics.map((topic) => (
-        <ExamTopicRow key={topic.topicId} topic={topic} />
+        <div key={group.courseId ?? group.courseTitle} style={{ display: 'flex', flexDirection: 'column' }}>
+          {groups.length > 1 && (
+            <div style={{ fontSize: '11px', fontWeight: 700, color: theme.muted, margin: '4px 0 6px' }}>{group.courseTitle}</div>
+          )}
+          {group.topics.map((part) => {
+            const hasMarks = part.earned !== null && part.possible !== null;
+            const r = hasMarks && part.possible ? part.earned! / part.possible : ratio;
+            const boosted = part.effect === 'boosted';
+            const partCol = scoreColor(r, theme);
+            const firstError = part.errors && part.errors.length > 0 ? errorTypeLabel(part.errors[0]!.error_type) : null;
+            return (
+              <div
+                key={part.topicId}
+                style={{ display: 'grid', gridTemplateColumns: '1fr 62px 168px', alignItems: 'center', gap: '12px', padding: '9px 10px', margin: '0 -10px', borderRadius: '10px', borderBottom: `1px solid ${theme.border}` }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: 0 }}>
+                  <span style={{ fontSize: '13.5px', fontWeight: 600, color: theme.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{part.title}</span>
+                  {hasMarks && (
+                    <div style={{ height: '4px', borderRadius: '9999px', background: theme.surfaceAlt, overflow: 'hidden', maxWidth: '220px' }}>
+                      <div style={{ width: `${Math.round(r * 100)}%`, height: '100%', borderRadius: '9999px', background: partCol }} />
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontFamily: SERIF, fontSize: '17px', color: hasMarks ? partCol : theme.muted, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {hasMarks ? `${part.earned}/${part.possible}` : '—'}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+                  {firstError && (
+                    <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: '9999px', fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap', background: errorTypeColor(firstError, theme), color: firstError === 'Careless' || firstError === 'Conceptual' ? '#ffffeb' : '#1a1a1a' }}>
+                      {firstError}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap', color: boosted ? theme.pine : theme.error }}>
+                    {boosted ? '▲ boosted' : '▼ flagged weak'}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
       ))}
     </div>
   );
 }
 
-function ExamTopicRow({ topic }: { topic: ExamTopic }) {
-  const hasSpecificMarks = topic.earned !== null && topic.possible !== null;
-
-  return (
-    <div className="exam-row">
-      <span className="exam-topic">{topic.title}</span>
-      <div className="exam-row-right">
-        
-        {hasSpecificMarks ? (
-          <span className="exam-marks mono-num">
-            {topic.earned}/{topic.possible}
-          </span>
-        ) : (
-          <span className="exam-marks exam-uniform">applied overall</span>
-        )}
-
-        {topic.errors && topic.errors.length > 0 && (
-          <span className="exam-errchips">
-            {topic.errors.map((e, i) => (
-              <span key={`${e.error_type}-${i}`} className={`cat-${e.error_type}`}>
-                {e.error_type.replace('_', ' ')}
-              </span>
-            ))}
-          </span>
-        )}
-
-        <EffectChip effect={topic.effect} />
-      </div>
-    </div>
-  );
+/* ── style builders ───────────────────────────────────────────────── */
+function contentStyle(): CSSProperties {
+  return { flex: 1, width: '100%', maxWidth: '1440px', boxSizing: 'border-box', padding: '36px 40px 56px', position: 'relative' };
 }
-
-function EffectChip({ effect }: { effect: ExamEffect }) {
-  const isBoosted = effect === 'boosted';
-  
-  return (
-    <span className={`exam-effect ${isBoosted ? 'boosted' : 'flagged'}`}>
-      {/* aria-hidden prevents screen readers from reading out "Black up-pointing triangle" */}
-      <span aria-hidden="true">{isBoosted ? '▲ ' : '▼ '}</span>
-      <span>{isBoosted ? 'boosted' : 'flagged weak'}</span>
-    </span>
-  );
+function addBtn(t: CairnTheme): CSSProperties {
+  return { marginLeft: 'auto', background: t.pine, color: t.onAccent, border: `2px solid ${t.border}`, borderRadius: '9999px', padding: '12px 20px', fontFamily: SANS, fontSize: '14px', fontWeight: 700, cursor: 'pointer', boxShadow: `3px 3px 0 ${t.shadow}` };
+}
+function ctaStyle(t: CairnTheme): CSSProperties {
+  return { background: t.lavender, border: `2px solid ${t.border}`, borderRadius: '9999px', padding: '14px 24px', fontSize: '15px', fontWeight: 600, color: '#1a1a1a', cursor: 'pointer', boxShadow: `4px 4px 0 ${t.shadow}` };
 }

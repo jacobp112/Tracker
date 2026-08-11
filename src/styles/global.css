@@ -170,12 +170,19 @@ body.loaded .reveal {
   transform-origin: center;
 }
 
-/* ── Focus: visible ring on every interactive element (Doc 3 §6) ─ */
+/* ── Focus: visible ring on every interactive element (Doc 3 §6) ─
+ * The redesign uses a warm orange (light) / mint (dark) focus so it reads as
+ * a deliberate, on-brand highlight distinct from the teal/lavender accents. */
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
   border-radius: var(--radius-chip);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Themed text selection — lavender wash (light) / plum (dark). */
+::selection {
+  background: var(--select);
+  color: var(--ink);
 }
 
 /* Screen-reader-only utility. */

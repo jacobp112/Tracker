@@ -1,0 +1,307 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="190" viewBox="0 0 100 130"
+     id="cairn" role="img" aria-labelledby="cairn-title">
+  <title id="cairn-title">A mascot balancing on a wobbling stack of stones</title>
+
+  <style>
+    #cairn { overflow: visible; }
+    #cairn * { transform-box: view-box; }
+  </style>
+
+  <!-- invisible hit area so hover/tap works across the whole badge -->
+  <rect id="cairn-hit" x="-8" y="-6" width="116" height="142" fill="none" pointer-events="all"/>
+
+  <!-- Shadow (stays on the ground, reacts to the lean) -->
+  <ellipse id="cairn-shadow" cx="50" cy="126" rx="34" ry="4" fill="#000000" opacity="0.25"/>
+
+  <!-- Articulated chain: every stone pivots on its own base, so rotation
+       accumulates up the stack and the top whips like a real cairn. -->
+  <g id="cairn-seg1">
+    <g id="cairn-stone1-sq">
+      <rect x="10" y="104" width="80" height="24" rx="12"
+            fill="#034f46" stroke="#ffffeb" stroke-width="4" transform="rotate(-3 50 116)"/>
+    </g>
+
+    <g id="cairn-seg2">
+      <rect x="18" y="80" width="64" height="22" rx="11"
+            fill="#77776a" stroke="#ffffeb" stroke-width="4" transform="rotate(4 50 91)"/>
+
+      <g id="cairn-seg3">
+        <rect x="24" y="58" width="52" height="20" rx="10"
+              fill="#f0d7ff" stroke="#ffffeb" stroke-width="4" transform="rotate(-4 50 68)"/>
+
+        <g id="cairn-seg4">
+          <rect x="30" y="38" width="40" height="18" rx="9"
+                fill="#034f46" stroke="#ffffeb" stroke-width="4" transform="rotate(3 50 47)"/>
+
+          <!-- Head -->
+          <g id="cairn-head">
+            <g id="cairn-head-sq">
+              <circle cx="50" cy="19" r="16" fill="#ffa946" stroke="#ffffeb" stroke-width="4"/>
+
+              <!-- Sphere-style: flat black marks that slide across the surface.
+                   Every feature is one path whose shape is rebuilt each frame. -->
+              <g id="cairn-features">
+                <circle id="cairn-blush-l" cx="42.3" cy="20.4" r="2" fill="#f0d7ff" opacity="0.7"/>
+                <circle id="cairn-blush-r" cx="57.7" cy="20.4" r="2" fill="#f0d7ff" opacity="0.7"/>
+
+                <g id="cairn-eyes">
+                  <path id="cairn-eye-l" d="M44 16.2 Q46.3 13.9 48.6 16.2 Q46.3 15.2 44 16.2 Z"
+                        fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0.9" stroke-linejoin="round"/>
+                  <path id="cairn-eye-r" d="M51.4 16.2 Q53.7 13.9 56 16.2 Q53.7 15.2 51.4 16.2 Z"
+                        fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0.9" stroke-linejoin="round"/>
+                </g>
+
+                <path id="cairn-mouth" d="M45.8 22.4 Q50 24.1 54.2 22.4 Q50 25.9 45.8 22.4 Z"
+                      fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0.9" stroke-linejoin="round"/>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <script><![CDATA[
+  (function () {
+    var svg = (document.currentScript && document.currentScript.closest('svg')) ||
+              document.getElementById('cairn');
+    if (!svg) return;
+    var $ = function (id) { return svg.querySelector('#' + id); };
+    var DEG = 180 / Math.PI;
+    var clamp = function (v, a, b) { return v < a ? a : (v > b ? b : v); };
+    var n = function (v) { return Math.round(v * 100) / 100; };
+
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var AMP = reduced ? 0.35 : 1;          // global sway multiplier — tune the whole feel here
+
+    /* ---------- scalar spring: acc = w^2*(target-x) - 2*z*w*v ---------- */
+    function Spring(x, w, z) { this.x = x; this.v = 0; this.k = w * w; this.c = 2 * z * w; }
+    Spring.prototype.step = function (dt, target, rate) {
+      var r = rate || 1;
+      var a = this.k * r * r * (target - this.x) - this.c * r * this.v;
+      this.v += a * dt; this.x += this.v * dt;
+    };
+
+    /* ---------- the stack ---------- */
+    var segs = [
+      { el: $('cairn-seg1'), py: 128, lever: 109, a: 0, v: 0, k: 150, c: 4.8, iner: 0.00 },
+      { el: $('cairn-seg2'), py: 102, lever: 83,  a: 0, v: 0, k: 195, c: 4.6, iner: 0.55 },
+      { el: $('cairn-seg3'), py: 78,  lever: 59,  a: 0, v: 0, k: 245, c: 4.4, iner: 0.60 },
+      { el: $('cairn-seg4'), py: 56,  lever: 37,  a: 0, v: 0, k: 300, c: 4.2, iner: 0.65 }
+    ];
+    var head = { el: $('cairn-head'), a: 0, v: 0, k: 330, c: 5.0, iner: 0.70 };
+    var RIGHT = 0.42;                      // how hard he fights to stay upright
+    var DRAG  = 0.6;                       // air drag on world angular velocity
+
+    var hop   = new Spring(0, 18, 0.42);   // head bob
+    var squash = new Spring(0, 22, 0.70);  // head squash & stretch
+    var baseSq = new Spring(0, 20, 0.70);  // base stone compression
+    var gazeX = new Spring(0, 30, 0.70), gazeY = new Spring(0, 30, 0.70);
+
+    /* ---------- expression: one face, all values morph ---------- */
+    /* One face. Every expression is the same three marks at different shapes:
+       eW/eU/eL = eye half-width, top-edge rise, bottom-edge rise (eU==-eL is a
+       round eye; both negative is a happy upward crescent). eTilt slants them. */
+    var POSE = {
+      idle:    { eW: 2.35, eU: -1.55, eL: -0.50, eTilt:  0, mW: 3.30, mU:  0.85, mL: 2.00, mY: 22.6, mWv: 0,    blush: 1.00 },
+      startle: { eW: 2.00, eU: -2.05, eL:  2.05, eTilt:  0, mW: 1.15, mU: -1.10, mL: 1.10, mY: 23.9, mWv: 0,    blush: 0.85 },
+      worry:   { eW: 1.65, eU: -2.00, eL:  2.00, eTilt: 10, mW: 2.40, mU: -0.75, mL: 0.15, mY: 23.7, mWv: 0.55, blush: 0.90 },
+      cool:    { eW: 2.10, eU: -2.25, eL:  2.20, eTilt: -5, mW: 1.45, mU: -1.25, mL: 1.25, mY: 23.8, mWv: 0,    blush: 1.05 },
+      happy:   { eW: 2.40, eU: -1.60, eL: -0.45, eTilt:  0, mW: 3.45, mU:  0.95, mL: 2.15, mY: 22.5, mWv: 0,    blush: 1.15 }
+    };
+    var KEYS = Object.keys(POSE.idle);
+    var F = {};                                            // live face values
+    KEYS.forEach(function (k) { F[k] = new Spring(POSE.idle[k], 20, 0.62); });
+
+    var phase = 'idle', phaseT = 0, blend = 1, time = 0, amp = 0, lean = 0, wAcc = 0;
+    var blinkT = -1, blinkDur = 0.14, headBias = 0;
+    var nextBlink = 2 + Math.random() * 3, nextLook = 1.5 + Math.random() * 2;
+    var idleGaze = [0, 0];
+
+    function setPhase(p) {
+      phase = p; phaseT = 0;
+      if (p === 'startle') { blend = 2.4; blinkT = -1; hop.v += 9; }
+      if (p === 'worry')   { blend = 1.3; }
+      if (p === 'cool')    { blend = 1.7; blinkT = 0; blinkDur = 0.13; headBias = 0.055; }
+      if (p === 'settle')  { blend = 1.1; blinkT = 0; blinkDur = 0.30; headBias = 0; hop.v -= 20; }
+      if (p === 'idle')    { blend = 1.0; nextBlink = time + 2 + Math.random() * 3; }
+    }
+
+    function trigger(strength) {
+      var s = (typeof strength === 'number' ? strength : 1) * (reduced ? 0.6 : 1);
+      segs[0].v += 1.35 * s;
+      baseSq.v += 8 * s;
+      setPhase('startle');
+    }
+
+    /* ---------- simulation ---------- */
+    function step(dt) {
+      time += dt; phaseT += dt;
+
+      if (phase === 'startle' && phaseT > 0.17) setPhase('worry');
+      else if (phase === 'worry' && ((phaseT > 0.7 && amp < 8.5) || phaseT > 1.15)) setPhase('cool');
+      else if (phase === 'cool' && phaseT > 0.65) setPhase('settle');
+      else if (phase === 'settle' && phaseT > 0.5) setPhase('idle');
+
+      /* Every stone is dragged by the elastic pull of everything below it, so
+         motion accumulates up the stack. Coupling uses only the parents' spring
+         term — feeding their damping term back in would inject energy and the
+         stack would ring forever. DRAG on world velocity guarantees it dies. */
+      var wEl = 0, wVel = 0, chain = 0, breeze = 0;
+      if (!reduced) {
+        breeze = (Math.sin(time * 0.55) * 0.9 + Math.sin(time * 1.13 + 1.7) * 0.55 +
+                  Math.sin(time * 2.31 + 0.4) * 0.2);
+      }
+      var disp = 0;
+      for (var i = 0; i < segs.length; i++) {
+        var s = segs[i];
+        var elast = -s.k * s.a;
+        var acc = elast - s.c * s.v - s.iner * wEl - DRAG * wVel;
+        if (i === 0) acc += breeze;
+        s.v += acc * dt; s.a += s.v * dt;
+        wEl += elast; wVel += s.v; chain += s.a; disp += s.lever * s.a;
+      }
+      var hEl = head.k * ((-RIGHT * chain) + headBias - head.a);
+      var hacc = hEl - head.c * head.v - head.iner * wEl - DRAG * wVel;
+      head.v += hacc * dt; head.a += head.v * dt;
+      wAcc = wEl + hacc;
+
+      lean = (chain + head.a) * DEG * AMP;
+      disp = Math.abs(disp) * AMP;
+      amp = disp > amp ? disp : amp + (disp - amp) * Math.min(1, dt * 2.2);
+
+      hop.step(dt, 0, 1);
+      squash.step(dt, clamp(wAcc * 0.0016, -0.07, 0.07), 1);
+      baseSq.step(dt, 0, 1);
+
+      /* gaze */
+      var gx = 0, gy = 0;
+      if (phase === 'startle') { gx = clamp(lean * 0.05, -0.6, 0.6); gy = -0.1; }
+      else if (phase === 'worry') { gx = clamp(lean * 0.085, -1, 1); gy = 0.92; }
+      else if (phase === 'cool') { gx = phaseT < 0.3 ? 0.72 : -0.58; gy = phaseT < 0.3 ? -0.3 : -0.46; }
+      else if (phase === 'settle') { gx = 0; gy = 0.06; }
+      else {
+        if (time > nextLook) { idleGaze = [(Math.random() * 2 - 1) * 0.45, (Math.random() * 2 - 1) * 0.3]; nextLook = time + 1.6 + Math.random() * 2.6; }
+        gx = idleGaze[0] + Math.sin(time * 0.7) * 0.05;
+        gy = idleGaze[1] + Math.sin(time * 0.9 + 1) * 0.04;
+      }
+      gazeX.step(dt, gx, 1); gazeY.step(dt, gy, 1);
+
+      /* expression morph */
+      var pose = POSE[phase === 'settle' ? 'happy' : (phase === 'idle' ? 'happy' : phase)];
+      for (var j = 0; j < KEYS.length; j++) F[KEYS[j]].step(dt, pose[KEYS[j]], blend);
+      blend += (1 - blend) * Math.min(1, dt * 4);
+
+      /* blinks */
+      if (blinkT >= 0) { blinkT += dt; if (blinkT > blinkDur) blinkT = -1; }
+      else if (phase === 'idle' && time > nextBlink) {
+        blinkT = 0; blinkDur = 0.13 + Math.random() * 0.05;
+        nextBlink = time + 2.4 + Math.random() * 3.6;
+      }
+    }
+
+    /* ---------- drawing ---------- */
+    var el = {
+      stone1: $('cairn-stone1-sq'), headSq: $('cairn-head-sq'), feat: $('cairn-features'),
+      eyes: $('cairn-eyes'), eyeL: $('cairn-eye-l'), eyeR: $('cairn-eye-r'), mouth: $('cairn-mouth'),
+      blushL: $('cairn-blush-l'), blushR: $('cairn-blush-r'), shadow: $('cairn-shadow')
+    };
+    var scaleAbout = function (sx, sy, cx, cy) {
+      return 'translate(' + n(cx) + ' ' + n(cy) + ') scale(' + n(sx) + ' ' + n(sy) + ') translate(' + n(-cx) + ' ' + n(-cy) + ')';
+    };
+    /* Every mark is the same primitive: a closed shape between two curved edges.
+       u is how far the top edge bows, l the bottom edge, wv adds a squiggle.
+       The control points slide out to the full half-width as a shape fattens, so
+       open eyes close into true smooth ovals with no visible corner, while thin
+       crescents keep their tapered tips. */
+    function lens(cx, cy, w, u, l, wv) {
+      var r = clamp(0.45 + 0.55 * (Math.abs(l - u) / (2 * w)), 0.45, 1);
+      var A = u * 1.3333, B = l * 1.3333;
+      var xl = n(cx - w), xr = n(cx + w), c1 = n(cx - w * r), c2 = n(cx + w * r);
+      return 'M' + xl + ' ' + n(cy) +
+             ' C' + c1 + ' ' + n(cy + A + wv) + ' ' + c2 + ' ' + n(cy + A - wv) + ' ' + xr + ' ' + n(cy) +
+             ' C' + c2 + ' ' + n(cy + B - wv * 0.6) + ' ' + c1 + ' ' + n(cy + B + wv * 0.6) + ' ' + xl + ' ' + n(cy) + 'Z';
+    }
+
+    function render() {
+      var chain = 0;
+      for (var i = 0; i < segs.length; i++) {
+        chain += segs[i].a;
+        segs[i].el.setAttribute('transform', 'rotate(' + n(segs[i].a * DEG * AMP) + ' 50 ' + segs[i].py + ')');
+      }
+      head.el.setAttribute('transform',
+        'translate(' + n(-chain * 2.5 * AMP) + ' ' + n(hop.x) + ') rotate(' + n(head.a * DEG * AMP) + ' 50 35)');
+      el.headSq.setAttribute('transform', scaleAbout(1 + squash.x, 1 - squash.x, 50, 19));
+      el.stone1.setAttribute('transform', scaleAbout(1 + baseSq.x * 0.12, 1 - baseSq.x * 0.12, 50, 128));
+
+      var gx = gazeX.x, gy = gazeY.x;
+      /* the whole face slides across the curve, the eyes travel further than
+         the rest, with a touch of inertia so they lag the head */
+      el.feat.setAttribute('transform', 'translate(' + n(gx * 0.7) + ' ' + n(gy * 0.55) + ')');
+      var lag = clamp(-(head.v + segs[3].v) * 0.045, -0.6, 0.6);
+      el.eyes.setAttribute('transform', 'translate(' + n(gx * 1.5 + lag) + ' ' + n(gy * 1.45) + ')');
+
+      /* blink: the eye shape flattens to a line about its own midline */
+      var blink = blinkT >= 0 ? Math.sin(Math.PI * (blinkT / blinkDur)) : 0;
+      var eUp = F.eU.x, eLo = F.eL.x, mid = (eUp + eLo) / 2;
+      eUp += (mid - 0.26 - eUp) * blink;
+      eLo += (mid + 0.26 - eLo) * blink;
+      var tilt = F.eTilt.x, ew = F.eW.x;
+      el.eyeL.setAttribute('d', lens(46.3, 16.2, ew, eUp, eLo, 0));
+      el.eyeR.setAttribute('d', lens(53.7, 16.2, ew, eUp, eLo, 0));
+      el.eyeL.setAttribute('transform', 'rotate(' + n(-tilt) + ' 46.3 16.2)');
+      el.eyeR.setAttribute('transform', 'rotate(' + n(tilt) + ' 53.7 16.2)');
+
+      el.mouth.setAttribute('d', lens(50, F.mY.x, F.mW.x, F.mU.x, F.mL.x, F.mWv.x));
+
+      var bl = F.blush.x;
+      el.blushL.setAttribute('transform', scaleAbout(bl, bl, 42.3, 20.4));
+      el.blushR.setAttribute('transform', scaleAbout(bl, bl, 57.7, 20.4));
+
+      var sway = clamp(chain * DEG * AMP, -30, 30);
+      el.shadow.setAttribute('transform',
+        'translate(' + n(sway * 0.28) + ' 0) ' + scaleAbout(1 - Math.abs(sway) * 0.007 + baseSq.x * 0.004, 1, 50, 126));
+    }
+
+    /* ---------- loop ---------- */
+    var STEP = 1 / 120, acc = 0, last = 0, raf = 0, running = false;
+    function frame(now) {
+      raf = requestAnimationFrame(frame);
+      if (!last) last = now;
+      var dt = (now - last) / 1000; last = now;
+      if (dt > 0.1) dt = 0.1;
+      acc += dt;
+      var guard = 0;
+      while (acc >= STEP && guard++ < 24) { step(STEP); acc -= STEP; }
+      render();
+    }
+    function start() { if (!running) { running = true; last = 0; raf = requestAnimationFrame(frame); } }
+    function stop() { if (running) { running = false; cancelAnimationFrame(raf); } }
+
+    var cooldown = 0;
+    function onPoke() {
+      var t = Date.now();
+      if (t - cooldown < 260) return;
+      cooldown = t;
+      trigger(1);
+    }
+    svg.addEventListener('mouseenter', onPoke);
+    svg.addEventListener('click', onPoke);
+    svg.addEventListener('touchstart', onPoke, { passive: true });
+    svg.addEventListener('focus', onPoke);
+
+    document.addEventListener('visibilitychange', function () {
+      document.hidden ? stop() : start();
+    });
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(function (entries) {
+        entries[0].isIntersecting ? start() : stop();
+      }, { threshold: 0 }).observe(svg);
+    } else { start(); }
+    start();
+
+    if (!reduced) setTimeout(function () { trigger(0.85); }, 700);
+    window.triggerCairnWobble = function (s) { trigger(s); };
+  })();
+  ]]></script>
+</svg>

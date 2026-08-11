@@ -1,46 +1,69 @@
 /* ══════════════════════════════════════════════════════════════════
-   WISPR FLOW — app component layer
+   CAIRN REDESIGN — app component layer
    ────────────────────────────────────────────────────────────────
-   The token system in tokens.css re-themes the app's palette, type and
-   radii automatically. This file fixes the component-level things a token
-   swap can't reach when the aesthetic goes flat: surfaces that relied on a
-   shadow (now removed) or a translucent-white fill for separation need a
-   2px ink border instead; a few components hard-code a blue accent or the
-   old gradient and must be re-pointed to the lavender/teal system.
+   tokens.css re-themes palette/type/radii automatically. This file is the
+   component-level redesign layer: it takes the flat Wispr base and adds the
+   approved mockup's tactile signatures — hard-offset "sticker" shadows, solid
+   ink-bordered status pills, ink-edged segmented controls, and tactile button
+   press — plus the fixes a token swap can't reach (surfaces that relied on a
+   shadow, components that hard-coded the old blue accent).
 
    Imported LAST in main.tsx so equal-specificity rules win the cascade.
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── Cards ────────────────────────────────────────────────────────
-   --surface is now cream (≈ the page), --shadow-card is none, and the inset
-   --edge highlight is transparent — so a card had nothing separating it from
-   the canvas. The ink border is the separation now. */
+   The signature elevation: a 2px ink edge + a crisp un-blurred offset shadow,
+   so every card reads as a physical, pasted-on tile. */
 .card {
   border: var(--wf-border-w) solid var(--border-strong);
-  box-shadow: none;
+  box-shadow: var(--shadow-hard);
 }
 .card:not(.hero-stat):hover {
-  box-shadow: none;
+  box-shadow: var(--shadow-hard);
 }
 
-/* ── Primary button ───────────────────────────────────────────────
-   Was `background: var(--accent-gradient)` (now `none`) with white text and a
-   blue glow — i.e. invisible white-on-cream. Lavender fill, ink text, ink
-   border, no shadow. */
+/* ── Primary button — lavender fill, ink edge, tactile press ──────── */
 .btn-primary {
   background: var(--cta);
   color: var(--cta-ink);
   border: var(--wf-border-w) solid var(--border-strong);
-  box-shadow: none;
+  box-shadow: var(--shadow-hard-sm);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--cta-hover);
   filter: none;
+  transform: translate(-1px, -2px);
+  box-shadow: var(--shadow-hard);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+.btn-primary:disabled {
   box-shadow: none;
 }
 
-/* ── Course switcher icon ─────────────────────────────────────────
-   Hard-coded blue gradient + blue glow → flat lavender, ink glyph, ink edge. */
+/* ── Secondary / danger — 2px ink edge + the same press feel ──────── */
+.btn-secondary,
+.btn-danger {
+  border-width: var(--wf-border-w);
+  box-shadow: var(--shadow-hard-sm);
+}
+.btn-secondary {
+  background: var(--surface);
+}
+.btn-secondary:hover:not(:disabled),
+.btn-danger:hover:not(:disabled) {
+  transform: translate(-1px, -2px);
+  box-shadow: var(--shadow-hard);
+}
+.btn-secondary:active:not(:disabled),
+.btn-danger:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+/* ── Course switcher icon (legacy blue gradient) → flat lavender ──── */
 .course-icon {
   background: var(--cta);
   color: var(--cta-ink);
@@ -48,21 +71,86 @@
   box-shadow: none;
 }
 
-/* ── Floating surfaces: separation from an ink border, not a shadow ──
-   The ⌘K palette, toasts, and the spark tooltip all leaned on a drop shadow
-   over the page. Flat palette has none — give the palette a real ink edge and
-   drop the blur (a no-op over the opaque cream surface anyway). The dark
-   tooltip/toast fills read on their own; just shed the shadow. */
+/* ── Status pills — SOLID fills with an ink edge (mockup ladder) ────
+   Bolder than the soft-tint base: mastered = teal, practising = lavender,
+   learning = ember, not-started = outline only. Shape + colour + label all
+   carry the meaning. */
+.status-pill {
+  border: var(--wf-border-w) solid var(--border-strong);
+  padding: 3px 10px;
+  text-transform: none;
+}
+.status-pill.mastered {
+  background: var(--brand-teal);
+  color: var(--on-teal);
+}
+.status-pill.practising {
+  background: var(--brand-lavender);
+  color: #1a1a1a;
+}
+.status-pill.learning {
+  background: var(--brand-orange);
+  color: #1a1a1a;
+}
+.status-pill.not-started {
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+/* ── Segmented control — ink edge + a raised active "sticker" ─────── */
+.segmented {
+  background: var(--surface-sunken);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+.segmented button {
+  border-radius: var(--radius-pill);
+  color: var(--ink-muted);
+}
+.segmented button[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+/* ── Floating surfaces: separation from an ink border, not a shadow ── */
 .palette {
   background: var(--surface);
   border: var(--wf-border-w) solid var(--border-strong);
-  box-shadow: none;
+  box-shadow: var(--shadow-hard-lg);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-.toast,
+
+/* ── Sheet / drawer — flat, ink-edged, hard-shadowed (no glass blur) ─ */
+.sheet-backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.sheet {
+  border: var(--wf-border-w) solid var(--border-strong);
+  box-shadow: var(--shadow-hard-lg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ── Toast — the mockup's light ink-bordered pill with a hard shadow ─ */
+.toast {
+  background: var(--surface);
+  color: var(--ink);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-hard-sm);
+}
 .spark-readout {
   box-shadow: none;
+}
+
+/* ── Inputs — 2px ink edge, orange focus (matches the token focus) ── */
+.confirm-input {
+  border-width: var(--wf-border-w);
 }
 
 /* ── Display serif on page titles ─────────────────────────────────

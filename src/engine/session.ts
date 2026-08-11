@@ -22,6 +22,11 @@ export interface IntentSpec {
   instructions: string[];
   avoid: string[];
   siblingWeights: { retention: number; errors: number; proximity: number };
+  /** Blocks this intent needs regardless of scope. `remediate` is defined by
+   *  the error log, so it must always carry the unresolved-errors block even
+   *  under `clean_slate` — otherwise its instructions reference errors that
+   *  aren't there. Unioned with `scopeConfig[scope]` (see `blocksFor`). */
+  requireBlocks?: Block[];
 }
 
 const NO_TIME = 'Do not estimate how long this took — the app records the time.';
@@ -29,12 +34,13 @@ const NO_TIME = 'Do not estimate how long this took — the app records the time
 export const intentConfig: Record<SessionIntent, IntentSpec> = {
   remediate: {
     instructions: [
-      'Focus entirely on the unresolved errors below.',
+      'Focus entirely on the unresolved errors listed above.',
       'Use retrieval before explanation.',
       'Do not move on until each error is corrected.',
     ],
     avoid: ['Do not reteach mastered concepts unless retrieval shows they have faded.', NO_TIME],
     siblingWeights: { retention: 1, errors: 3, proximity: 1 },
+    requireBlocks: ['unresolved-errors'],
   },
   retention: {
     instructions: ['Test recall first, then patch what has faded.', 'Prioritise retrieval over exposition.'],
@@ -52,6 +58,18 @@ export const intentConfig: Record<SessionIntent, IntentSpec> = {
     siblingWeights: { retention: 2, errors: 2, proximity: 1 },
   },
 };
+
+/** Canonical block ordering — the union in `blocksFor` is sorted by this so a
+ *  required block lands in its natural place (e.g. errors right after the title
+ *  under clean_slate) rather than tacked on at the end. */
+const BLOCK_ORDER: Block[] = ['topic-title', 'learner', 'unresolved-errors', 'related-topics', 'course-snapshot'];
+
+/** The blocks a briefing actually carries: the scope's blocks unioned with any
+ *  the intent requires (`remediate` always keeps its error log). */
+export function blocksFor(intent: SessionIntent, scope: SessionScope): Block[] {
+  const set = new Set<Block>([...scopeConfig[scope], ...(intentConfig[intent].requireBlocks ?? [])]);
+  return BLOCK_ORDER.filter((b) => set.has(b));
+}
 
 export interface SiblingSummary {
   topic_id: string; title: string; status: string; retention: number | null; unresolvedErrors: number;
@@ -107,7 +125,7 @@ export function courseSnapshot(course: Course, now: Date): CourseSnapshot {
 export function buildSessionContext(
   course: Course, section: Section, topic: Topic, intent: SessionIntent, scope: SessionScope, now: Date,
 ): SessionContext {
-  const blocks = scopeConfig[scope];
+  const blocks = blocksFor(intent, scope);
   const ctx: SessionContext = {
     topic: { title: topic.title, sectionTitle: section.title, courseTitle: course.title },
     unresolvedErrors: [], siblings: [], snapshot: null,
@@ -159,15 +177,38 @@ export function startSessionPrompt(ctx: SessionContext, intent: SessionIntent, s
   };
 
   const spec = intentConfig[intent];
-  const contextBlocks = scopeConfig[scope].map((b) => renderers[b]()).filter((s): s is string => s !== null);
+  const contextBlocks = blocksFor(intent, scope).map((b) => renderers[b]()).filter((s): s is string => s !== null);
   const instructions = `INSTRUCTIONS\n${spec.instructions.join('\n')}`;
   const avoid = `AVOID\n${spec.avoid.join('\n')}`;
-  const output = [
-    'OUTPUT',
-    'When finished, output ONLY the session-log JSON (no prose, no fences):',
-    '{ "schema_version": "2.0.0", "session_id": "session_<10 random>", "course_id": "…", "date": "<ISO now>", "duration_minutes": 0, "topics_covered": [ … ] }',
-    'Set duration_minutes to 0 — the app records the real time.',
+  // The briefing KICKS OFF a live tutoring session — it deliberately carries no
+  // JSON schema. Handing the model an output schema up front makes it dump the
+  // log immediately instead of teaching. The session-log JSON is requested
+  // separately at the end via `sessionWrapUpPrompt` (shown at the import step).
+  const begin = [
+    'BEGIN',
+    'Start the session now and tutor me interactively — teach, ask questions, and drill the items above according to the intent.',
+    'Do NOT output any JSON or session log yet — we are studying. When the session is over I will ask you for the log.',
   ].join('\n');
 
-  return [...contextBlocks, instructions, avoid, output].join('\n\n');
+  return [...contextBlocks, instructions, avoid, begin].join('\n\n');
+}
+
+/**
+ * The wrap-up prompt — copied at the import step, after the timed session ends.
+ * Requests the session-log JSON from the same conversation the briefing started.
+ * `duration_minutes` is always 0: the app is the only timekeeper and overwrites
+ * it with the measured time on commit (never trusts the model's estimate).
+ */
+export function sessionWrapUpPrompt(courseId: string, topics: Array<{ topic_id: string; title: string }>): string {
+  const list = topics.map((t) => `${t.topic_id} → ${t.title}`).join('\n');
+  return [
+    'The study session is over.',
+    'Based on our conversation, output ONLY the session-log JSON — no prose, no markdown fences:',
+    `{ "schema_version": "2.0.0", "session_id": "session_<10 random alphanumeric>", "course_id": "${courseId}", "date": "<ISO 8601 now>", "duration_minutes": 0, "topics_covered": [ { "topic_id": "<one of the ids below>", "confidence_reported": <integer 1-5>, "notes": "<short, optional>", "errors": [ { "error_type": "conceptual|procedural|careless|knowledge_gap", "description": "<what went wrong>" } ] } ] }`,
+    'Set duration_minutes to 0 — the app records the real time.',
+    'confidence_reported is an integer 1-5 (1 = could not recall, 5 = fluent), NOT a percentage. Only include topics actually covered this session.',
+    '',
+    'Topic ids (id → title):',
+    list,
+  ].join('\n');
 }

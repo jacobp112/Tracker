@@ -68,20 +68,11 @@ describe('CommandPalette — opening', () => {
     expect(screen.getByRole('dialog', { name: /command palette/i })).toBeInTheDocument();
   });
 
-  it('opens from the sidebar search row', async () => {
+  it('opens from the topbar search affordance (the entry point at every width)', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    // Name composed from the visible label + keycap, so it is platform-specific.
-    await user.click(screen.getByRole('button', { name: `Search ${SHORTCUT_LABEL}` }));
-    expect(screen.getByRole('dialog', { name: /command palette/i })).toBeInTheDocument();
-  });
-
-  it('opens from the topbar, which is the only entry point that survives on mobile', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: `Search (${SHORTCUT_LABEL})` }));
+    await user.click(screen.getByRole('button', { name: /search or jump to/i }));
     expect(screen.getByRole('dialog', { name: /command palette/i })).toBeInTheDocument();
   });
 
@@ -89,8 +80,10 @@ describe('CommandPalette — opening', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    // The old shell drew "⌘K" on every platform, including Windows.
-    expect(screen.getByRole('button', { name: `Search ${SHORTCUT_LABEL}` })).toBeInTheDocument();
+    // The old shell drew "⌘K" on every platform, including Windows; the topbar
+    // search affordance now shows the real shortcut for this platform.
+    const search = screen.getByRole('button', { name: /search or jump to/i });
+    expect(search).toHaveTextContent(SHORTCUT_LABEL);
 
     await open(user);
     expect(screen.getByRole('dialog', { name: /command palette/i })).toBeInTheDocument();
