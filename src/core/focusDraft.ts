@@ -1,4 +1,4 @@
-import type { SessionIntent, SessionScope } from '@/domain/types';
+import type { SessionIntent, SessionScope, SessionPlan } from '@/domain/types';
 import type { PomodoroConfig, TimerMode } from '@/hooks/useStudyTimer';
 
 export const FOCUS_DRAFT_KEY = 'cairn-focus-session';
@@ -7,6 +7,7 @@ export interface FocusDraft {
   intent: SessionIntent; scope: SessionScope;
   timer_mode: TimerMode; pomodoro?: PomodoroConfig;
   created_at: string; elapsed_seconds: number; checked_error_ids: string[];
+  plan?: SessionPlan;
 }
 
 export function loadFocusDraft(): FocusDraft | null {

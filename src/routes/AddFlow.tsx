@@ -3,6 +3,15 @@ import { useToast, type ToastAction } from '@/components/feedback';
 import { detectSchema } from '@/core/detect';
 import { COMMIT_VERB, ingest, SCHEMA_LABEL, type Preview } from '@/core/pipeline';
 import { coldAssessmentPrompt, coursePrompt, examPrompt, sessionPrompt } from '@/domain/prompts';
+import {
+  ingestAssessmentDef,
+  commitAssessmentDef,
+  toAssessmentRef,
+  pastPaperIngestPrompt,
+} from '@/core/assessment-ingest';
+import { getAssessmentRepo } from '@/core/assessment-store';
+import { AssessmentIngestPreview } from '@/components/AssessmentIngestPreview';
+import type { AssessmentDefinition } from '@/domain/assessment';
 import { courseTopics } from '@/engine/course';
 import type { SchemaName } from '@/domain/schemas';
 import type { Course, Store } from '@/domain/types';
@@ -18,7 +27,8 @@ export type AddKind = SchemaName | 'quick';
 type Step =
   | { name: 'editing' }
   | { name: 'invalid'; errors: string[] }
-  | { name: 'preview'; schemaName: SchemaName; value: unknown; preview: Preview };
+  | { name: 'preview'; schemaName: SchemaName; value: unknown; preview: Preview }
+  | { name: 'assessment_preview'; def: AssessmentDefinition };
 
 const KIND_TITLE: Record<AddKind, string> = {
   course: 'Add a course',
@@ -37,6 +47,7 @@ export function AddFlow({
   courseId,
   store,
   commitValue,
+  replaceStore,
   undoLast,
   onClose,
   onCommitOverride,
@@ -46,6 +57,7 @@ export function AddFlow({
   courseId?: string;
   store: Store;
   commitValue: (schemaName: SchemaName, value: unknown) => string | null;
+  replaceStore?: (next: Store) => string | null;
   undoLast: () => string | null;
   onClose: () => void;
   /**
@@ -68,9 +80,7 @@ export function AddFlow({
   const [text, setText] = useState('');
   const [step, setStep] = useState<Step>({ name: 'editing' });
   const [done, setDone] = useState<{ summary: string; dest: string } | null>(null);
-  // Cold checks are reported as exams (cold: true), so they ride the exam kind
-  // with a different copy-out prompt — run cold, unaided, on unfamiliar items.
-  const [examCold, setExamCold] = useState(false);
+  const [examMode, setExamMode] = useState<'result' | 'cold' | 'past_paper'>('result');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -85,7 +95,11 @@ export function AddFlow({
   const promptFor = (): string => {
     if (promptOverride) return promptOverride;
     if (kind === 'course') return coursePrompt(store);
-    if (kind === 'exam') return examCold ? coldAssessmentPrompt(store) : examPrompt(store);
+    if (kind === 'exam') {
+      if (examMode === 'past_paper') return pastPaperIngestPrompt(store);
+      if (examMode === 'cold') return coldAssessmentPrompt(store);
+      return examPrompt(store);
+    }
     if (kind === 'session') {
       const course = store.courses.find((c) => c.course_id === courseId) ?? store.courses[0];
       if (!course) return coursePrompt(store);
@@ -104,6 +118,26 @@ export function AddFlow({
   const preview = () => {
     const raw = text.trim();
     if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (
+        parsed && typeof parsed === 'object' &&
+        (parsed.schema_version === '4.0.0' || parsed.provenance === 'past_paper' || (Array.isArray(parsed.questions) && parsed.assessment_id))
+      ) {
+        const res = ingestAssessmentDef(raw, store);
+        if (res.ok) {
+          setStep({ name: 'assessment_preview', def: res.value });
+          return;
+        } else {
+          setStep({ name: 'invalid', errors: res.errors.map((e) => (e.path ? `${e.path}: ${e.message}` : e.message)) });
+          return;
+        }
+      }
+    } catch {
+      // Standard ingest will parse and handle invalid JSON
+    }
+
     let schemaName: SchemaName | null = kind === 'quick' ? null : kind;
     if (kind === 'quick') {
       let parsed: unknown;
@@ -122,6 +156,23 @@ export function AddFlow({
     const result = ingest(raw, schemaName!, store);
     if (result.ok) setStep({ name: 'preview', schemaName: result.schemaName, value: result.value, preview: result.preview });
     else setStep({ name: 'invalid', errors: result.errors.map((e) => (e.path ? `${e.path}: ${e.message}` : e.message)) });
+  };
+
+  const confirmAssessment = async (def: AssessmentDefinition) => {
+    try {
+      const repo = getAssessmentRepo();
+      await commitAssessmentDef(def, repo);
+      const ref = toAssessmentRef(def);
+      if (replaceStore) {
+        const nextRefs = [...store.assessment_refs.filter((r) => r.assessment_id !== ref.assessment_id), ref];
+        replaceStore({ ...store, assessment_refs: nextRefs });
+      }
+      toast('Assessment definition saved to IndexedDB & ready for sittings.', 'success');
+      onClose();
+      navigate('/exams');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not save assessment definition.', 'error');
+    }
   };
 
   const confirm = (schemaName: SchemaName, value: unknown) => {
@@ -176,6 +227,13 @@ export function AddFlow({
             </div>
             <button type="button" data-press onClick={finishDone} style={primaryBtn(theme)}>Done</button>
           </>
+        ) : step.name === 'assessment_preview' ? (
+          <AssessmentIngestPreview
+            definition={step.def}
+            store={store}
+            onConfirmCommit={confirmAssessment}
+            onCancel={() => setStep({ name: 'editing' })}
+          />
         ) : showPreview && step.name === 'preview' ? (
           <>
             <div style={{ background: theme.surfaceAlt, borderRadius: '14px', padding: '18px', marginBottom: '8px' }}>
@@ -208,27 +266,41 @@ export function AddFlow({
                   <button
                     type="button"
                     data-press
-                    aria-pressed={!examCold}
-                    onClick={() => setExamCold(false)}
-                    style={modeSeg(theme, !examCold)}
+                    aria-pressed={examMode === 'result'}
+                    onClick={() => setExamMode('result')}
+                    style={modeSeg(theme, examMode === 'result')}
                   >
                     Exam result
                   </button>
                   <button
                     type="button"
                     data-press
-                    aria-pressed={examCold}
-                    onClick={() => setExamCold(true)}
-                    style={modeSeg(theme, examCold)}
+                    aria-pressed={examMode === 'cold'}
+                    onClick={() => setExamMode('cold')}
+                    style={modeSeg(theme, examMode === 'cold')}
                   >
                     Cold check
                   </button>
+                  <button
+                    type="button"
+                    data-press
+                    aria-pressed={examMode === 'past_paper'}
+                    onClick={() => setExamMode('past_paper')}
+                    style={modeSeg(theme, examMode === 'past_paper')}
+                  >
+                    Past Paper Def
+                  </button>
                 </div>
               )}
-              {kind === 'exam' && examCold && (
+              {kind === 'exam' && examMode === 'cold' && (
                 <p style={{ margin: '0 0 14px', fontSize: '12.5px', color: theme.muted }}>
                   Run this cold — unfamiliar items, no hints or notes, an independent attempt —
                   then paste the result. It’s stored as an exam marked cold.
+                </p>
+              )}
+              {kind === 'exam' && examMode === 'past_paper' && (
+                <p style={{ margin: '0 0 14px', fontSize: '12.5px', color: theme.muted }}>
+                  Paste a full past paper + mark scheme definition. It will be stored in the assessment domain for repeatable sittings and question-level evidence.
                 </p>
               )}
               {kind !== 'quick' && (

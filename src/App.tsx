@@ -27,7 +27,9 @@ import { clearFocusDraft, loadFocusDraft, saveFocusDraft, type FocusDraft } from
 import { courseHealth, courseTopics } from '@/engine/course';
 import { sessionWrapUpPrompt } from '@/engine/session';
 import { projectedDue } from '@/engine/retention';
-import type { Course, SessionIntent, SessionScope, Store } from '@/domain/types';
+import type { Course, SessionIntent, SessionPlan, SessionScope, Store } from '@/domain/types';
+import { buildSessionPlan, evaluateSession } from '@/engine/plan';
+import type { Recommendation } from '@/engine/recommend';
 import type { PomodoroConfig, TimerMode } from '@/hooks/useStudyTimer';
 
 function initials(title: string): string {
@@ -256,7 +258,7 @@ function StudyIndex({ store }: { store: Store }) {
  *  can re-enter `focus` from any screen. */
 type SessionFlowState =
   | { phase: 'idle' }
-  | { phase: 'setup'; courseId: string; sectionId: string; topicId: string }
+  | { phase: 'setup'; courseId: string; sectionId: string; topicId: string; plan?: SessionPlan }
   | { phase: 'focus'; draft: FocusDraft }
   | { phase: 'import'; draft: FocusDraft; measuredMinutes: number };
 
@@ -265,7 +267,7 @@ function initialDraft(
   sectionId: string,
   topicId: string,
   topicTitle: string,
-  cfg: { intent: SessionIntent; scope: SessionScope; timer_mode: TimerMode; pomodoro?: PomodoroConfig },
+  cfg: { intent: SessionIntent; scope: SessionScope; timer_mode: TimerMode; pomodoro?: PomodoroConfig; plan?: SessionPlan },
 ): FocusDraft {
   return {
     course_id: courseId,
@@ -276,6 +278,7 @@ function initialDraft(
     scope: cfg.scope,
     timer_mode: cfg.timer_mode,
     pomodoro: cfg.pomodoro,
+    plan: cfg.plan,
     created_at: new Date().toISOString(),
     elapsed_seconds: 0,
     checked_error_ids: [],
@@ -337,6 +340,7 @@ function AppInner() {
     loadError,
   } = useStore();
   const { toggle: toggleTheme } = useTheme();
+  const { toast } = useToast();
   const [searchOpen, setSearchOpen] = useState(false);
   const [flow, setFlow] = useState<SessionFlowState>({ phase: 'idle' });
   const [resumeDraft, setResumeDraft] = useState<FocusDraft | null>(null);
@@ -365,14 +369,39 @@ function AppInner() {
    *  the topic and opens the setup modal, navigating to the course if the
    *  caller wasn't already there. */
   const startSession = useCallback(
-    (courseId: string, topicId: string) => {
+    (courseId: string, topicId: string, plan?: SessionPlan) => {
       const course = store.courses.find((c) => c.course_id === courseId);
       const ref = course ? courseTopics(course).find((r) => r.topic.topic_id === topicId) : undefined;
       if (!course || !ref) return;
-      setFlow({ phase: 'setup', courseId: course.course_id, sectionId: ref.section.section_id, topicId: ref.topic.topic_id });
+      setFlow({ phase: 'setup', courseId: course.course_id, sectionId: ref.section.section_id, topicId: ref.topic.topic_id, plan });
       if (!(route.name === 'course' && route.courseId === courseId)) navigate(`/course/${courseId}`);
     },
     [store, route],
+  );
+
+  const startRecommendation = useCallback(
+    (rec: Recommendation) => {
+      if (rec.action === 'assess') {
+        navigate('/exams');
+        return;
+      }
+      const plan = buildSessionPlan(rec, store, new Date());
+      let targetTopicId = plan.target_topic_ids[0] ?? (rec.target.kind === 'topic' ? rec.target.id : undefined);
+      if (!targetTopicId && rec.target.kind === 'pattern') {
+        const pat = store.error_patterns.find((p) => p.pattern_id === rec.target.id);
+        if (pat && pat.topic_ids.length > 0) targetTopicId = pat.topic_ids[0];
+      }
+      if (!targetTopicId) return;
+      for (const course of store.courses) {
+        for (const sec of course.sections) {
+          if (sec.topics.some((t) => t.topic_id === targetTopicId)) {
+            startSession(course.course_id, targetTopicId, plan);
+            return;
+          }
+        }
+      }
+    },
+    [store, startSession],
   );
 
   const courses = store.courses.map(summarise);
@@ -400,13 +429,14 @@ function AppInner() {
               kind="course"
               store={store}
               commitValue={commitValue}
+              replaceStore={replaceStore}
               undoLast={undoLast}
               onClose={() => navigate('/study')}
             />
           </>
         );
       case 'overview':
-        return <Overview store={store} onStartSession={startSession} />;
+        return <Overview store={store} onStartSession={startSession} onStartRecommendation={startRecommendation} />;
       case 'performance':
         return <Performance store={store} />;
       case 'study':
@@ -430,15 +460,16 @@ function AppInner() {
         );
       }
       case 'exams':
-        return <Exams store={store} />;
+        return <Exams store={store} replaceStore={replaceStore} />;
       case 'add-exam':
         return (
           <>
-            <Exams store={store} />
+            <Exams store={store} replaceStore={replaceStore} />
             <AddFlow
               kind="exam"
               store={store}
               commitValue={commitValue}
+              replaceStore={replaceStore}
               undoLast={undoLast}
               onClose={() => navigate('/exams')}
             />
@@ -452,6 +483,7 @@ function AppInner() {
               kind="quick"
               store={store}
               commitValue={commitValue}
+              replaceStore={replaceStore}
               undoLast={undoLast}
               onClose={() => navigate('/overview')}
             />
@@ -470,7 +502,7 @@ function AppInner() {
       ? (() => {
           const c = store.courses.find((x) => x.course_id === flow.courseId);
           const ref = c ? courseTopics(c).find((r) => r.topic.topic_id === flow.topicId) : undefined;
-          return c && ref ? { course: c, section: ref.section, topic: ref.topic } : null;
+          return c && ref ? { course: c, section: ref.section, topic: ref.topic, plan: flow.plan } : null;
         })()
       : null;
   const focusUnresolvedErrors =
@@ -497,6 +529,7 @@ function AppInner() {
           course={setupCtx.course}
           section={setupCtx.section}
           topic={setupCtx.topic}
+          plan={setupCtx.plan}
           onBegin={(cfg) => {
             const draft = initialDraft(
               setupCtx.course.course_id,
@@ -538,6 +571,7 @@ function AppInner() {
           })()}
           onClose={() => setFlow({ phase: 'idle' })}
           onCommitOverride={(value) => {
+            const plan = flow.draft.plan;
             const error = commitSession(value, {
               topic_id: flow.draft.topic_id,
               created_at: flow.draft.created_at,
@@ -547,7 +581,17 @@ function AppInner() {
               pomodoro_config: flow.draft.pomodoro,
               measured_minutes: flow.measuredMinutes,
             });
-            if (!error) clearFocusDraft();
+            if (!error) {
+              clearFocusDraft();
+              if (plan) {
+                const evalRes = evaluateSession(plan, store, new Date());
+                if (evalRes.met) {
+                  toast('Session plan achieved! Target evidence recorded.', 'success');
+                } else if (evalRes.outstanding.length > 0) {
+                  toast(`Session logged — plan outstanding: ${evalRes.outstanding.join(', ')}`, 'info');
+                }
+              }
+            }
             return error;
           }}
         />

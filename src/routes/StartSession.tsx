@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useToast } from '@/components/feedback';
 import { buildSessionContext, startSessionPrompt } from '@/engine/session';
-import type { Course, Section, SessionIntent, SessionScope, Topic } from '@/domain/types';
+import type { Course, Section, SessionIntent, SessionScope, SessionPlan, Topic } from '@/domain/types';
 import type { PomodoroConfig, TimerMode } from '@/hooks/useStudyTimer';
 import { useTheme } from '@/theme/useTheme';
 import { getCairnTheme, type CairnTheme } from '@/theme/cairnMock';
@@ -25,6 +25,16 @@ const SCOPE_LABEL: Record<SessionScope, string> = {
 
 const DEFAULT_POMODORO: PomodoroConfig = { work_minutes: 25, break_minutes: 5, long_break_minutes: 15 };
 
+function describeExpectedKind(kind: string): string {
+  switch (kind) {
+    case 'independent_success': return 'Independent test success on target topic (tier ≥ 4)';
+    case 'error_resolved': return 'Demonstrated error remediation and independent proof';
+    case 'retrieval': return 'Retrieval attempt logged on target topic';
+    case 'coverage': return 'Target topic started and baseline established';
+    default: return 'Evidence logged on target topic';
+  }
+}
+
 /**
  * StartSession — the "before you dive in" briefing modal. Lets the learner
  * pick an intent + scope + timer mode, previews the exact AI briefing that
@@ -36,13 +46,15 @@ export function StartSession({
   course,
   section,
   topic,
+  plan,
   onBegin,
   onClose,
 }: {
   course: Course;
   section: Section;
   topic: Topic;
-  onBegin: (cfg: { intent: SessionIntent; scope: SessionScope; timer_mode: TimerMode; pomodoro?: PomodoroConfig }) => void;
+  plan?: SessionPlan;
+  onBegin: (cfg: { intent: SessionIntent; scope: SessionScope; timer_mode: TimerMode; pomodoro?: PomodoroConfig; plan?: SessionPlan }) => void;
   onClose: () => void;
 }) {
   const { theme: mode } = useTheme();
@@ -50,8 +62,8 @@ export function StartSession({
   const theme = getCairnTheme(isDark);
   const { toast } = useToast();
 
-  const [intent, setIntent] = useState<SessionIntent>('adaptive');
-  const [scope, setScope] = useState<SessionScope>('topic');
+  const [intent, setIntent] = useState<SessionIntent>(plan?.intent ?? 'adaptive');
+  const [scope, setScope] = useState<SessionScope>(plan?.scope ?? 'topic');
   const [timerMode, setTimerMode] = useState<TimerMode>('count_up');
   const [pomodoro, setPomodoro] = useState<PomodoroConfig>(DEFAULT_POMODORO);
 
@@ -74,7 +86,7 @@ export function StartSession({
   };
 
   const begin = () => {
-    onBegin({ intent, scope, timer_mode: timerMode, pomodoro: timerMode === 'pomodoro' ? pomodoro : undefined });
+    onBegin({ intent, scope, timer_mode: timerMode, pomodoro: timerMode === 'pomodoro' ? pomodoro : undefined, plan });
   };
 
   const setPomodoroField = (field: keyof PomodoroConfig) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +110,31 @@ export function StartSession({
         </div>
 
         <p style={{ fontSize: '13px', color: theme.muted, margin: '0 0 6px' }}>{course.title}</p>
+
+        {plan && (
+          <div
+            style={{
+              background: theme.surfaceAlt,
+              border: `1.5px solid ${theme.border}`,
+              borderRadius: '10px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: theme.pine, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Session Plan
+              </span>
+              <span style={{ fontSize: '11px', color: theme.muted }}>• Est. {plan.est_duration_minutes}m</span>
+            </div>
+            <p style={{ margin: '0 0 6px 0', fontSize: '13.5px', fontWeight: 600, color: theme.ink }}>
+              {plan.reason}
+            </p>
+            <p style={{ margin: 0, fontSize: '12px', color: theme.muted }}>
+              <strong>Expected outcome:</strong> {describeExpectedKind(plan.expected_evidence.kind)}
+            </p>
+          </div>
+        )}
 
         <Field label="Intent" theme={theme}>
           <ChoiceRow theme={theme} value={intent} labels={INTENT_LABEL} onChange={setIntent} />
