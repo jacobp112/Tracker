@@ -73,7 +73,8 @@ describe('unstablePrerequisites course scope', () => {
 
     const scoped = unstablePrerequisites(store, NOW, 'course_1');
     expect(scoped.map((u) => u.topic_id)).toEqual(['topic_c']); // only course_1's downstream
-    expect(scoped[0].report.unstableCount).toBeGreaterThanOrEqual(1); // upstream topic_a (course_2) resolved
+    expect(scoped.length).toBeGreaterThan(0);
+    expect(scoped[0]!.report.unstableCount).toBeGreaterThanOrEqual(1); // upstream topic_a (course_2) resolved
 
     const all = unstablePrerequisites(store, NOW);
     expect(all.map((u) => u.topic_id).sort()).toEqual(['topic_c', 'topic_d']);

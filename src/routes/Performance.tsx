@@ -3,9 +3,10 @@ import type { Store } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { getCairnTheme, type CairnTheme } from '@/theme/cairnMock';
 import { performanceByDifficulty, performanceByNovelty, type DimensionBucket } from '@/engine/performance';
-import { allReviewEvents, performanceSummary, unstablePrerequisites, type UnstableUpstream } from '@/engine/performance-view';
+import { allReviewEvents, courseReviewEvents, performanceSummary, unstablePrerequisites, type UnstableUpstream } from '@/engine/performance-view';
 
 const SERIF = "'EB Garamond', var(--font-display)";
+const SANS = 'var(--font-sans)';
 const round = (x: number) => String(Math.round(x));
 
 /** A metric value or an honest em dash when it's null (below its min-data guard). */
@@ -17,15 +18,23 @@ export function Performance({ store }: { store: Store }) {
   const { theme: mode } = useTheme();
   const theme = getCairnTheme(mode === 'dark');
   const [now] = useState(() => new Date());
+  const [scope, setScope] = useState<string>('all');
 
-  const events = useMemo(() => allReviewEvents(store), [store]);
+  const anyAssessments = useMemo(() => allReviewEvents(store).some((e) => e.assessment), [store]);
+
+  const events = useMemo(
+    () => (scope === 'all' ? allReviewEvents(store) : courseReviewEvents(store, scope)),
+    [store, scope],
+  );
   const summary = useMemo(() => performanceSummary(events), [events]);
   const byDifficulty = useMemo(() => performanceByDifficulty(events), [events]);
   const byNovelty = useMemo(() => performanceByNovelty(events), [events]);
-  const unstable = useMemo(() => unstablePrerequisites(store, now), [store, now]);
+  const unstable = useMemo(
+    () => unstablePrerequisites(store, now, scope === 'all' ? undefined : scope),
+    [store, now, scope],
+  );
 
-  const hasAssessments = events.some((e) => e.assessment);
-  if (!hasAssessments) {
+  if (!anyAssessments) {
     return (
       <div style={content()}>
         <h1 style={pageTitle(theme)}>Performance</h1>
@@ -37,6 +46,12 @@ export function Performance({ store }: { store: Store }) {
       </div>
     );
   }
+
+  const scopeOptions = [
+    { value: 'all', label: 'All courses' },
+    ...store.courses.map((c) => ({ value: c.course_id, label: c.title })),
+  ];
+  const hasAssessments = events.some((e) => e.assessment);
 
   const indep = summary.independent;
   const indepValue =
@@ -56,25 +71,74 @@ export function Performance({ store }: { store: Store }) {
   return (
     <div style={content()}>
       <h1 style={pageTitle(theme)}>Performance</h1>
-      <p style={{ fontSize: '15px', color: theme.muted, maxWidth: '560px', margin: '0 0 28px' }}>
+      <p style={{ fontSize: '15px', color: theme.muted, maxWidth: '560px', margin: '0 0 20px' }}>
         How effectively you can use what you know — independent application, transfer, and
         performance at rising difficulty and novelty. Separate from retention.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        {cards.map((c) => (
-          <div key={c.label} style={card(theme)}>
-            <span style={cardLabel(theme)}>{c.label}</span>
-            <span style={{ fontFamily: SERIF, fontSize: '34px', lineHeight: 1.05, color: theme.ink }}>{c.value}</span>
-            <span style={{ fontSize: '11.5px', fontWeight: 600, color: theme.muted }}>{c.sub}</span>
+      {store.courses.length > 1 && (
+        <ScopeTabs options={scopeOptions} value={scope} onChange={setScope} theme={theme} />
+      )}
+
+      {!hasAssessments ? (
+        <p style={{ fontSize: '14px', color: theme.muted, maxWidth: '520px' }}>
+          No performance data for this course yet.
+        </p>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+            {cards.map((c) => (
+              <div key={c.label} style={card(theme)}>
+                <span style={cardLabel(theme)}>{c.label}</span>
+                <span style={{ fontFamily: SERIF, fontSize: '34px', lineHeight: 1.05, color: theme.ink }}>{c.value}</span>
+                <span style={{ fontSize: '11.5px', fontWeight: 600, color: theme.muted }}>{c.sub}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <DimensionSection title="Performance by difficulty" unit="Difficulty" buckets={byDifficulty} theme={theme} />
-      <DimensionSection title="Performance by novelty" unit="Novelty" buckets={byNovelty} theme={theme} />
+          <DimensionSection title="Performance by difficulty" unit="Difficulty" buckets={byDifficulty} theme={theme} />
+          <DimensionSection title="Performance by novelty" unit="Novelty" buckets={byNovelty} theme={theme} />
 
-      {unstable.length > 0 && <PrereqSection items={unstable} theme={theme} />}
+          {unstable.length > 0 && <PrereqSection items={unstable} theme={theme} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ScopeTabs({ options, value, onChange, theme }: {
+  options: Array<{ value: string; label: string }>;
+  value: string;
+  onChange: (v: string) => void;
+  theme: CairnTheme;
+}) {
+  const move = (dir: 1 | -1) => {
+    const i = options.findIndex((o) => o.value === value);
+    const next = options[(i + dir + options.length) % options.length];
+    if (next) onChange(next.value);
+  };
+  return (
+    <div role="tablist" aria-label="Course scope" style={scopeBar(theme)}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onChange(o.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
+              else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); }
+            }}
+            style={scopeSeg(theme, active)}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -142,4 +206,10 @@ function panel(t: CairnTheme): CSSProperties {
 }
 function panelTitle(t: CairnTheme): CSSProperties {
   return { fontFamily: SERIF, fontWeight: 400, fontSize: '20px', color: t.ink, margin: '0 0 14px' };
+}
+function scopeBar(t: CairnTheme): CSSProperties {
+  return { display: 'inline-flex', flexWrap: 'wrap', gap: '4px', padding: '4px', marginBottom: '28px', background: t.bg, border: `2px solid ${t.border}`, borderRadius: '9999px', boxShadow: `2px 2px 0 ${t.shadow}` };
+}
+function scopeSeg(t: CairnTheme, active: boolean): CSSProperties {
+  return { border: 'none', borderRadius: '9999px', padding: '7px 16px', fontFamily: SANS, fontSize: '13px', fontWeight: 700, cursor: 'pointer', background: active ? t.pine : 'transparent', color: active ? t.onAccent : t.muted };
 }

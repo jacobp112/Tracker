@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { Performance } from '@/routes/Performance';
 import { emptyStore, type ReviewEvent, type Store, type Topic } from '@/domain/types';
 import { makeEvent } from '../engine/assessment-fixtures';
@@ -16,6 +17,15 @@ function storeOf(...topics: Topic[]): Store {
   s.courses.push({ schema_version: '3.2.0', course_id: 'course_1', title: 'C',
     created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
     sections: [{ section_id: 'section_1', title: 'S', order: 0, topics }] });
+  return s;
+}
+function storeOfCourses(courses: Array<{ id: string; title: string; topics: Topic[] }>): Store {
+  const s = emptyStore();
+  courses.forEach((c, i) => {
+    s.courses.push({ schema_version: '3.2.0', course_id: c.id, title: c.title,
+      created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+      sections: [{ section_id: `section_${i}`, title: 'S', order: 0, topics: c.topics }] });
+  });
   return s;
 }
 
@@ -43,5 +53,29 @@ describe('Performance page', () => {
     render(<Performance store={storeOf(topicWith('topic_a', events))} />);
     expect(screen.getByText(/performance by difficulty/i)).toBeInTheDocument();
     expect(screen.getByText(/difficulty 4/i)).toBeInTheDocument();
+  });
+
+  it('scopes the metrics to the selected course', async () => {
+    const user = userEvent.setup();
+    const alpha = topicWith('topic_a', Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 })));
+    const beta = topicWith('topic_b', [makeEvent(undefined)]); // no assessment
+    render(<Performance store={storeOfCourses([
+      { id: 'course_a', title: 'Alpha', topics: [alpha] },
+      { id: 'course_b', title: 'Beta', topics: [beta] },
+    ])} />);
+
+    // Default "All courses": Alpha's five transfer observations aggregate to 100.
+    expect(screen.getByText('100')).toBeInTheDocument();
+
+    // Scope to Beta (no assessment data) → the 100 is gone and a scoped empty message shows.
+    await user.click(screen.getByRole('tab', { name: 'Beta' }));
+    expect(screen.queryByText('100')).not.toBeInTheDocument();
+    expect(screen.getByText(/no performance data for this course yet/i)).toBeInTheDocument();
+  });
+
+  it('shows no scope selector when there is only one course', () => {
+    const events = Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 }));
+    render(<Performance store={storeOf(topicWith('topic_a', events))} />);
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 });
