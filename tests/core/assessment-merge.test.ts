@@ -85,7 +85,19 @@ describe('mergeAttempt — through the single recalculation path', () => {
     expect(topicA.review_history).toHaveLength(1);
     expect(topicA.review_history[0]!.smeared).toBe(false);
     expect(topicA.review_history[0]!.assessment_ref?.attempt_id).toBe('attempt_1');
+    // Fix 1: the event's source_id is the ATTEMPT (unique per sitting), not the
+    // assessment (which would collide across re-sits and with legacy exams).
+    expect(topicA.review_history[0]!.source_id).toBe('attempt_1');
     expect(topicA.strength).toBeGreaterThan(1); // strength grew
+  });
+
+  it('is idempotent — the same attempt cannot be decomposed twice (Fix 3)', () => {
+    const store = storeWithTopics(['topic_a', 'topic_b']);
+    const a = attempt([['question_1', 6], ['question_2', 2]]);
+    mergeAttempt(store, twoQ, a);
+    mergeAttempt(store, twoQ, a); // second application must be a no-op
+    const topicA = allTopics(store).find((t) => t.topic.topic_id === 'topic_a')!.topic;
+    expect(topicA.review_history).toHaveLength(1);
   });
 });
 

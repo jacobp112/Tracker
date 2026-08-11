@@ -71,7 +71,10 @@ export function decomposeAttempt(def: AssessmentDefinition, attempt: AssessmentA
         date: attempt.sat_at,
         kind: testKind(a.earned, a.possible),
         source: 'exam',
-        source_id: def.assessment_id,
+        // The ATTEMPT is the event's source: unique per sitting, so re-sits don't
+        // collide and these never conflate with a legacy `Exam` (whose source_id
+        // is an exam_id). The assessment is still reachable via assessment_ref.
+        source_id: attempt.attempt_id,
         // Overridden with the topic's own conf in mergeAttempt; a per-attempt
         // confidence is not collected, so no calibration signal is invented.
         confidence_reported: 3,
@@ -93,12 +96,25 @@ export function decomposeAttempt(def: AssessmentDefinition, attempt: AssessmentA
  * fabricating a calibration signal).
  */
 export function mergeAttempt(draft: Store, def: AssessmentDefinition, attempt: AssessmentAttempt): void {
+  if (attemptAlreadyCommitted(draft, attempt.attempt_id)) return; // idempotent — never double-count
   const byId = new Map(allTopics(draft).map(({ topic }) => [topic.topic_id, topic]));
   for (const { topic_id, event } of decomposeAttempt(def, attempt)) {
     const topic = byId.get(topic_id);
     if (!topic) continue; // mappings validated at ingest; a since-deleted topic is skipped
     Object.assign(topic, applyEvent(topic, { ...event, confidence_reported: topic.conf }));
   }
+}
+
+/**
+ * Whether an attempt's evidence is already in the store — DERIVED from the events
+ * themselves (each carries `assessment_ref.attempt_id`), so no separate
+ * "committed" flag is stored. This is the idempotency guard: re-running a commit,
+ * or a restore that re-applies, cannot double-count an attempt.
+ */
+export function attemptAlreadyCommitted(store: Store, attemptId: string): boolean {
+  return allTopics(store).some(({ topic }) =>
+    topic.review_history.some((e) => e.assessment_ref?.attempt_id === attemptId),
+  );
 }
 
 /* ── Derived result (design §C — the "result" is a view, not stored) ── */

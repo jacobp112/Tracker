@@ -44,4 +44,19 @@ describe('backup/restore spanning localStorage + IndexedDB', () => {
     // leaves the assessment domain untouched — no cross-store partial write.
     expect((await repo.allDefinitions()).map((d) => d.assessment_id)).toEqual(['kept']);
   });
+
+  it('persists the localStorage study store BEFORE IndexedDB; a localStorage failure leaves the repo untouched (Fix 2)', async () => {
+    const source = new MemoryAssessmentRepo();
+    await source.putDefinition(def('assessment_9'));
+    const json = await exportBundleAsync(emptyStore(), source);
+
+    const repo = new MemoryAssessmentRepo();
+    await repo.putDefinition(def('kept'));
+    const saveThatFails = () => { throw new Error('quota exceeded'); };
+
+    const res = await importBundleAsync(json, repo, saveThatFails);
+    expect(res.ok).toBe(false);
+    // localStorage was attempted first and failed → the repo was never restored.
+    expect((await repo.allDefinitions()).map((d) => d.assessment_id)).toEqual(['kept']);
+  });
 });

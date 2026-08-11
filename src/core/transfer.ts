@@ -164,15 +164,24 @@ export async function exportBundleAsync(store: Store, repo: AssessmentRepo): Pro
 }
 
 /**
- * Import both stores. The study store is validated first (via the sync path); ONLY
- * if it passes is the assessment domain restored into the repo (atomically, all-or-
- * nothing). A failure at either step returns `ok: false` and — because the caller
- * adopts the returned study store only on success, and the repo is touched only
- * after study validation — leaves both stores as they were.
+ * Import both stores, in the ONLY safe order (design review Fix 2):
+ *   validate study store → persist study store (localStorage) → restore repo (IDB).
+ * localStorage is the failure-prone step (quota), so it goes first: if it throws,
+ * IndexedDB is never touched, so there is no partial two-store restore. If the
+ * later IDB restore fails, the study store is already consistent and re-import
+ * recovers the assessment domain.
+ *
+ * `saveStudyStore` persists the validated study store synchronously and must throw
+ * on failure. When omitted (e.g. some tests), the study store is left for the
+ * caller to adopt and only the repo is restored.
  */
-export async function importBundleAsync(input: string, repo: AssessmentRepo): Promise<ImportResult> {
+export async function importBundleAsync(
+  input: string,
+  repo: AssessmentRepo,
+  saveStudyStore?: (store: Store) => void,
+): Promise<ImportResult> {
   const res = importBundle(input);
-  if (!res.ok) return res; // study store invalid → repo never touched
+  if (!res.ok) return res; // study store invalid → nothing written anywhere
 
   let parsed: Bundle;
   try {
@@ -181,12 +190,22 @@ export async function importBundleAsync(input: string, repo: AssessmentRepo): Pr
     return { ok: false, errors: [{ path: '', message: "That file isn't valid JSON." }] };
   }
 
+  // 1) Persist the study store FIRST — fail fast before touching IndexedDB.
+  if (saveStudyStore) {
+    try {
+      saveStudyStore(res.store);
+    } catch (e) {
+      return { ok: false, errors: [{ path: '', message: `${e instanceof Error ? e.message : "Your data couldn't be saved"}. Nothing was changed.` }] };
+    }
+  }
+
+  // 2) Then restore the assessment domain (atomic within IndexedDB).
   try {
     await repo.restore({ assessments: parsed.assessments ?? [], attempts: parsed.attempts ?? [] });
   } catch (e) {
     return {
       ok: false,
-      errors: [{ path: '/assessments', message: `The assessment data couldn't be restored: ${e instanceof Error ? e.message : 'unknown error'}. Nothing was changed.` }],
+      errors: [{ path: '/assessments', message: `The assessment data couldn't be restored: ${e instanceof Error ? e.message : 'unknown error'}.` }],
     };
   }
 
