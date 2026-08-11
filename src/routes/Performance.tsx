@@ -1,9 +1,16 @@
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { Store } from '@/domain/types';
+import { Fragment, useMemo, useRef, useState, type CSSProperties } from 'react';
+import type { Store, ReviewEvent } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { getCairnTheme, type CairnTheme } from '@/theme/cairnMock';
-import { performanceByDifficulty, performanceByNovelty, type DimensionBucket } from '@/engine/performance';
-import { allReviewEvents, courseReviewEvents, performanceSummary, unstablePrerequisites, type UnstableUpstream } from '@/engine/performance-view';
+import {
+  coldPerformance, independentPerformance, novelTaskSuccess, performanceByDifficulty,
+  performanceByNovelty, performanceHealth, performanceQuality, transferAbility,
+  type DimensionBucket,
+} from '@/engine/performance';
+import {
+  allReviewEvents, courseReviewEvents, metricTrend, performanceSummary,
+  unstablePrerequisites, type UnstableUpstream,
+} from '@/engine/performance-view';
 
 const SERIF = "'EB Garamond', var(--font-display)";
 const SANS = 'var(--font-sans)';
@@ -13,6 +20,33 @@ const round = (x: number) => String(Math.round(x));
 function dash(x: number | null | undefined): string {
   return x === null || x === undefined ? '—' : round(x);
 }
+
+const TREND_METRICS: Array<{
+  label: string;
+  compute: (evs: ReviewEvent[]) => number | null;
+  format: (v: number) => string;
+}> = [
+  { label: 'Performance Health', compute: (evs) => performanceHealth(evs), format: round },
+  { label: 'Cold Performance', compute: (evs) => coldPerformance(evs)?.score ?? null, format: round },
+  {
+    label: 'Independent Performance',
+    compute: (evs) => {
+      const i = independentPerformance(evs);
+      return i && i.sufficient && i.independent.accuracy !== null ? i.independent.accuracy * 100 : null;
+    },
+    format: (v) => `${round(v)}%`,
+  },
+  { label: 'Transfer Ability', compute: (evs) => transferAbility(evs)?.score ?? null, format: round },
+  { label: 'Performance Quality', compute: (evs) => performanceQuality(evs)?.score ?? null, format: round },
+  {
+    label: 'Novel-Task Success',
+    compute: (evs) => {
+      const n = novelTaskSuccess(evs);
+      return n ? n.rate * 100 : null;
+    },
+    format: (v) => `${round(v)}%`,
+  },
+];
 
 export function Performance({ store }: { store: Store }) {
   const { theme: mode } = useTheme();
@@ -96,6 +130,8 @@ export function Performance({ store }: { store: Store }) {
             ))}
           </div>
 
+          <TrendsPanel events={events} now={now} theme={theme} />
+
           <DimensionSection title="Performance by difficulty" unit="Difficulty" buckets={byDifficulty} theme={theme} />
           <DimensionSection title="Performance by novelty" unit="Novelty" buckets={byNovelty} theme={theme} />
 
@@ -144,6 +180,39 @@ function ScopeSelector({ options, value, onChange, theme }: {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function TrendsPanel({ events, now, theme }: { events: ReviewEvent[]; now: Date; theme: CairnTheme }) {
+  const cell: CSSProperties = { fontSize: '14px', textAlign: 'right', color: theme.muted };
+  const head: CSSProperties = { ...cell, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' };
+  return (
+    <div style={panel(theme)}>
+      <h2 style={panelTitle(theme)}>Trends</h2>
+      <p style={{ fontSize: '12px', color: theme.muted, margin: '-6px 0 12px' }}>
+        Recent activity compared with your overall record — a window reads “—” until it has enough attempts.
+      </p>
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) repeat(3, minmax(56px, 88px))', rowGap: '10px', columnGap: '16px', minWidth: '360px' }}>
+          <span style={{ ...head, textAlign: 'left' }}>Metric</span>
+          <span style={head}>7d</span>
+          <span style={head}>30d</span>
+          <span style={head}>Lifetime</span>
+          {TREND_METRICS.map((m) => {
+            const w = metricTrend(events, now, m.compute);
+            const fmt = (v: number | null) => (v === null ? '—' : m.format(v));
+            return (
+              <Fragment key={m.label}>
+                <span style={{ fontSize: '14px', color: theme.ink }}>{m.label}</span>
+                <span style={cell}>{fmt(w.d7)}</span>
+                <span style={cell}>{fmt(w.d30)}</span>
+                <span style={cell}>{fmt(w.lifetime)}</span>
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
