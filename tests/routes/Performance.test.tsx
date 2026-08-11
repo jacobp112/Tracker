@@ -122,8 +122,10 @@ describe('Performance trends panel', () => {
       const events = Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 }));
       render(<Performance store={storeOf(topicWith('topic_a', events))} />);
 
-      // Lifetime column still aggregates the five observations → Transfer Ability 100 appears.
-      expect(screen.getAllByText('100').length).toBeGreaterThanOrEqual(1);
+      // '100' should appear exactly twice: the headline Transfer Ability card (unwindowed,
+      // reflects all scoped events) and the Trends row's lifetime cell. If windowing were
+      // broken and the lifetime value leaked into the d7/d30 cells too, this would be 4.
+      expect(screen.getAllByText('100')).toHaveLength(2);
       // With empty 7d/30d windows, multiple trend cells read as an em dash.
       expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     } finally {
