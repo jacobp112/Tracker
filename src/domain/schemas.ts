@@ -34,6 +34,10 @@ const ERROR_LITE = {
   properties: {
     error_type: ERROR_TYPE,
     description: { type: 'string', maxLength: 500 },
+    // Phase 5 (design §M/§I.1). Tutor-PROPOSED structured error identity —
+    // observations only; the app owns pattern creation/linking.
+    proposed_signature: { type: 'string', maxLength: 200 },
+    proposed_severity: { type: 'string', enum: ['low', 'medium', 'high'] },
   },
 };
 
@@ -203,6 +207,8 @@ export const SESSION_SCHEMA: SchemaObject = {
     // 0 — "the app records the real time" per the start-session briefing — is
     // a valid placeholder, not a real duration to reject.
     duration_minutes: { type: 'integer', minimum: 0 },
+    // Phase 5 (design §M): tutor's advisory next step. Observation only.
+    suggested_follow_up: { type: 'string', maxLength: 500 },
     topics_covered: {
       type: 'array',
       minItems: 1,
@@ -216,6 +222,9 @@ export const SESSION_SCHEMA: SchemaObject = {
           notes: { type: 'string', maxLength: 500 },
           errors: { type: 'array', items: ERROR_LITE },
           assessment: ASSESSMENT_EVIDENCE,
+          // Phase 5 (design §M). Tutor observations, mapped to state by the app.
+          concepts_demonstrated: { type: 'array', items: { type: 'string', maxLength: 200 } },
+          uncertainty: { type: 'string', maxLength: 500 },
         },
       },
     },

@@ -244,8 +244,24 @@ export interface SessionTopicEntry {
   topic_id: string;
   confidence_reported: Confidence;
   notes?: string;
-  errors?: Array<{ error_type: ErrorType; description: string }>;
+  /**
+   * Observed mistakes. `proposed_signature`/`proposed_severity` are the tutor's
+   * PROPOSED structured error identity (design §M / §I.1) — observations only. The
+   * app owns whether they create/link an ErrorPattern; the natural-language
+   * `description` stays explanatory evidence, never the identity.
+   */
+  errors?: Array<{
+    error_type: ErrorType;
+    description: string;
+    proposed_signature?: string;
+    proposed_severity?: ErrorSeverity;
+  }>;
   assessment?: AssessmentEvidence;
+  /** Tutor-observed concepts the learner demonstrated (design §M). Observation only. */
+  concepts_demonstrated?: string[];
+  /** What the tutor is unsure about (design §M) — lowers how much this topic's
+   *  outcome is trusted; never silently accepted. */
+  uncertainty?: string;
 }
 
 export interface StudySession {
@@ -255,6 +271,8 @@ export interface StudySession {
   date: string;
   duration_minutes: number;
   topics_covered: SessionTopicEntry[];
+  /** Tutor's suggested next step (design §M). Advisory observation only. */
+  suggested_follow_up?: string;
 }
 
 export interface ExamBreakdownEntry {
@@ -297,6 +315,39 @@ export interface SessionRecord {
   scope: SessionScope;
   timer_mode: 'count_up' | 'pomodoro';
   pomodoro_config?: { work_minutes: number; break_minutes: number; long_break_minutes: number };
+  /** The plan this session executed, if it came from one (design §G). Optional/
+   *  additive — plan-less sessions (and all legacy records) have none. */
+  plan_id?: string;
+}
+
+/* ── Session planning (design §G) ───────────────────────────────────
+ * The intent-BEFORE a session (distinct from SessionRecord, the record-after).
+ * A plan is derived from a Recommendation; its `expected_evidence` is what the
+ * post-session Evaluation checks deterministically, rather than trusting the
+ * tutor's self-report. */
+
+/** What would count as the session having succeeded (design §G). Checkable
+ *  against the store afterwards — never a subjective judgement. */
+export interface ExpectedEvidence {
+  kind: 'independent_success' | 'error_resolved' | 'retrieval' | 'coverage';
+  topic_ids?: string[];
+  pattern_ids?: string[];
+  /** Minimum evidence tier for `independent_success` (design §H). */
+  min_tier?: number;
+}
+
+export interface SessionPlan {
+  plan_id: string;
+  created_at: string;
+  from_recommendation?: { action: string; target_id: string };
+  intent: SessionIntent;
+  scope: SessionScope;
+  target_topic_ids: string[];
+  target_pattern_ids?: string[];
+  reason: string;
+  expected_evidence: ExpectedEvidence;
+  prerequisite_topic_ids?: string[];
+  est_duration_minutes: number;
 }
 
 /* ── Store ─────────────────────────────────────────────────────── */
