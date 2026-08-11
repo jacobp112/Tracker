@@ -78,4 +78,20 @@ describe('Performance page', () => {
     render(<Performance store={storeOf(topicWith('topic_a', events))} />);
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
+
+  it('moves focus and selection with arrow keys', async () => {
+    const user = userEvent.setup();
+    const alpha = topicWith('topic_a', Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 })));
+    const beta = topicWith('topic_b', [makeEvent(undefined)]);
+    render(<Performance store={storeOfCourses([
+      { id: 'course_a', title: 'Alpha', topics: [alpha] },
+      { id: 'course_b', title: 'Beta', topics: [beta] },
+    ])} />);
+    const allTab = screen.getByRole('tab', { name: 'All courses' });
+    allTab.focus();
+    await user.keyboard('{ArrowRight}');
+    const alphaTab = screen.getByRole('tab', { name: 'Alpha' });
+    expect(alphaTab).toHaveFocus();
+    expect(alphaTab).toHaveAttribute('aria-selected', 'true');
+  });
 });

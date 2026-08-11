@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { Store } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { getCairnTheme, type CairnTheme } from '@/theme/cairnMock';
@@ -112,10 +112,14 @@ function ScopeTabs({ options, value, onChange, theme }: {
   onChange: (v: string) => void;
   theme: CairnTheme;
 }) {
+  const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const move = (dir: 1 | -1) => {
     const i = options.findIndex((o) => o.value === value);
     const next = options[(i + dir + options.length) % options.length];
-    if (next) onChange(next.value);
+    if (next) {
+      onChange(next.value);
+      btnRefs.current[next.value]?.focus();
+    }
   };
   return (
     <div role="tablist" aria-label="Course scope" style={scopeBar(theme)}>
@@ -124,6 +128,7 @@ function ScopeTabs({ options, value, onChange, theme }: {
         return (
           <button
             key={o.value}
+            ref={(el) => { btnRefs.current[o.value] = el; }}
             type="button"
             role="tab"
             aria-selected={active}
