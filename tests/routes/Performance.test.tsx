@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { Performance } from '@/routes/Performance';
 import { emptyStore, type ReviewEvent, type Store, type Topic } from '@/domain/types';
@@ -39,10 +39,11 @@ describe('Performance page', () => {
     // 5 transfer observations → Transfer Ability = 100.
     const events = Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 }));
     render(<Performance store={storeOf(topicWith('topic_a', events))} />);
-    expect(screen.getByText('Transfer Ability')).toBeInTheDocument();
-    expect(screen.getByText('Performance Health')).toBeInTheDocument();
+    // The Trends panel row duplicates each headline label, so assert presence via getAllByText.
+    expect(screen.getAllByText('Transfer Ability').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Performance Health').length).toBeGreaterThanOrEqual(1);
     // Transfer card shows 100; a metric with no data shows an em dash.
-    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getAllByText('100').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('—').length).toBeGreaterThan(0); // e.g. Cold has no cold attempts
   });
 
@@ -65,12 +66,15 @@ describe('Performance page', () => {
     ])} />);
 
     // Default "All courses": Alpha's five transfer observations aggregate to 100.
-    expect(screen.getByText('100')).toBeInTheDocument();
+    // Both the headline card and the Trends panel row show it, so assert via getAllByText.
+    expect(screen.getAllByText('100').length).toBeGreaterThanOrEqual(1);
 
     // Scope to Beta (no assessment data) → the 100 is gone and a scoped empty message shows.
     await user.click(screen.getByRole('radio', { name: 'Beta' }));
     expect(screen.queryByText('100')).not.toBeInTheDocument();
     expect(screen.getByText(/no performance data for this course yet/i)).toBeInTheDocument();
+    // The scoped no-data branch must not render the Trends panel either.
+    expect(screen.queryByRole('heading', { name: /^trends$/i })).not.toBeInTheDocument();
   });
 
   it('shows no scope selector when there is only one course', () => {
@@ -93,5 +97,67 @@ describe('Performance page', () => {
     const alphaTab = screen.getByRole('radio', { name: 'Alpha' });
     expect(alphaTab).toHaveFocus();
     expect(alphaTab).toHaveAttribute('aria-checked', 'true');
+  });
+});
+
+describe('Performance trends panel', () => {
+  it('renders a Trends panel with the three window headers and a metric row', () => {
+    // 5 transfer observations → Transfer Ability = 100 in every window that contains them.
+    const events = Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 }));
+    render(<Performance store={storeOf(topicWith('topic_a', events))} />);
+
+    expect(screen.getByRole('heading', { name: /^trends$/i })).toBeInTheDocument();
+    expect(screen.getByText('7d')).toBeInTheDocument();
+    expect(screen.getByText('30d')).toBeInTheDocument();
+    expect(screen.getByText(/lifetime/i)).toBeInTheDocument();
+    // A Trends row label for Transfer Ability exists (the header card also shows this label,
+    // so assert there are at least two occurrences: card + trends row).
+    expect(screen.getAllByText('Transfer Ability').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows lifetime values but em dashes for windows with too few recent attempts', () => {
+    // Freeze "now" far after the events so the 7d and 30d windows are empty but lifetime is not.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-12-01T00:00:00.000Z'));
+    try {
+      // Events dated 2026-08-10 (fixture default) are >30 days before frozen now.
+      const events = Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 }));
+      render(<Performance store={storeOf(topicWith('topic_a', events))} />);
+
+      // '100' should appear exactly twice: the headline Transfer Ability card (unwindowed,
+      // reflects all scoped events) and the Trends row's lifetime cell. If windowing were
+      // broken and the lifetime value leaked into the d7/d30 cells too, this would be 4.
+      expect(screen.getAllByText('100')).toHaveLength(2);
+      // With empty 7d/30d windows, multiple trend cells read as an em dash.
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('excludes a 15-day-old attempt from the 7d window but includes it in the 30d window', () => {
+    // Events dated 2026-08-10, "now" frozen at 2026-08-25 → a 15-day gap: outside the 7d
+    // window (7 < 15), inside the 30d window (15 < 30). This pins the 7d/30d boundary
+    // itself, distinguishing it from an implementation that swapped or conflated the cutoffs.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-25T00:00:00.000Z'));
+    try {
+      const events = Array.from({ length: 5 }, () =>
+        makeEvent({ transfer_level: 3 }, { date: '2026-08-10T00:00:00.000Z' }),
+      );
+      render(<Performance store={storeOf(topicWith('topic_a', events))} />);
+
+      // '100' should appear exactly three times: the headline card (unwindowed), the Trends
+      // row's d30 cell, and its lifetime cell. If the 7d cutoff were wrong (e.g. used 30
+      // days), the d7 cell would also read 100 → 4, failing this assertion.
+      expect(screen.getAllByText('100')).toHaveLength(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not render the Trends panel when there is no assessment data', () => {
+    render(<Performance store={storeOf(topicWith('topic_a', [makeEvent(undefined)]))} />);
+    expect(screen.queryByRole('heading', { name: /^trends$/i })).not.toBeInTheDocument();
   });
 });
