@@ -3,6 +3,8 @@ import type { Confidence, Topic, TopicStatus } from '@/domain/types';
 import { topicLevelHighWater } from '@/engine/leveling';
 import { badges, health, overconfidenceIndex, shouldShowHealth } from '@/engine/metrics';
 import { retentionPct } from '@/engine/retention';
+import { topicDiagnostics, type TopicDiagnostics } from '@/engine/performance-view';
+import type { DimensionBucket } from '@/engine/performance';
 import { useTheme } from '@/theme/useTheme';
 import {
   buildDecayPath,
@@ -90,6 +92,7 @@ export function TopicDetail({
   const areaPath = `${curve.d} L ${curve.endX} ${curve.h} L 18 ${curve.h} Z`;
   const oci = t ? overconfidenceIndex(t) : 0;
   const topicBadges = t ? badges(t) : [];
+  const diag = t ? topicDiagnostics(t.review_history) : null;
   const gradId = `curveGrad-${t?.topic_id ?? 'x'}`;
 
   return (
@@ -266,6 +269,8 @@ export function TopicDetail({
               </div>
             )}
 
+            {diag && diag.assessedCount > 0 && <DiagnosticsCard diag={diag} theme={theme} />}
+
             {/* Review history */}
             <h3 style={tableTitle(theme)}>Review history ({t.review_history.length})</h3>
             <div style={tableCard(theme)}>
@@ -337,6 +342,53 @@ export function TopicDetail({
         )}
       </div>
     </>
+  );
+}
+
+function DiagnosticsCard({ diag, theme }: { diag: TopicDiagnostics; theme: CairnTheme }) {
+  const acc = diag.independentN === 0 || diag.independentAccuracy === null
+    ? '—'
+    : `${Math.round(diag.independentAccuracy * 100)}% · n=${diag.independentN}`;
+  const stat = (v: number | null) => (v === null ? '—' : String(Math.round(v)));
+  return (
+    <div style={{ background: theme.surfaceAlt, border: `2px solid ${theme.border}`, borderRadius: '16px', padding: '16px 18px', marginBottom: '18px' }}>
+      <p style={sectionLabel(theme)}>Assessment diagnostics</p>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
+        <span style={{ fontSize: '13px', color: theme.muted }}>Independent accuracy</span>
+        <span style={{ fontFamily: SERIF, fontSize: '18px', color: theme.ink }}>{acc}</span>
+      </div>
+
+      {diag.difficulty.length > 0 && <Spread label="Difficulty" buckets={diag.difficulty} theme={theme} />}
+      {diag.novelty.length > 0 && <Spread label="Novelty" buckets={diag.novelty} theme={theme} />}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '12px' }}>
+        <span style={{ fontSize: '13px', color: theme.muted }}>Transfer · Quality</span>
+        <span style={{ fontFamily: SERIF, fontSize: '18px', color: theme.ink }}>{stat(diag.avgTransfer)} · {stat(diag.avgQuality)}</span>
+      </div>
+    </div>
+  );
+}
+
+function Spread({ label, buckets, theme }: { label: string; buckets: DimensionBucket[]; theme: CairnTheme }) {
+  return (
+    <div style={{ marginBottom: '8px' }}>
+      <p style={{ fontSize: '11px', fontWeight: 700, color: theme.muted, margin: '6px 0 6px' }}>{label}</p>
+      {buckets.map((b) => {
+        const rate = b.successRate === null ? null : Math.round(b.successRate * 100);
+        return (
+          <div key={b.level} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '3px 0' }}>
+            <span style={{ width: '42px', fontSize: '12px', color: theme.ink }}>L{b.level}</span>
+            <div style={{ flex: 1, height: '8px', borderRadius: '9999px', background: theme.surface, overflow: 'hidden' }}>
+              <div style={{ width: `${rate ?? 0}%`, height: '100%', background: theme.pine, borderRadius: '9999px' }} />
+            </div>
+            <span style={{ width: '72px', textAlign: 'right', fontSize: '12px', color: theme.muted }}>
+              {rate === null ? '—' : `${rate}%`} · n={b.n}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
