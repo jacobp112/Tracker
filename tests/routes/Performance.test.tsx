@@ -73,6 +73,8 @@ describe('Performance page', () => {
     await user.click(screen.getByRole('radio', { name: 'Beta' }));
     expect(screen.queryByText('100')).not.toBeInTheDocument();
     expect(screen.getByText(/no performance data for this course yet/i)).toBeInTheDocument();
+    // The scoped no-data branch must not render the Trends panel either.
+    expect(screen.queryByRole('heading', { name: /^trends$/i })).not.toBeInTheDocument();
   });
 
   it('shows no scope selector when there is only one course', () => {
@@ -128,6 +130,27 @@ describe('Performance trends panel', () => {
       expect(screen.getAllByText('100')).toHaveLength(2);
       // With empty 7d/30d windows, multiple trend cells read as an em dash.
       expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('excludes a 15-day-old attempt from the 7d window but includes it in the 30d window', () => {
+    // Events dated 2026-08-10, "now" frozen at 2026-08-25 → a 15-day gap: outside the 7d
+    // window (7 < 15), inside the 30d window (15 < 30). This pins the 7d/30d boundary
+    // itself, distinguishing it from an implementation that swapped or conflated the cutoffs.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-25T00:00:00.000Z'));
+    try {
+      const events = Array.from({ length: 5 }, () =>
+        makeEvent({ transfer_level: 3 }, { date: '2026-08-10T00:00:00.000Z' }),
+      );
+      render(<Performance store={storeOf(topicWith('topic_a', events))} />);
+
+      // '100' should appear exactly three times: the headline card (unwindowed), the Trends
+      // row's d30 cell, and its lifetime cell. If the 7d cutoff were wrong (e.g. used 30
+      // days), the d7 cell would also read 100 → 4, failing this assertion.
+      expect(screen.getAllByText('100')).toHaveLength(3);
     } finally {
       vi.useRealTimers();
     }
