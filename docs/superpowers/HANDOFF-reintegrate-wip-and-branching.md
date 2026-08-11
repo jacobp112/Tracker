@@ -1,5 +1,34 @@
 # Handoff: reintegrate the wispr-flow UI WIP and untangle the branching
 
+---
+
+## ✅ REINTEGRATION COMPLETE (2026-08-11, session 2) — read this first
+
+Goals 1–4 below are **done, committed, and the full suite is green** on
+`feat/performance-metrics`. Three commits on top of `e74242d`:
+
+- `3ac0ed1` feat(app) — stashed app UI redesign + Performance re-wire (src + tests, 32 files)
+- `b1e7b6b` feat(landing) — landing redesign WIP + brand assets (35 files)
+- `d74095e` docs — DATA-FLOW.md, start-session focus spec/plan, `.gitignore` scratch rule (4 files)
+
+**Verification:** `npm run typecheck` green; `npm test` → **91 files pass / 1 skipped / 0 fail, 586 tests pass** (baseline was 561 pass / 18 fail). The 18 UI failures (app-smoke, CourseDashboard, TopicDetail) are resolved with no regressions; the read-side-only invariant, Performance, router, and AppShell tests all stay green.
+
+**One correction to the plan below (hazard 1 / hazard 3):** the reintegration was **not** a "pop + re-apply 4 lines" on the committed shell. The *intended* `src/shell/AppShell.tsx` is the **stash's** NAV-style shell (flat primary nav + `course-list` + segmented theme switch), which **replaces** the committed `d8db98c` TABS/`course-switch`/`sidebar-footer` shell. The stash's `AppShell.test.tsx` was updated to match it, so component+test are internally consistent and green. The Performance nav/route was re-applied *into the stash's NAV structure* (one `NAV` entry → renders in both sidebar and bottom tab bar; one route case in `App.tsx`). Reconciliation surface was only these 2 files (App.tsx, AppShell.tsx); the collision files `cairnMock.ts`/`Celebration.tsx` were byte-identical (mod CRLF) so nothing was lost.
+
+**How it was done (not a blanket `git stash pop`):** selective extraction — `git checkout stash@{0} -- <tracked paths>` for the redesign, `git checkout stash@{0}^3 -- <paths>` for useful untracked docs/assets, skipping the identical collision files and all `landing/files to merge/` scratch (now gitignored).
+
+**Safety net still in place — next session should clean up when satisfied:**
+- `stash@{0}` is **retained** (fully superseded by the commits above; drop with `git stash drop stash@{0}`).
+- tag `pre-reintegration-backup` (@ `e74242d`) is **retained** (delete with `git tag -d pre-reintegration-backup`).
+
+**Still open (all deferred, none blocking):**
+- **Goal 5 — merge sequence to main.** Human chose **collapse into one integration branch**: `main` (3.0.0) → land the **3.1.0 engine rewrite first** → then merge this integration branch. NOT started (higher-risk; deferred for budget). Do NOT merge Performance to `main` ahead of the engine rewrite.
+- **Cold-assessment UI entry point** (`coldAssessmentPrompt` → a "start a cold check" action in AddFlow/AddExam) — not wired.
+- **Per-course Performance scope selector** — engine already scopes (`courseReviewEvents`); small additive UI win. `Performance.tsx` currently renders one global aggregate.
+- Calibration predict-first flow — **still a deliberate product decision, do NOT bolt on.** Trend charts, `presentMean` DRY nit — see below.
+
+---
+
 **For the next agent.** A Performance-metrics feature was just completed on
 `feat/performance-metrics`, but the app's UI redesign is unfinished and sitting in
 a git **stash**. Your job: bring the stashed UI work back, reconcile it with the
