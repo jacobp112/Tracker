@@ -106,9 +106,10 @@ export interface UnstableUpstream {
  * upstream prerequisites — so a repeatedly-failing topic can point at its shaky
  * foundations (design §6, §17). Diagnostic only; reads, never writes.
  */
-export function unstablePrerequisites(store: Store, now: Date = new Date()): UnstableUpstream[] {
+export function unstablePrerequisites(store: Store, now: Date = new Date(), courseId?: string): UnstableUpstream[] {
   const out: UnstableUpstream[] = [];
-  for (const { topic } of allTopics(store)) {
+  for (const { topic, course } of allTopics(store)) {
+    if (courseId && course.course_id !== courseId) continue;
     if (!topic.prerequisites || topic.prerequisites.length === 0) continue;
     const struggling = activeErrorCount(topic) > 0 || isDue(topic, now);
     if (!struggling) continue;
