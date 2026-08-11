@@ -105,6 +105,10 @@ export interface UnstableUpstream {
  * Topics that are themselves struggling (active errors, or due) AND have unstable
  * upstream prerequisites — so a repeatedly-failing topic can point at its shaky
  * foundations (design §6, §17). Diagnostic only; reads, never writes.
+ *
+ * @param courseId When provided, only struggling downstream topics in this course
+ *   are considered; the upstream instability walk itself stays store-wide (a
+ *   downstream topic's shaky prerequisite may live in another course).
  */
 export function unstablePrerequisites(store: Store, now: Date = new Date(), courseId?: string): UnstableUpstream[] {
   const out: UnstableUpstream[] = [];

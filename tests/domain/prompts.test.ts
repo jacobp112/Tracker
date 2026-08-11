@@ -53,6 +53,7 @@ describe('prompts carry the assessment contract', () => {
     const p = coursePrompt(emptyStore());
     expect(p).toContain('prerequisites');
     expect(p).not.toContain('EXISTING topics');
+    expect(p).not.toContain('you may also cite');
   });
 
   it('a cold-assessment prompt exists, marks the result cold, and states the cold protocol', () => {

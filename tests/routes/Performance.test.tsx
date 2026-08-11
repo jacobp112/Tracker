@@ -68,7 +68,7 @@ describe('Performance page', () => {
     expect(screen.getByText('100')).toBeInTheDocument();
 
     // Scope to Beta (no assessment data) → the 100 is gone and a scoped empty message shows.
-    await user.click(screen.getByRole('tab', { name: 'Beta' }));
+    await user.click(screen.getByRole('radio', { name: 'Beta' }));
     expect(screen.queryByText('100')).not.toBeInTheDocument();
     expect(screen.getByText(/no performance data for this course yet/i)).toBeInTheDocument();
   });
@@ -76,7 +76,7 @@ describe('Performance page', () => {
   it('shows no scope selector when there is only one course', () => {
     const events = Array.from({ length: 5 }, () => makeEvent({ transfer_level: 3 }));
     render(<Performance store={storeOf(topicWith('topic_a', events))} />);
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
   });
 
   it('moves focus and selection with arrow keys', async () => {
@@ -87,11 +87,11 @@ describe('Performance page', () => {
       { id: 'course_a', title: 'Alpha', topics: [alpha] },
       { id: 'course_b', title: 'Beta', topics: [beta] },
     ])} />);
-    const allTab = screen.getByRole('tab', { name: 'All courses' });
+    const allTab = screen.getByRole('radio', { name: 'All courses' });
     allTab.focus();
     await user.keyboard('{ArrowRight}');
-    const alphaTab = screen.getByRole('tab', { name: 'Alpha' });
+    const alphaTab = screen.getByRole('radio', { name: 'Alpha' });
     expect(alphaTab).toHaveFocus();
-    expect(alphaTab).toHaveAttribute('aria-selected', 'true');
+    expect(alphaTab).toHaveAttribute('aria-checked', 'true');
   });
 });

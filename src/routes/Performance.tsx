@@ -77,7 +77,7 @@ export function Performance({ store }: { store: Store }) {
       </p>
 
       {store.courses.length > 1 && (
-        <ScopeTabs options={scopeOptions} value={scope} onChange={setScope} theme={theme} />
+        <ScopeSelector options={scopeOptions} value={scope} onChange={setScope} theme={theme} />
       )}
 
       {!hasAssessments ? (
@@ -106,7 +106,7 @@ export function Performance({ store }: { store: Store }) {
   );
 }
 
-function ScopeTabs({ options, value, onChange, theme }: {
+function ScopeSelector({ options, value, onChange, theme }: {
   options: Array<{ value: string; label: string }>;
   value: string;
   onChange: (v: string) => void;
@@ -122,7 +122,7 @@ function ScopeTabs({ options, value, onChange, theme }: {
     }
   };
   return (
-    <div role="tablist" aria-label="Course scope" style={scopeBar(theme)}>
+    <div role="radiogroup" aria-label="Course scope" style={scopeBar(theme)}>
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -130,8 +130,8 @@ function ScopeTabs({ options, value, onChange, theme }: {
             key={o.value}
             ref={(el) => { btnRefs.current[o.value] = el; }}
             type="button"
-            role="tab"
-            aria-selected={active}
+            role="radio"
+            aria-checked={active}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => {
