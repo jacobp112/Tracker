@@ -4,10 +4,10 @@ import { STORE_KEY, loadStore } from '@/core/storage';
 
 afterEach(() => localStorage.clear());
 
-describe('schema version 3.3.0 (evidence + error identity)', () => {
-  it('the app version is 3.3.0', () => {
-    expect(SCHEMA_VERSION).toBe('3.3.0');
-    expect(emptyStore().schema_version).toBe('3.3.0');
+describe('schema version 4.0.0 (assessment domain + IndexedDB)', () => {
+  it('the app version is 4.0.0', () => {
+    expect(SCHEMA_VERSION).toBe('4.0.0');
+    expect(emptyStore().schema_version).toBe('4.0.0');
   });
 
   it('an empty store carries an error_patterns collection', () => {
@@ -44,8 +44,10 @@ describe('schema version 3.3.0 (evidence + error identity)', () => {
     const store = loadStore();
 
     // Stamped to current, error_patterns defaulted, but NO field invented on the
-    // historical event/topic (never invent evidence — UPGRADE.md §24).
-    expect(store.schema_version).toBe('3.3.0');
+    // historical event/topic (never invent evidence — UPGRADE.md §24). The
+    // localStorage shape is unchanged at 4.0.0 — the assessment domain lives in
+    // IndexedDB, so a 3.2.0/3.3.0 localStorage store loads verbatim.
+    expect(store.schema_version).toBe('4.0.0');
     expect(store.error_patterns).toEqual([]);
     const topic = store.courses[0]!.sections[0]!.topics[0]!;
     expect(topic.prerequisites).toBeUndefined();

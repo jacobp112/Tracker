@@ -1,5 +1,7 @@
 import { type SchemaName } from '@/domain/schemas';
 import { type Course, type Exam, emptyStore, SCHEMA_VERSION, type Store } from '@/domain/types';
+import type { AssessmentAttempt, AssessmentDefinition } from '@/domain/assessment';
+import type { AssessmentRepo } from './assessment-store';
 import type { FriendlyError } from './errorTranslation';
 import { checkIntegrity } from './integrity';
 import { recomputeLapseContamination } from './migrations';
@@ -28,6 +30,10 @@ export interface Bundle {
   schema_version: string;
   exported_at: string;
   store: Store;
+  /** Assessment domain (design §O). Optional so ≤3.3.0 bundles (which never had
+   *  it) round-trip unchanged, and the sync localStorage-only path still works. */
+  assessments?: AssessmentDefinition[];
+  attempts?: AssessmentAttempt[];
 }
 
 export function exportBundle(store: Store): string {
@@ -132,6 +138,63 @@ export function importBundle(input: string): ImportResult {
     counts: {
       courses: draft.courses.length,
       exams: draft.exams.length,
+    },
+  };
+}
+
+/* ── Both-stores backup/restore (design §O) ────────────────────────
+ * The async variants add the IndexedDB assessment domain to the same bundle.
+ * They compose the sync study-store path so its validation/migration guarantees
+ * are untouched, and only reach IndexedDB once the study store has validated —
+ * so a failure never leaves the two stores in a partial cross-store state. */
+
+/** Export the whole app: study store (localStorage) + assessment domain (IndexedDB). */
+export async function exportBundleAsync(store: Store, repo: AssessmentRepo): Promise<string> {
+  const snap = await repo.dump();
+  const bundle: Bundle = {
+    kind: BUNDLE_KIND,
+    schema_version: SCHEMA_VERSION,
+    exported_at: new Date().toISOString(),
+    store,
+    assessments: snap.assessments,
+    attempts: snap.attempts,
+  };
+  return JSON.stringify(bundle, null, 2);
+}
+
+/**
+ * Import both stores. The study store is validated first (via the sync path); ONLY
+ * if it passes is the assessment domain restored into the repo (atomically, all-or-
+ * nothing). A failure at either step returns `ok: false` and — because the caller
+ * adopts the returned study store only on success, and the repo is touched only
+ * after study validation — leaves both stores as they were.
+ */
+export async function importBundleAsync(input: string, repo: AssessmentRepo): Promise<ImportResult> {
+  const res = importBundle(input);
+  if (!res.ok) return res; // study store invalid → repo never touched
+
+  let parsed: Bundle;
+  try {
+    parsed = JSON.parse(input.trim()) as Bundle;
+  } catch {
+    return { ok: false, errors: [{ path: '', message: "That file isn't valid JSON." }] };
+  }
+
+  try {
+    await repo.restore({ assessments: parsed.assessments ?? [], attempts: parsed.attempts ?? [] });
+  } catch (e) {
+    return {
+      ok: false,
+      errors: [{ path: '/assessments', message: `The assessment data couldn't be restored: ${e instanceof Error ? e.message : 'unknown error'}. Nothing was changed.` }],
+    };
+  }
+
+  return {
+    ...res,
+    counts: {
+      ...res.counts,
+      assessments: parsed.assessments?.length ?? 0,
+      attempts: parsed.attempts?.length ?? 0,
     },
   };
 }
