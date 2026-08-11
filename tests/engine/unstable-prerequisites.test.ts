@@ -50,3 +50,33 @@ describe('unstablePrerequisites', () => {
     expect(unstablePrerequisites(storeOf(c), NOW)).toEqual([]);
   });
 });
+
+function twoCourseStore(courseA: Topic[], courseB: Topic[]): Store {
+  const s = emptyStore();
+  s.courses.push({ schema_version: '3.2.0', course_id: 'course_1', title: 'One',
+    created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+    sections: [{ section_id: 'section_1', title: 'S', order: 0, topics: courseA }] });
+  s.courses.push({ schema_version: '3.2.0', course_id: 'course_2', title: 'Two',
+    created_at: '2026-08-01T00:00:00.000Z', source: 'manual',
+    sections: [{ section_id: 'section_2', title: 'S', order: 0, topics: courseB }] });
+  return s;
+}
+
+describe('unstablePrerequisites course scope', () => {
+  it('scopes struggling downstream topics to a course while resolving upstream store-wide', () => {
+    // course_1: topic_c is struggling and depends on topic_a, which lives in course_2.
+    const c = topic('topic_c', { prerequisites: ['topic_a'], error_log: [anError('error_1')] });
+    // course_2: topic_a is an unstable upstream; topic_d is course_2's own struggling topic.
+    const a = topic('topic_a', { status: 'not_started', last_reviewed: null, strength: 0 });
+    const d = topic('topic_d', { prerequisites: ['topic_a'], error_log: [anError('error_2')] });
+    const store = twoCourseStore([c], [a, d]);
+
+    const scoped = unstablePrerequisites(store, NOW, 'course_1');
+    expect(scoped.map((u) => u.topic_id)).toEqual(['topic_c']); // only course_1's downstream
+    expect(scoped.length).toBeGreaterThan(0);
+    expect(scoped[0]!.report.unstableCount).toBeGreaterThanOrEqual(1); // upstream topic_a (course_2) resolved
+
+    const all = unstablePrerequisites(store, NOW);
+    expect(all.map((u) => u.topic_id).sort()).toEqual(['topic_c', 'topic_d']);
+  });
+});
