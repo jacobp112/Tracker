@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { observedSuccess, isIndependent, independenceTier, mean, successGatedMean, weightedComposite } from '@/engine/performance';
+import { observedSuccess, isIndependent, independenceTier, mean, normalizedPresentMean, successGatedMean, weightedComposite } from '@/engine/performance';
 import { makeEvent } from './assessment-fixtures';
 
 describe('observedSuccess — commensurability fallback (design §D)', () => {
@@ -66,6 +66,23 @@ describe('successGatedMean — difficulty/novelty earn credit only WITH success 
       makeEvent({ difficulty: 2 }), // no outcome → excluded
     ];
     expect(successGatedMean(events, (e) => e.assessment?.difficulty, 5)).toBeCloseTo(0.8);
+  });
+});
+
+describe('normalizedPresentMean — present values normalised by max, no success-gating', () => {
+  it('normalises each present value by max, then means', () => {
+    // independence 3/3=1 and 0/3=0 → mean([1, 0]) = 0.5
+    const events = [makeEvent({ independence: 3 }), makeEvent({ independence: 0 })];
+    expect(normalizedPresentMean(events, (e) => e.assessment?.independence, 3)).toBeCloseTo(0.5);
+  });
+  it('excludes events lacking the value — not counted as 0', () => {
+    // Only the first event carries independence (3/3=1); the second must be
+    // EXCLUDED, not averaged in as 0 (which would give 0.5).
+    const events = [makeEvent({ independence: 3 }), makeEvent({ difficulty: 2 })];
+    expect(normalizedPresentMean(events, (e) => e.assessment?.independence, 3)).toBeCloseTo(1);
+  });
+  it('is null when no event carries the value', () => {
+    expect(normalizedPresentMean([makeEvent({ difficulty: 2 })], (e) => e.assessment?.independence, 3)).toBeNull();
   });
 });
 
