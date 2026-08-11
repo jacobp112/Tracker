@@ -57,13 +57,14 @@ export function Performance({ store }: { store: Store }) {
   const effectiveCourseId = soleCourse ? soleCourse.course_id : (courseScope === 'all' ? null : courseScope);
   const effectiveCourse = effectiveCourseId ? store.courses.find((c) => c.course_id === effectiveCourseId) ?? null : null;
 
-  const anyAssessments = useMemo(() => allReviewEvents(store).some((e) => e.assessment), [store]);
+  const allEvents = useMemo(() => allReviewEvents(store), [store]);
+  const anyAssessments = useMemo(() => allEvents.some((e) => e.assessment), [allEvents]);
 
   const events = useMemo(() => {
     if (sectionScope !== 'all' && effectiveCourseId) return sectionReviewEvents(store, effectiveCourseId, sectionScope);
     if (courseScope !== 'all') return courseReviewEvents(store, courseScope);
-    return allReviewEvents(store);
-  }, [store, courseScope, sectionScope, effectiveCourseId]);
+    return allEvents;
+  }, [store, courseScope, sectionScope, effectiveCourseId, allEvents]);
   const summary = useMemo(() => performanceSummary(events), [events]);
   const byDifficulty = useMemo(() => performanceByDifficulty(events), [events]);
   const byNovelty = useMemo(() => performanceByNovelty(events), [events]);
