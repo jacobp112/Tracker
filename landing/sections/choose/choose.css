@@ -1,35 +1,173 @@
 /* ── Choose band ─────────────────────────────────────────────────────
- * "Two ways in." The spec's comparison card pair: a cream card + a dark card,
- * side by side. In the dark theme the dark card inverts to cream. Scoped to
- * .choose-cards. */
+ * "Two ways in." DESIGN.md's comparison card pair: a cream card and a dark one,
+ * side by side, the dark one inverting to cream in the dark theme.
+ *
+ * Both cards read their colours from the SAME local --ch-* names — the cream
+ * card points them at the page tokens, the dark card at the raw palette — so
+ * the card's internals are written once instead of once per card and then again
+ * per theme. That also makes this card a small sibling of the problem and
+ * privacy chambers, which invert the same way. No global token is touched.
+ *
+ * Scoped to .band.choose / .choose-*. The dark card is selected by a CLASS
+ * (.is-chamber) rather than :nth-child(2), so reordering the pair cannot
+ * silently repaint the wrong one. */
 
-.choose-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-7); margin-top: var(--space-9); }
-.choose-cards .card { display: flex; flex-direction: column; gap: var(--space-5); align-items: flex-start; }
-.choose-cards h3 { font-size: var(--fs-section); }
-.choose-cards p { font-size: var(--fs-secondary); color: var(--ink-secondary); line-height: 1.5; margin: 0; flex: 1; }
+/* ── Section furniture ── */
+.band.choose .choose-masthead {
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.band.choose .choose-masthead::after {
+  content: '';
+  height: var(--wf-border-w);
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+.band.choose .band-title { max-width: 24ch; }
+.band.choose .choose-quiet { display: block; color: var(--ink-muted); }
+.band.choose .band-lead { max-width: 60ch; }
+
+/* ── The pair ────────────────────────────────────────────────────── */
+.choose-cards {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8); margin-top: var(--space-11);
+  align-items: stretch; /* equal-height cards: the pair is a comparison */
+}
+.choose-card {
+  --ch-fill: var(--surface);
+  --ch-ink: var(--ink);
+  --ch-ink-soft: var(--ink-secondary);
+  --ch-ink-mute: var(--ink-muted);
+  --ch-rule: var(--border);
+
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: var(--space-5);
+  background: var(--ch-fill);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  transition: transform var(--dur-standard) var(--ease);
+}
+
+/* The dark half. Its edge matches its fill, so it reads as a solid block
+ * against the outlined one — that weight difference is what makes the pair a
+ * comparison rather than two cards. Contrast steps are hand-set per theme
+ * because ink fading toward cream loses contrast much faster than cream fading
+ * toward ink; every step below clears 4.5:1 on its own fill. */
+.choose-card.is-chamber {
+  --ch-fill: var(--wf-ink);
+  --ch-ink: var(--wf-cream);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-cream) 78%, var(--wf-ink));
+  --ch-ink-mute: color-mix(in srgb, var(--wf-cream) 58%, var(--wf-ink));
+  --ch-rule: color-mix(in srgb, var(--wf-cream) 26%, var(--wf-ink));
+  border-color: var(--ch-fill);
+}
+[data-theme='dark'] .choose-card.is-chamber {
+  --ch-fill: var(--wf-cream);
+  --ch-ink: var(--wf-ink);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-ink) 80%, var(--wf-cream));
+  --ch-ink-mute: color-mix(in srgb, var(--wf-ink) 68%, var(--wf-cream));
+  --ch-rule: color-mix(in srgb, var(--wf-ink) 24%, var(--wf-cream));
+}
+
 /* Hover-lift stays scoped to the cards that DO something — these carry a CTA.
- * hover:hover so touch never gets a stuck lifted state. */
+ * hover:hover so touch never gets a stuck lifted state; no shadow, ever. */
 @media (hover: hover) {
-  .choose-cards .card:hover { transform: translateY(-2px); box-shadow: none; }
+  .choose-card:hover { transform: translateY(-2px); box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .choose-card:hover { transform: none; }
 }
 
-/* ── Comparison pair: second card is the dark chamber ── */
-.choose-cards .card:nth-child(2) {
-  background: var(--wf-ink); color: var(--wf-cream);
-  border-color: var(--wf-ink); border-radius: var(--radius-lg);
+/* ── Status tag ─────────────────────────────────────────────────────
+ * The honest bit, said first and said plainly: one of these you can use now,
+ * the other you cannot. Filled pill vs outlined pill — the system's two badge
+ * treatments, carrying the one difference that matters. */
+.choose-card .choose-tag {
+  margin: 0;
+  font-size: var(--fs-nano); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-5);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
 }
-.choose-cards .card:nth-child(2) h3 { color: var(--wf-cream); }
-.choose-cards .card:nth-child(2) p { color: rgba(255, 255, 236, 0.8); }
-.choose-cards .card:nth-child(2) .btn-secondary {
-  background: transparent; border-color: var(--wf-cream); color: var(--wf-cream);
-}
-[data-theme='dark'] .choose-cards .card:nth-child(2) {
-  background: var(--wf-cream); color: var(--wf-ink); border-color: var(--wf-cream);
-}
-[data-theme='dark'] .choose-cards .card:nth-child(2) h3 { color: var(--wf-ink); }
-[data-theme='dark'] .choose-cards .card:nth-child(2) p { color: #45463d; }
-[data-theme='dark'] .choose-cards .card:nth-child(2) .btn-secondary {
-  border-color: var(--wf-ink); color: var(--wf-ink);
+/* --surface as the text colour: cream on teal in light, espresso on lavender
+ * in dark. Lavender stays a fill, never text. */
+.choose-card .choose-tag.is-live { background: var(--accent); color: var(--surface); }
+.choose-card .choose-tag.is-pending {
+  color: var(--ch-ink-mute);
+  border: 1px solid var(--ch-rule);
+  padding-block: calc(var(--space-1) - 1px);
 }
 
-@media (max-width: 768px) { .choose-cards { grid-template-columns: 1fr; } }
+/* ── Card type ── */
+.choose-cards h3 { font-size: var(--fs-prop); color: var(--ch-ink); margin: 0; }
+.choose-card .choose-blurb {
+  font-size: var(--fs-secondary); line-height: 1.5; margin: 0;
+  color: var(--ch-ink-soft);
+}
+
+/* ── Matched facts ──────────────────────────────────────────────────
+ * Same three labels, same order, in both cards, so the comparison is read
+ * across rather than inferred from two paragraphs. */
+.choose-spec { margin: var(--space-2) 0 0; padding: 0; width: 100%; }
+.choose-spec-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--ch-rule);
+}
+.choose-spec dt {
+  font-size: var(--fs-micro); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--ch-ink-mute); white-space: nowrap;
+}
+.choose-spec dd {
+  margin: 0; font-size: var(--fs-secondary); color: var(--ch-ink);
+  text-align: right;
+}
+
+/* margin-top:auto pins both CTAs to the bottom edge, so they line up across the
+ * pair however long the copy above them runs. */
+.choose-card .choose-cta { margin-top: auto; }
+
+/* The desktop build genuinely is not out: the disabled control is styled to
+ * look disabled INSIDE the inverted card too, where the shared
+ * .btn-secondary[disabled] rule's page tokens would be unreadable. */
+.choose-card.is-chamber .btn-secondary,
+.choose-card.is-chamber .btn-secondary:hover {
+  background: transparent; color: var(--ch-ink); border-color: var(--ch-ink);
+}
+.choose-card.is-chamber .btn-secondary[disabled],
+.choose-card.is-chamber .btn-secondary[disabled]:hover {
+  background: transparent;
+  color: var(--ch-ink-mute);
+  border-color: var(--ch-rule);
+  cursor: not-allowed;
+}
+
+/* ── The note that bridges them ─────────────────────────────────────
+ * Its own class rather than the hero's .cta-micro: a section should not have
+ * to load another section's stylesheet to render its own paragraph. */
+.band.choose .choose-note {
+  display: flex; align-items: flex-start; gap: var(--space-5);
+  max-width: 72ch;
+  margin: var(--space-9) 0 0;
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-secondary); color: var(--ink-muted); line-height: 1.5;
+}
+.band.choose .choose-note-icon {
+  width: 20px; height: 12px; flex: none; margin-top: 0.35em;
+  fill: none; stroke: var(--accent); stroke-width: 1.5;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+@media (max-width: 768px) {
+  .choose-cards { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .choose-spec-row { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+  .choose-spec dd { text-align: left; }
+}

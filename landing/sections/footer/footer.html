@@ -1,16 +1,43 @@
-    <footer class="closer reveal">
-      <a class="brand" href="/landing/" aria-label="Cairn — home">
-        <svg class="brand-mark" viewBox="0 0 24 28" width="18" height="21" aria-hidden="true">
-          <ellipse cx="12" cy="24" rx="9" ry="2.6"/>
-          <ellipse cx="12" cy="18" rx="7.5" ry="2.4"/>
-          <ellipse cx="12" cy="12.5" rx="6" ry="2.2"/>
-          <ellipse cx="12" cy="7.5" rx="4.2" ry="2"/>
-        </svg>
-        <span class="brand-word">Cairn</span>
-      </a>
-      <div class="cta-row">
-        <a class="btn-primary" href="/">Open the app</a>
-        <button class="btn-secondary" type="button" disabled>Download for desktop</button>
+<footer class="closer reveal">
+      <div class="closer-inner">
+        <!-- The band IS the mark, at architectural scale: three stacked stones
+             at the lockup's own widths (38 / 58 / 84%) and offsets (28 / 24 /
+             8%), with the ember summit dot at 82%. Fills stay the fixed brand
+             colours and every edge is `currentColor`, so the stones read cream-
+             stroked on the dark band and ink-stroked once it inverts — the same
+             contract as the inline mark. Each stone's TEXT colour is fixed to
+             its own fill (ink on cream, cream on forest, ink on lavender), so
+             legibility never depends on the theme.
+
+             DOM order is reading order, top of the screen down. -->
+        <div class="closer-cairn">
+          <div class="cairn-course cairn-course-top">
+            <!-- The summit is the action: the one primary CTA on the page's
+                 only lavender fill, shaped as the top stone. -->
+            <a class="btn-primary cairn-stone stone-top" href="/">Open the app</a>
+            <span class="cairn-summit" aria-hidden="true"></span>
+          </div>
+
+          <p class="cairn-stone stone-mid">No accounts. No backend. No network.</p>
+
+          <div class="cairn-stone stone-base">
+            <a class="closer-wordmark" href="/landing/" aria-label="Cairn — home">Cairn</a>
+            <span class="closer-tagline">A memory for self-study</span>
+          </div>
+        </div>
+
+        <!-- The ground the cairn stands on: the thing that isn't built yet is
+             not a stone. Still a real disabled button, with the reason beside
+             it rather than a dead control left unexplained. -->
+        <div class="closer-ground">
+          <div class="closer-ground-actions">
+            <button class="btn-secondary" type="button" disabled>Download for desktop</button>
+            <p class="closer-micro">Not released yet.</p>
+          </div>
+          <div class="closer-fineprint">
+            <p class="closer-colophon">Set in EB Garamond and Figtree. Runs on your machine; keeps one file you own.</p>
+            <p class="foot-note">No trackers on this page either.</p>
+          </div>
+        </div>
       </div>
-      <p class="foot-note">No trackers on this page either.</p>
     </footer>

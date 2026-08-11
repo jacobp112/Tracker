@@ -1,4 +1,54 @@
-      <section class="band problem reveal" aria-labelledby="problem-title">
-        <h2 class="band-title" id="problem-title">Studying with AI has no memory.</h2>
-        <p class="band-lead">You study a topic with your AI. A week later, nothing remembers you did.</p>
+      <section class="band problem" aria-labelledby="problem-title">
+        <!-- Same masthead device as the hero: eyebrow + a 2px rule to the
+             chamber's edge, drawn by ::after so no empty element enters the
+             accessibility tree. Inside the chamber the rule is cream on ink
+             (and ink on cream in the dark theme) — same gesture, inverted. -->
+        <div class="problem-masthead reveal" style="--i:0">
+          <p class="eyebrow">The problem</p>
+        </div>
+
+        <!-- Two-tone heading, continuing the hero's cadence: the observation
+             recedes, the turn lands. -->
+        <h2 class="band-title reveal" id="problem-title" style="--i:1"><span class="problem-quiet">You forget on a curve.</span>Nothing is measuring it.</h2>
+        <p class="band-lead reveal" style="--i:2">A month on, the transcript is still there — every question you asked, every answer. What's gone is your recall of it, and nothing you use can tell the difference.</p>
+
+        <!-- The device: one topic, three points in time. The trace above
+             dissolves solid → dashed → scattered; the three steps below fade
+             on the same ink ladder. Nothing here depends on motion or JS — the
+             forgetting is drawn into the resting state. Fig. numbering
+             continues from the hero's plate (Fig. 1). -->
+        <figure class="decay">
+          <div class="decay-trace reveal" style="--i:3">
+            <!-- Decorative: the steps underneath carry the meaning in text.
+                 Three separate paths rather than one faded stroke, because a
+                 fading stroke would need a gradient and the system has none. -->
+            <svg class="decay-svg" viewBox="0 0 720 96" aria-hidden="true" focusable="false">
+              <path class="decay-seg decay-seg-1" d="M8 15 C 80 16 120 46 168 60" />
+              <path class="decay-seg decay-seg-2" d="M168 60 C 216 73 250 77 330 80.5" />
+              <path class="decay-seg decay-seg-3" d="M330 80.5 C 430 84 540 85.5 712 86" />
+              <!-- The one accent note on the page's second beat: the single
+                   moment anything was actually recorded. -->
+              <circle class="decay-mark" cx="8" cy="15" r="5" />
+              <circle class="decay-mark decay-mark-2" cx="252" cy="77" r="4" />
+              <circle class="decay-mark decay-mark-3" cx="502" cy="84.5" r="3" />
+            </svg>
+          </div>
+
+          <ol class="decay-steps">
+            <li class="decay-step reveal" style="--i:4">
+              <p class="decay-when">Tuesday, 9pm</p>
+              <p class="decay-what">Bayes' theorem, worked through end to end. Clear as day.</p>
+            </li>
+            <li class="decay-step reveal" style="--i:5">
+              <p class="decay-when">Seven days on</p>
+              <p class="decay-what">You could probably rebuild it. Probably.</p>
+            </li>
+            <li class="decay-step reveal" style="--i:6">
+              <p class="decay-when">Thirty days on</p>
+              <p class="decay-what">Was it P(A|B), or P(B|A)?</p>
+            </li>
+          </ol>
+
+          <figcaption class="decay-caption reveal" style="--i:7"><span class="decay-figmark">Fig. 2</span> One topic, thirty days — and nothing kept the record.</figcaption>
+        </figure>
       </section>

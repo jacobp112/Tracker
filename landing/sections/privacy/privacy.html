@@ -1,4 +1,54 @@
-      <section class="band privacy reveal" id="privacy" aria-labelledby="privacy-title">
-        <h2 class="band-title" id="privacy-title">No accounts. No backend. No network. Just your file.</h2>
-        <p class="band-lead">Cairn makes no network requests. There are no accounts, no telemetry, no backend to breach. Everything you track is a single JSON document in your browser's storage. Settings → Export gives you the whole thing; import validates it just as strictly as a fresh paste. The only outside party that ever sees your material is the AI you choose to paste into — and that's your call, not ours.</p>
+<section class="band privacy" id="privacy" aria-labelledby="privacy-title">
+        <!-- Same masthead as the problem chamber (and the cream sections):
+             eyebrow + a 2px rule drawn by ::after, inverted with the chamber. -->
+        <div class="privacy-masthead reveal" style="--i:0">
+          <p class="eyebrow">The promise</p>
+        </div>
+
+        <!-- Two-tone, matching its sibling chamber: the denials recede, the
+             thing you're left with lands. -->
+        <h2 class="band-title reveal" id="privacy-title" style="--i:1"><span class="privacy-quiet">No accounts. No backend. No network.</span>Just your file.</h2>
+        <p class="band-lead reveal" style="--i:2">Cairn has no server to talk to. Everything you track is one JSON document in your browser's storage — and the only material that ever leaves your machine is what you choose to paste into your own AI, in a tab Cairn never touches.</p>
+
+        <!-- The device: a line that runs from your browser to your file and
+             stops dead at the edge of your machine. Where the network would be
+             there is a nought. The problem chamber's trace dissolves because
+             memory decays; this one ends because someone drew a boundary —
+             same grammar, opposite cause. Decorative: every fact it shows is
+             written out in the three points below it. -->
+        <figure class="local">
+          <div class="local-diagram reveal" style="--i:3">
+            <svg class="local-svg" viewBox="0 0 720 72" aria-hidden="true" focusable="false">
+              <!-- Everything Cairn does, on one unbroken line. -->
+              <line class="local-wire" x1="10" y1="40" x2="484" y2="40" />
+              <circle class="local-node" cx="60" cy="40" r="5.5" />
+              <rect class="local-node local-file" x="280" y="32" width="16" height="16" rx="4" />
+              <text class="local-filename" x="288" y="22" text-anchor="middle">cairn.json</text>
+
+              <!-- The edge of your machine. -->
+              <line class="local-wall" x1="484" y1="12" x2="484" y2="62" />
+
+              <!-- Beyond it, the only number this section needs. -->
+              <text class="local-zero" x="610" y="50" text-anchor="middle">0</text>
+              <text class="local-zero-cap" x="610" y="65" text-anchor="middle">network requests</text>
+            </svg>
+          </div>
+
+          <ul class="local-points">
+            <li class="local-point reveal" style="--i:4">
+              <p class="local-label">Runs here</p>
+              <p class="local-text">Your browser. No install, no account, nothing to log into.</p>
+            </li>
+            <li class="local-point reveal" style="--i:5">
+              <p class="local-label">Stored here</p>
+              <p class="local-text">One JSON document you own. Export hands you the whole thing; import checks it as strictly as a fresh paste.</p>
+            </li>
+            <li class="local-point is-outside reveal" style="--i:6">
+              <p class="local-label">Never happens</p>
+              <p class="local-text">Zero network requests. No telemetry, no backend to breach, nothing to opt out of.</p>
+            </li>
+          </ul>
+
+          <figcaption class="local-figcaption reveal" style="--i:7"><span class="local-figmark">Fig. 5</span> Everything Cairn does happens to the left of the line.</figcaption>
+        </figure>
       </section>

@@ -1,0 +1,84 @@
+<!-- ============================================================
+     REPLACES the .band.exams section in index.html (currently lines 299-308).
+
+     Two changes beyond the labels:
+
+     1. aria-hidden="true" -> role="img" + aria-label. It was decorative when
+        it was an unlabelled line. It now carries the section's argument, so it
+        gets the same treatment as #mock-overview and #mock-matrix.
+
+     2. The root keeps class="decay-curve" and data-animate, so animate.ts
+        needs NO change — it already handles the group root via
+        `if (group.matches('.decay-curve')) group.classList.add('is-drawn')`.
+
+     GEOMETRY IS ILLUSTRATIVE. The 42% pre-test low, the 74% tested endpoint
+     and the 19% untested endpoint are drawn by hand to show the SHAPE of the
+     claim, exactly as the hero's 82 and the matrix's 74% are. If you have the
+     real decay function, generate the two path `d` attributes from it and
+     these numbers stop being assertions and start being output. Worth doing
+     before launch, for the same reason the rest of the page is honest.
+     ============================================================ -->
+
+<section class="band exams reveal" aria-labelledby="exams-title">
+  <h2 class="band-title" id="exams-title">Exams don't count more because we say so. They count more because they're evidence.</h2>
+  <p class="band-lead">Test events tune each topic's decay rate, so exams outweigh study sessions by evidence — not arbitrary weights.</p>
+
+  <figure
+    class="decay-curve"
+    data-animate
+    role="img"
+    aria-label="A retention curve over 30 days. Retention decays steeply from 100 percent to 42 percent by day 15. A test event on day 15 restores it to 95 percent and flattens the decay: by day 30 the tested topic sits at 74 percent, while the same topic without a test event would have fallen to 19 percent."
+  >
+    <svg class="decay-svg" viewBox="0 0 420 188" xmlns="http://www.w3.org/2000/svg">
+      <!-- Gridlines. 100 / 50 / 0 percent retention. -->
+      <line class="decay-grid" x1="52" y1="24"  x2="330" y2="24"  />
+      <line class="decay-grid" x1="52" y1="90"  x2="330" y2="90"  />
+      <line class="decay-axis" x1="52" y1="156" x2="330" y2="156" />
+
+      <!-- Y scale. -->
+      <text class="decay-tick" x="42" y="27"  text-anchor="end">100</text>
+      <text class="decay-tick" x="42" y="93"  text-anchor="end">50</text>
+      <text class="decay-tick" x="42" y="159" text-anchor="end">0</text>
+
+      <!-- X scale. -->
+      <text class="decay-tick" x="52"  y="172" text-anchor="start">day 0</text>
+      <text class="decay-tick" x="191" y="172" text-anchor="middle">15</text>
+      <text class="decay-tick" x="330" y="172" text-anchor="end">30</text>
+
+      <!-- The test event: a rule through the plot, then the label above it. -->
+      <line class="decay-event" x1="191" y1="24" x2="191" y2="156" />
+      <text class="decay-event-label" x="191" y="14" text-anchor="middle">test event</text>
+
+      <!-- 1. Decay before any evidence. Steep. -->
+      <path class="decay-seg decay-seg-a" pathLength="100"
+            d="M 52,24 C 76,60 118,86 191,101" />
+
+      <!-- 2. The event itself: retention restored. -->
+      <path class="decay-jump" pathLength="100"
+            d="M 191,101 L 191,31" />
+
+      <!-- 3. Decay AFTER evidence. Visibly shallower — this is the claim. -->
+      <path class="decay-seg decay-seg-b" pathLength="100"
+            d="M 191,31 C 224,38 275,50 330,58" />
+
+      <!-- The counterfactual: same topic, no test event. The GAP between this
+           and the solid line at day 30 is the whole argument, so it is drawn
+           rather than described. -->
+      <path class="decay-ghost"
+            d="M 191,101 C 224,110 275,124 330,131" />
+
+      <circle class="decay-node" cx="191" cy="31" r="3.5" />
+
+      <!-- Endpoint readouts. -->
+      <text class="decay-endpoint is-tested"   x="338" y="55">74%</text>
+      <text class="decay-endpoint-cap"         x="338" y="67">tested</text>
+      <text class="decay-endpoint is-untested" x="338" y="128">19%</text>
+      <text class="decay-endpoint-cap"         x="338" y="140">untested</text>
+    </svg>
+
+    <figcaption class="decay-caption">
+      Retention (%) over 30 days. A test event resets the curve
+      <em>and</em> flattens what follows.
+    </figcaption>
+  </figure>
+</section>

@@ -1,114 +1,229 @@
 /* ── Exams / decay curve ────────────────────────────────────────────
  * The "exams count more because they're evidence" band and its SVG figure:
- * retention decays, a test event resets and flattens it, a ghost line shows
- * the counterfactual. Draw order is a sequence because the content is one.
- * Scoped to .band.exams / .decay-*. */
+ * retention decays steeply, a test event resets it AND flattens what follows,
+ * and a counterfactual shows the same topic with no test event still falling.
+ * The gap between the two endpoints at day 30 is the argument, so it is drawn
+ * as a measured area, not described.
+ *
+ * Scoped to .band.exams / .exams-* / .decay-*. Nothing here reaches another
+ * section, and lib/animate.ts is attached READ-ONLY: this section still runs on
+ * the one hook the shared engine provides (.is-drawn on .decay-curve), so the
+ * hero and memory sections and the engine's tests are untouched.
+ *
+ * Draw order is a sequence because the content is one: decay, event, the
+ * shallower decay it caused, then the future it avoided. */
 
 .band.exams { padding-block: var(--space-14); }
 
-.decay-curve {
-  max-width: 620px; margin: var(--space-10) 0 0;
-  position: relative; /* context for the replay control */
+/* ── Section furniture ── */
+.band.exams .exams-masthead {
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.band.exams .exams-masthead::after {
+  content: '';
+  height: var(--wf-border-w);
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
 }
 
-/* Replay control — top-right, clear of the test-event label and endpoint
- * readouts. Hidden without JS (does nothing then); main.ts also hides it under
- * reduced motion. */
-.decay-replay {
-  position: absolute; top: 0; right: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; padding: 0;
-  color: var(--ink-muted); background: var(--surface);
-  border: 1px solid var(--border-strong); border-radius: var(--radius-pill); cursor: pointer;
-  transition: color var(--dur-standard) var(--ease), box-shadow var(--dur-standard) var(--ease);
+.decay-curve {
+  max-width: 760px; margin: var(--space-11) 0 0;
+  --step: calc(var(--dur-draw) * 0.85); /* whole sequence retimes from one token */
 }
-.decay-replay:hover { color: var(--accent); box-shadow: var(--shadow-card); }
-.decay-replay svg { width: 15px; height: 15px; }
+
+/* ── The plate ──────────────────────────────────────────────────────
+ * Same flat material as the memory matrix: 2px ink edge, oversized radius, no
+ * shadow. The two data sections read as a pair. */
+.decay-plate {
+  background: var(--surface);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  padding: var(--space-9);
+}
+.decay-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--space-6); flex-wrap: wrap;
+  padding-bottom: var(--space-6); margin-bottom: var(--space-7);
+  border-bottom: 1px solid var(--border);
+}
+.decay-stat { display: flex; flex-direction: column; gap: var(--space-2); }
+/* The one number the section exists to produce, at display scale. Serif at
+ * weight 400 — authority from size; .mono-num's family is overridden here
+ * deliberately, its tabular figures are what we want from it. */
+.decay-stat-num {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(36px, 4vw, 52px); line-height: 1;
+  letter-spacing: -0.02em; color: var(--ink);
+}
+.decay-aside { display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; }
+
+/* ── Key ── */
+.decay-key { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--space-6); flex-wrap: wrap; }
+.decay-key-item {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  font-size: var(--fs-micro); color: var(--ink-secondary);
+}
+.decay-key-swatch { width: 26px; height: 6px; flex: none; overflow: visible; }
+.decay-key-tested { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.decay-key-untested { stroke: var(--ink-muted); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.75; }
+
+/* ── Replay control ─────────────────────────────────────────────────
+ * A real button now rather than a 30px icon-only circle: 2px ink edge, pill,
+ * flat (the old :hover box-shadow is not a thing this system has). Hidden with
+ * JS off because it cannot work; exams.ts hides it under reduced motion because
+ * there is nothing to replay. */
+.decay-replay {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  font-family: var(--font-sans); font-size: var(--fs-micro); font-weight: 600;
+  color: var(--ink); background: var(--surface);
+  border: var(--wf-border-w) solid var(--border-strong);
+  border-radius: var(--radius-pill); box-shadow: none; cursor: pointer;
+  transition: background-color var(--dur-standard) var(--ease);
+}
+.decay-replay:hover { background: var(--surface-sunken); }
+.decay-replay svg { width: 13px; height: 13px; flex: none; }
 html:not(.js) .decay-replay { display: none; }
 
-.decay-svg { width: 100%; height: auto; overflow: visible; }
+.decay-svg { display: block; width: 100%; height: auto; overflow: visible; }
 
 /* ── Frame ── */
 .decay-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 4; }
-.decay-axis { stroke: var(--border-strong); stroke-width: 1; }
+.decay-axis { stroke: var(--border-strong); stroke-width: 1.5; }
+/* No monospace anywhere in this system — the token resolved to Figtree already;
+ * tabular figures are what the ticks actually needed. */
 .decay-tick, .decay-endpoint {
-  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1; font-size: 9px; fill: var(--ink-muted);
+  font-family: var(--font-sans); font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1; font-size: 9.5px; fill: var(--ink-muted);
 }
 .decay-event-label, .decay-endpoint-cap {
-  font-family: var(--font-sans); font-size: 8.5px; font-weight: 600;
-  letter-spacing: 0.07em; text-transform: uppercase; fill: var(--ink-muted);
+  font-family: var(--font-sans); font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; fill: var(--ink-muted);
 }
-.decay-event { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+.decay-event { stroke: var(--border-strong); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: 0.55; }
 
 /* ── The curves ── */
 .decay-seg, .decay-jump {
   fill: none; stroke: var(--accent); stroke-linecap: round;
   stroke-dasharray: 100; stroke-dashoffset: 0; /* default incl. no-JS: fully drawn */
 }
-.decay-seg { stroke-width: 2.5; }
-.decay-jump { stroke-width: 2; }
+.decay-seg { stroke-width: 3; }
+.decay-jump { stroke-width: 2.5; }
 .decay-ghost {
   fill: none; stroke: var(--ink-muted); stroke-width: 2; stroke-linecap: round;
-  stroke-dasharray: 4 4; opacity: 0.45;
+  stroke-dasharray: 4 4; opacity: 0.6;
 }
+/* The area between the two futures. Flat fill, no gradient; it reads as one
+ * measured quantity, which is exactly what the stat above counts. */
+.decay-gap { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: none; }
 .decay-node { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
-.decay-endpoint.is-tested { fill: var(--accent); font-weight: 700; font-size: 11px; }
-.decay-endpoint.is-untested { font-size: 11px; }
+.decay-node-ring { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.decay-end-dot { stroke: var(--surface); stroke-width: 2; }
+.decay-end-dot.is-tested { fill: var(--accent); }
+.decay-end-dot.is-untested { fill: var(--ink-muted); }
+.decay-bracket { fill: none; stroke: var(--border-strong); stroke-width: 1.5; opacity: 0.5; }
+.decay-endpoint { font-size: 12px; }
+.decay-endpoint.is-tested { fill: var(--accent); font-weight: 700; }
+.decay-endpoint.is-untested { fill: var(--ink-secondary); }
 
-.decay-caption { margin: var(--space-5) 0 0; font-size: var(--fs-caption); color: var(--ink-muted); max-width: 52ch; }
-.decay-caption em { font-style: normal; color: var(--ink-secondary); font-weight: 600; }
+.decay-caption {
+  margin: var(--space-6) 0 0; font-size: var(--fs-caption);
+  color: var(--ink-muted); max-width: 56ch; padding-left: var(--space-2);
+}
+.decay-caption em { font-style: normal; color: var(--ink-secondary); font-weight: 700; }
+.decay-figmark {
+  font-size: var(--fs-micro); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-secondary); margin-right: var(--space-3);
+}
 
 /* ── Draw sequence ──────────────────────────────────────────────────
- * animate.ts adds .is-drawn on intersection. Offsets are expressed against
- * --dur-draw so the whole sequence retimes from one token. */
-.decay-curve { --step: var(--dur-draw); }
+ * The shared engine adds .is-drawn on intersection; every rule below hangs off
+ * that one class, and every rule is .js-gated, so with JS off the chart above
+ * is already in its final state — fully drawn, unclipped, all readouts on.
+ *
+ * The post-event half (counterfactual + gap area) is revealed by scaling one
+ * clip rect out from the event line, rather than fading in: the argument is
+ * made left to right, in the direction time runs. */
+.decay-clip { transform-box: fill-box; transform-origin: left center; }
+
 .js .decay-curve:not(.is-drawn) .decay-seg,
 .js .decay-curve:not(.is-drawn) .decay-jump { stroke-dashoffset: 100; }
-.js .decay-curve:not(.is-drawn) .decay-ghost,
+.js .decay-curve:not(.is-drawn) .decay-clip { transform: scaleX(0); }
 .js .decay-curve:not(.is-drawn) .decay-node,
 .js .decay-curve:not(.is-drawn) .decay-event,
 .js .decay-curve:not(.is-drawn) .decay-event-label,
-.js .decay-curve:not(.is-drawn) .decay-endpoint,
-.js .decay-curve:not(.is-drawn) .decay-endpoint-cap { opacity: 0; }
+.js .decay-curve:not(.is-drawn) .decay-endpoints { opacity: 0; }
 
-.js .decay-curve.is-drawn .decay-seg,
-.js .decay-curve.is-drawn .decay-jump {
-  stroke-dashoffset: 0; transition: stroke-dashoffset var(--dur-draw) var(--ease);
+/* 1. the steep decay */
+.js .decay-curve.is-drawn .decay-seg-a {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--dur-draw) var(--ease);
 }
-/* 1. steep decay  2. the event rises  3. the shallower decay it caused */
-.js .decay-curve.is-drawn .decay-seg-a { transition-delay: 0ms; }
-.js .decay-curve.is-drawn .decay-jump  { transition-delay: calc(var(--step) * 0.9); }
-.js .decay-curve.is-drawn .decay-seg-b { transition-delay: calc(var(--step) * 1.3); }
-.js .decay-curve.is-drawn .decay-node {
-  opacity: 1; transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 1.2);
-}
+/* 2. the event: the rule and its label arrive just before the line jumps */
 .js .decay-curve.is-drawn .decay-event,
 .js .decay-curve.is-drawn .decay-event-label {
-  opacity: 1; transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 0.8);
+  opacity: 1; transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 0.6);
 }
-/* The counterfactual lands last — it is a comment on the solid line. */
-.js .decay-curve.is-drawn .decay-ghost {
-  opacity: 0.45; transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 2.1);
+.js .decay-curve.is-drawn .decay-event { opacity: 0.55; }
+/* 3. the jump is an EVENT, not a journey — it goes up fast */
+.js .decay-curve.is-drawn .decay-jump {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset calc(var(--dur-draw) * 0.28) var(--ease) calc(var(--step) * 0.85);
 }
-.js .decay-curve.is-drawn .decay-endpoint,
-.js .decay-curve.is-drawn .decay-endpoint-cap {
-  opacity: 1; transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 2.3);
+.js .decay-curve.is-drawn .decay-node {
+  opacity: 1; transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 1.05);
 }
-/* Reduced motion: tokens.css zeroes DURATION but not DELAY — zero the delays
- * and assert the final state, or the chart sits blank for ~2s then snaps. */
+/* …punctuated once, at the moment retention is restored. Decorative only: it
+ * ends invisible and carries nothing the chart does not state. */
+.js .decay-curve.is-drawn .decay-node-ring {
+  animation: decay-ping calc(var(--dur-draw) * 0.7) var(--ease) calc(var(--step) * 1.05) 1 both;
+}
+@keyframes decay-ping {
+  from { transform: scale(0.6); opacity: 0.75; }
+  to { transform: scale(4); opacity: 0; }
+}
+/* 4. the shallower decay the event caused — the claim */
+.js .decay-curve.is-drawn .decay-seg-b {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset calc(var(--dur-draw) * 0.85) var(--ease) calc(var(--step) * 1.15);
+}
+/* 5. the counterfactual and the gap sweep out from the event line together */
+.js .decay-curve.is-drawn .decay-clip {
+  transform: scaleX(1);
+  transition: transform calc(var(--dur-draw) * 0.7) var(--ease) calc(var(--step) * 1.9);
+}
+/* 6. the measurement lands last: it is a comment on everything above it */
+.js .decay-curve.is-drawn .decay-endpoints {
+  opacity: 1; transition: opacity var(--dur-standard) var(--ease) calc(var(--step) * 2.4);
+}
+
+/* Reduced motion: tokens.css zeroes transition DURATION but not DELAY — zero
+ * the delays and assert the final state, or the chart sits blank for seconds
+ * and then snaps. Every element the sequence touches is listed, including the
+ * clip (otherwise half the chart would stay clipped away) and the ping
+ * (otherwise its `both` fill would hold a stray ring on screen through the
+ * delay). No information here lives in motion: this IS the no-JS chart. */
 @media (prefers-reduced-motion: reduce) {
   .js .decay-curve .decay-seg,
   .js .decay-curve .decay-jump { stroke-dashoffset: 0 !important; transition-delay: 0ms !important; }
+  .js .decay-curve .decay-clip { transform: none !important; transition-delay: 0ms !important; }
   .js .decay-curve .decay-node,
-  .js .decay-curve .decay-event,
   .js .decay-curve .decay-event-label,
-  .js .decay-curve .decay-endpoint,
-  .js .decay-curve .decay-endpoint-cap { opacity: 1 !important; transition-delay: 0ms !important; }
-  .js .decay-curve .decay-ghost { opacity: 0.45 !important; transition-delay: 0ms !important; }
+  .js .decay-curve .decay-endpoints { opacity: 1 !important; transition-delay: 0ms !important; }
+  .js .decay-curve .decay-event { opacity: 0.55 !important; transition-delay: 0ms !important; }
+  .js .decay-curve .decay-node-ring { animation: none !important; opacity: 0 !important; }
 }
 
+@media (max-width: 720px) {
+  .decay-plate { padding: var(--space-7); }
+  .decay-head { align-items: flex-start; }
+}
 @media (max-width: 560px) {
   .decay-endpoint-cap { display: none; }
-  .decay-curve { margin-top: var(--space-8); }
+  .decay-curve { margin-top: var(--space-9); }
+  .decay-stat-num { font-size: 36px; }
 }

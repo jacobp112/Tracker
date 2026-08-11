@@ -1,8 +1,17 @@
-      <section class="how-track" id="how" aria-labelledby="how-title">
+<section class="how-track" id="how" aria-labelledby="how-title">
         <div class="how-stage">
           <div class="stage-head">
-            <p class="eyebrow reveal">How it works</p>
-            <h2 class="reveal" id="how-title">You bring the AI. Cairn brings the <span class="ul-accent">memory</span>.</h2>
+            <!-- Same masthead device as the hero and the problem chamber:
+                 eyebrow + a 2px ink rule drawn by ::after, so no empty
+                 decorative element enters the accessibility tree. -->
+            <div class="stage-masthead reveal" style="--i:0">
+              <p class="eyebrow">How it works</p>
+            </div>
+            <!-- The lavender .ul-accent lives once on the page now (under
+                 "remember" in the hero). Here the same emphasis is carried by
+                 the two-tone cadence instead: the premise recedes, the claim
+                 lands. -->
+            <h2 class="reveal" id="how-title" style="--i:1"><span class="how-quiet">You bring the AI.</span> Cairn brings the memory.</h2>
           </div>
 
           <div class="stage-body">
@@ -10,15 +19,23 @@
             <!-- ── CAIRN ── -->
             <div class="panel" data-panel="cairn" data-active="1">
               <div class="mock-window-bar">
-                <div class="window-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
                 <span class="window-title">cairn — new course</span>
+                <!-- Filled accent pill vs. the outlined one opposite: the two
+                     tags are the section's whole argument in four words. -->
+                <span class="panel-tag is-local">on your machine</span>
               </div>
               <div class="panel-body">
+                <!-- One stack, three states. The prompt used to be .view-static
+                     (always opacity 1) with the validation views absolutely
+                     positioned ON TOP of it, so the prompt block showed through
+                     around the shorter validation card. Now all three share a
+                     stack and genuinely cross-fade. -->
+                <div class="view-stack">
 
-                <div class="view view-static" data-view="prompt" data-on="1">
+                <div class="view" data-view="prompt" data-on="1">
                   <div class="prompt-block">
                     <!-- The visible block is an EXCERPT; the Copy button copies
-                         the FULL prompt from the <template> below via main.ts /
+                         the FULL prompt from the <template> below via how.ts /
                          clipboard.ts. Same ids the wiring already expects, so the
                          real copy feature survives the section's redesign. -->
                     <code>You are converting a course syllabus into a
@@ -73,26 +90,32 @@ Here is the syllabus:
                       <div class="check" style="--i:2"><i aria-hidden="true">✓</i>no extra fields</div>
                     </div>
                     <div class="val-counts">
-                      <span class="val-count"><b>4</b>&nbsp;sections</span>
-                      <span class="val-count"><b>22</b>&nbsp;topics</span>
+                      <span class="val-count"><b class="mono-num">4</b>&nbsp;sections</span>
+                      <span class="val-count"><b class="mono-num">22</b>&nbsp;topics</span>
                     </div>
                     <p class="val-msg">Written in one atomic step. Nothing saved until you said so.</p>
                   </div>
                 </div>
 
+                </div>
               </div>
             </div>
 
             <!-- ── ANY AI ── -->
             <div class="panel" data-panel="ai" data-active="0">
               <div class="mock-window-bar">
-                <div class="window-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
                 <span class="window-title">whichever ai you already use</span>
+                <span class="panel-tag is-remote">off your machine</span>
               </div>
               <div class="panel-body">
                 <div class="ai-input"><span class="ai-text"></span><i class="ai-caret" aria-hidden="true"></i></div>
 
-                <div class="view view-static" data-view="stream" data-on="1" aria-hidden="true">
+                <!-- Same fix, plus one the stack is required for: the JSON view
+                     was inset:0 against .panel-body, so it began at the panel
+                     body's top and overlapped the input above it. The stack
+                     starts below the input. -->
+                <div class="view-stack">
+                <div class="view" data-view="stream" data-on="1" aria-hidden="true">
                   <div class="stream">
                     <div class="sq" style="--i:0; --w:96%"></div>
                     <div class="sq" style="--i:1; --w:88%"></div>
@@ -111,13 +134,17 @@ Here is the syllabus:
   <b>"topics"</b>: [ … 22 ]
 }</div>
                 </div>
+                </div>
               </div>
             </div>
 
+            <!-- Pointer colours moved out of the markup and onto tokens in
+                 how.css, so the cursor themes with everything else. Geometry
+                 (20×20 box, hotspot at the tip) is unchanged — scrub.ts's
+                 POINTER_PATH is calibrated to it. -->
             <div class="cursor" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 20 20">
-                <path d="M2 1 L2 15.5 L6 12 L8.6 18 L11.4 16.8 L8.8 11 L14 11 Z"
-                      fill="#fff" stroke="#16161a" stroke-width="1.4" stroke-linejoin="round"/>
+                <path d="M2 1 L2 15.5 L6 12 L8.6 18 L11.4 16.8 L8.8 11 L14 11 Z" stroke-linejoin="round"/>
               </svg>
             </div>
             <div class="chip-fly" aria-hidden="true">prompt copied</div>
@@ -126,26 +153,44 @@ Here is the syllabus:
           <div class="beats">
             <div class="beat" data-on="1" data-b="0">
               <span class="beat-n">01</span>
-              <h3>Copy the prompt</h3>
-              <p>Cairn hands you a ready-made prompt. Nothing has left your machine yet.</p>
+              <div class="beat-copy">
+                <h3>Copy the prompt</h3>
+                <p>Cairn hands you a ready-made prompt. Nothing has left your machine yet.</p>
+              </div>
             </div>
             <div class="beat" data-b="1">
               <span class="beat-n">02</span>
-              <h3>Paste it into whichever AI you already use</h3>
-              <p>Along with your syllabus, session notes, or exam paper. Cairn never calls an AI — you do, in the tool you already trust.</p>
+              <div class="beat-copy">
+                <h3>Paste it into your own AI</h3>
+                <p>Along with your syllabus, session notes, or exam paper. Cairn never calls an AI — you do, in the tool you already trust.</p>
+              </div>
             </div>
             <div class="beat" data-b="2">
               <span class="beat-n">03</span>
-              <h3>Paste the result back</h3>
-              <p>Checked against a strict schema. If something's wrong you get a plain-English message naming the field and the fix — and nothing is saved.</p>
+              <div class="beat-copy">
+                <h3>Paste the result back</h3>
+                <p>Checked against a strict schema. If something's wrong you get a plain-English message naming the field and the fix — and nothing is saved.</p>
+              </div>
             </div>
             <div class="beat" data-b="3">
               <span class="beat-n">04</span>
-              <h3>Preview, then commit</h3>
-              <p>See exactly what will change. Written in one atomic step. Cairn verifies; it never generates.</p>
+              <div class="beat-copy">
+                <h3>Preview, then commit</h3>
+                <p>See exactly what will change. Written in one atomic step. Cairn verifies; it never generates.</p>
+              </div>
             </div>
           </div>
 
-          <div class="rail" aria-hidden="true"><i></i></div>
+          <!-- The rail is a measure, not a loading bar: the ticks sit at the
+               three beat boundaries in scrub.ts's TIMELINE (0.26, 0.62,
+               0.86), so the fill visibly crosses a mark as each caption turns.
+               Decorative — the beats above are the real, ordered content. -->
+          <div class="rail" aria-hidden="true">
+            <i></i>
+            <span class="rail-head"></span>
+            <span class="rail-tick" style="--t:0.26"></span>
+            <span class="rail-tick" style="--t:0.62"></span>
+            <span class="rail-tick" style="--t:0.86"></span>
+          </div>
         </div>
       </section>

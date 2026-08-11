@@ -1,22 +1,164 @@
 /* ── Privacy band ────────────────────────────────────────────────────
- * "No accounts. No backend. No network. Just your file." A dark velvet
- * chamber, inverting to cream in the dark theme. Scoped to .band.privacy. */
+ * "No accounts. No backend. No network. Just your file." The page's second
+ * dark velvet chamber and the sibling of the problem band: same oversized
+ * radius, same masthead rule, same local ink ladder, same figure grammar — a
+ * line above three points — so the two chambers bookend the page as a pair.
+ *
+ * Where the problem chamber's trace DISSOLVES (memory decays on its own), this
+ * one STOPS (someone drew a boundary). Scoped to .band.privacy and its own
+ * .privacy-* / .local-* descendants.
+ *
+ * The --ch-* ladder is deliberately re-declared here rather than shared: each
+ * section owns its own stylesheet, and the two chambers are the only places on
+ * the page that invert, so a shared file would exist for exactly two callers
+ * and would have to live outside both folders. */
 
 .band.privacy {
-  background: var(--wf-ink);
-  color: var(--wf-cream);
+  /* ── The chamber's own ink ladder ──────────────────────────────
+   * This section inverts against the canvas, so the page's semantic --ink /
+   * --surface are exactly wrong inside it. These locals are the single
+   * inversion point, mixed from the raw (theme-independent) Wispr palette.
+   * No global token is added or changed.
+   *
+   * The steps are hand-set per theme because ink fading toward cream loses
+   * contrast far faster than cream fading toward ink. Every step clears 4:1
+   * on its own background. */
+  --ch-bg: var(--wf-ink);
+  --ch-ink: var(--wf-cream);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-cream) 78%, var(--wf-ink));
+  --ch-fade-3: color-mix(in srgb, var(--wf-cream) 44%, var(--wf-ink));
+  --ch-rule: color-mix(in srgb, var(--wf-cream) 22%, var(--wf-ink));
+  /* One accent, picked for contrast against the chamber it sits on: ember
+   * reads on near-black, forest teal reads on cream. It is spent in exactly
+   * one place — the nought. */
+  --ch-mark: var(--wf-ember);
+
+  background: var(--ch-bg);
+  color: var(--ch-ink);
   border-radius: var(--radius-chamber);
   padding: var(--space-14) var(--space-12);
   margin-block: var(--space-12);
 }
-.band.privacy .band-title { color: var(--wf-cream); }
-.band.privacy .band-lead,
-.band.privacy .eyebrow { color: rgba(255, 255, 236, 0.82); }
 
 [data-theme='dark'] .band.privacy {
-  background: var(--wf-cream);
-  color: var(--wf-ink);
+  --ch-bg: var(--wf-cream);
+  --ch-ink: var(--wf-ink);
+  --ch-ink-soft: color-mix(in srgb, var(--wf-ink) 80%, var(--wf-cream));
+  --ch-fade-3: color-mix(in srgb, var(--wf-ink) 56%, var(--wf-cream));
+  --ch-rule: color-mix(in srgb, var(--wf-ink) 20%, var(--wf-cream));
+  --ch-mark: var(--wf-teal);
 }
-[data-theme='dark'] .band.privacy .band-title { color: var(--wf-ink); }
-[data-theme='dark'] .band.privacy .band-lead,
-[data-theme='dark'] .band.privacy .eyebrow { color: #45463d; }
+
+/* ── Masthead ─────────────────────────────────────────────────────── */
+.band.privacy .privacy-masthead {
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; gap: var(--space-6);
+  margin-bottom: var(--space-10);
+}
+.band.privacy .privacy-masthead::after {
+  content: '';
+  height: var(--wf-border-w);
+  background: var(--ch-ink);
+  border-radius: var(--radius-pill);
+}
+/* .eyebrow's page-token colour would be unreadable once the chamber inverts. */
+.band.privacy .eyebrow { color: var(--ch-ink-soft); }
+
+/* ── Heading & lead ───────────────────────────────────────────────── */
+.band.privacy .band-title {
+  color: var(--ch-ink);
+  font-size: clamp(2.25rem, 3.1vw + 1rem, 4rem);
+  line-height: 1.02;
+  max-width: 22ch;
+}
+/* display:block so the denials always take their own line and the promise
+ * starts its own, rather than depending on where the measure happens to break. */
+.band.privacy .privacy-quiet { display: block; color: var(--ch-ink-soft); }
+.band.privacy .band-lead { color: var(--ch-ink-soft); max-width: 62ch; }
+
+/* ── The boundary figure ──────────────────────────────────────────── */
+.band.privacy .local {
+  margin: var(--space-12) 0 0;
+  padding-top: var(--space-11);
+  border-top: 1px solid var(--ch-rule);
+}
+
+.band.privacy .local-svg { display: block; width: 100%; height: auto; }
+/* The wire and the nodes sit at 8%, 40% and — for the wall — 67% of the
+ * viewBox, which is where the three equal point columns fall. The SVG scales
+ * uniformly, so that alignment holds at any chamber width. */
+.band.privacy .local-wire {
+  stroke: var(--ch-ink); stroke-width: var(--wf-border-w); stroke-linecap: round;
+}
+.band.privacy .local-node { fill: var(--ch-ink); }
+/* The one file is a different SHAPE, not a different colour — the encoding
+ * survives greyscale, and it leaves the single accent for the nought. */
+.band.privacy .local-file { fill: var(--ch-ink); }
+.band.privacy .local-filename {
+  font-family: var(--font-sans); font-size: 9px; fill: var(--ch-ink-soft);
+}
+.band.privacy .local-wall {
+  stroke: var(--ch-ink); stroke-width: var(--wf-border-w); stroke-linecap: round;
+}
+/* Authority from scale, at weight 400 — the same serif that carries every
+ * other big number on the page. */
+.band.privacy .local-zero {
+  font-family: var(--font-display); font-weight: 400; font-size: 46px;
+  letter-spacing: -0.02em; fill: var(--ch-mark);
+}
+.band.privacy .local-zero-cap {
+  font-family: var(--font-sans); font-size: 8.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.09em; fill: var(--ch-fade-3);
+}
+
+.band.privacy .local-points {
+  list-style: none;
+  margin: var(--space-7) 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-10);
+}
+.band.privacy .local-label {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-eyebrow); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ch-ink-soft);
+}
+/* Full ink on all three: unlike the problem chamber's ladder, nothing here is
+ * meant to feel like it is fading. The promise reads at one level, calmly. */
+.band.privacy .local-text {
+  margin: 0;
+  font-size: var(--fs-section); line-height: 1.45;
+  color: var(--ch-ink); text-wrap: pretty;
+}
+
+.band.privacy .local-figcaption {
+  margin: var(--space-10) 0 0;
+  font-size: var(--fs-caption); line-height: 1.5;
+  color: var(--ch-ink-soft);
+}
+.band.privacy .local-figmark {
+  font-size: var(--fs-micro); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ch-ink-soft); margin-right: var(--space-3);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .band.privacy .local-points { gap: var(--space-8); }
+  .band.privacy .local-text { font-size: var(--fs-body); }
+}
+@media (max-width: 720px) {
+  .band.privacy { padding: var(--space-12) var(--space-9); border-radius: var(--radius-lg); }
+  /* Stacked, a horizontal boundary has nothing left to say — it is decorative
+   * and aria-hidden, so dropping it loses no content. The rules on the points
+   * carry the same idea: two solid, then one that is only implied. */
+  .band.privacy .local-diagram { display: none; }
+  .band.privacy .local-points { grid-template-columns: 1fr; gap: var(--space-8); }
+  .band.privacy .local-point {
+    padding-top: var(--space-6);
+    border-top: var(--wf-border-w) solid var(--ch-ink);
+  }
+  .band.privacy .local-point.is-outside {
+    border-top-style: dotted;
+    border-top-color: var(--ch-fade-3);
+  }
+}
