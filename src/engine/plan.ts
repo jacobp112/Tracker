@@ -62,6 +62,14 @@ export function buildSessionPlan(rec: Recommendation, store: Store, now: Date = 
         ...base, intent: 'new_content', target_topic_ids: [rec.target.id],
         expected_evidence: { kind: 'coverage', topic_ids: [rec.target.id] },
       };
+    case 'assess':
+      // Sitting an assessment isn't a tutored study session — the UI routes it to
+      // the sitting flow, not here. A minimal plan keeps the mapping total; its
+      // expected evidence is simply that the assessment gets attempted.
+      return {
+        ...base, intent: 'adaptive', target_topic_ids: [],
+        expected_evidence: { kind: 'coverage', topic_ids: [] },
+      };
   }
 }
 

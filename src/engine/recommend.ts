@@ -3,6 +3,7 @@ import { allTopics } from '@/domain/types';
 import { errorUrgency, patternStatus, type UrgencyLevel, type UrgencyWhen } from './errors';
 import { dueQueue, type TopicRef } from './course';
 import { prerequisiteInstability } from './prerequisites';
+import { readinessForAssessment } from './readiness';
 import { isDue, projectedDue } from './retention';
 import { evidenceTier } from './performance';
 
@@ -18,16 +19,16 @@ import { evidenceTier } from './performance';
  * remediate → prerequisite → verify → review → retrieve → learn.
  */
 
-export type RecommendationAction = 'remediate' | 'prerequisite' | 'retrieve' | 'review' | 'learn';
+export type RecommendationAction = 'remediate' | 'prerequisite' | 'retrieve' | 'review' | 'learn' | 'assess';
 
 export interface EvidenceRef {
-  kind: 'occurrence' | 'topic' | 'pattern' | 'event';
+  kind: 'occurrence' | 'topic' | 'pattern' | 'event' | 'assessment';
   id: string;
 }
 
 export interface Recommendation {
   action: RecommendationAction;
-  target: { kind: 'topic' | 'pattern'; id: string; title: string };
+  target: { kind: 'topic' | 'pattern' | 'assessment'; id: string; title: string };
   reason: string;
   evidence: EvidenceRef[];
   priority: UrgencyLevel;
@@ -39,7 +40,7 @@ const PRIORITY_RANK: Record<UrgencyLevel, number> = { critical: 0, high: 1, medi
 const WHEN_RANK: Record<UrgencyWhen, number> = { today: 0, within_48h: 1, this_week: 2, next_cycle: 3 };
 
 const EST_MINUTES: Record<RecommendationAction, number> = {
-  remediate: 25, prerequisite: 25, retrieve: 15, review: 15, learn: 30,
+  remediate: 25, prerequisite: 25, retrieve: 15, review: 15, learn: 30, assess: 60,
 };
 
 /** The verifying tier from §H — an independent attempt is what settles an
@@ -158,6 +159,28 @@ function learnGuards(store: Store): Recommendation[] {
   return out;
 }
 
+function assessGuards(store: Store, now: Date): Recommendation[] {
+  const out: Recommendation[] = [];
+  for (const ref of store.assessment_refs) {
+    if (ref.topic_ids.length === 0) continue;
+    // Don't re-recommend an assessment the learner has already sat (an event
+    // carrying its assessment_ref exists somewhere in the topic logs).
+    const attempted = allTopics(store).some(({ topic }) =>
+      topic.review_history.some((e) => e.assessment_ref?.assessment_id === ref.assessment_id),
+    );
+    if (attempted) continue;
+    if (readinessForAssessment(ref, store, now).verdict !== 'ready') continue; // only when ready
+    out.push({
+      action: 'assess',
+      target: { kind: 'assessment', id: ref.assessment_id, title: ref.title },
+      evidence: [{ kind: 'assessment', id: ref.assessment_id }],
+      priority: 'medium', when: 'this_week', est_duration_minutes: EST_MINUTES.assess,
+      reason: `You're ready to sit "${ref.title}" — every readiness check passes.`,
+    });
+  }
+  return out;
+}
+
 /* ── Compose, dedupe, rank ────────────────────────────────────────── */
 
 function rankKey(r: Recommendation): number {
@@ -175,6 +198,7 @@ export function recommend(store: Store, now: Date = new Date()): Recommendation[
     ...prerequisiteGuards(store, now),
     ...reviewGuards(store, now),
     ...retrieveGuards(store, now),
+    ...assessGuards(store, now),
     ...learnGuards(store),
   ];
 

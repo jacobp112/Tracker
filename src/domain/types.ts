@@ -352,6 +352,22 @@ export interface SessionPlan {
 
 /* ── Store ─────────────────────────────────────────────────────── */
 
+/**
+ * Compact reference to an assessment whose full definition lives in IndexedDB
+ * (design §O). Kept in the localStorage Store so the synchronous hot path
+ * (recommendations/readiness) can reason about assessments WITHOUT touching
+ * IndexedDB. `topic_ids` are the confirmed-mapping topics — what the assessment
+ * actually certifies. Additive: absent in ≤3.3.0 stores.
+ */
+export interface AssessmentRef {
+  assessment_id: string;
+  title: string;
+  provenance: AssessmentProvenance;
+  topic_ids: string[];
+  max_marks: number;
+  created_at: string;
+}
+
 export interface Store {
   schema_version: string;
   courses: Course[];
@@ -364,6 +380,9 @@ export interface Store {
    * in ≤3.2.0 stores, defaulted to [] on load.
    */
   error_patterns: ErrorPattern[];
+  /** Compact references to IndexedDB assessment definitions (design §O, Phase 9).
+   *  Additive; defaulted to [] on load. */
+  assessment_refs: AssessmentRef[];
 }
 
 export function emptyStore(): Store {
@@ -373,6 +392,7 @@ export function emptyStore(): Store {
     exams: [],
     sessions: [],
     error_patterns: [],
+    assessment_refs: [],
   };
 }
 

@@ -2,7 +2,7 @@ import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { ASSESSMENT_DEF_SCHEMA } from '@/domain/schemas';
 import type { AssessmentDefinition } from '@/domain/assessment';
-import type { Store } from '@/domain/types';
+import type { AssessmentRef, Store } from '@/domain/types';
 import { allTopics } from '@/domain/types';
 import type { AssessmentRepo } from './assessment-store';
 import type { FriendlyError } from './errorTranslation';
@@ -112,6 +112,23 @@ export function ingestAssessmentDef(input: string, store: Store): AssessmentInge
   if (integrity.length > 0) return { ok: false, errors: integrity };
 
   return { ok: true, value: def, preview: buildPreview(def) };
+}
+
+/** The compact reference kept in the localStorage Store (design §O) so the
+ *  synchronous hot path can reason about this assessment without IndexedDB. Only
+ *  CONFIRMED-mapping topics — those the assessment actually certifies. */
+export function toAssessmentRef(def: AssessmentDefinition): AssessmentRef {
+  const topic_ids = [
+    ...new Set(def.questions.flatMap((q) => q.topic_mappings.filter((m) => m.confirmed).map((m) => m.topic_id))),
+  ];
+  return {
+    assessment_id: def.assessment_id,
+    title: def.title,
+    provenance: def.provenance,
+    topic_ids,
+    max_marks: def.max_marks,
+    created_at: def.created_at,
+  };
 }
 
 /** Commit a validated definition to the assessment repo (IndexedDB). */

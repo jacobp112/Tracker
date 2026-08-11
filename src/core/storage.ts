@@ -65,6 +65,10 @@ function migrate(parsed: unknown): Store {
     error_patterns: Array.isArray((p as { error_patterns?: unknown }).error_patterns)
       ? (p.error_patterns as Store['error_patterns'])
       : [],
+    // Additive (v4.0.0): compact assessment references (design §O). Absent → [].
+    assessment_refs: Array.isArray((p as { assessment_refs?: unknown }).assessment_refs)
+      ? (p.assessment_refs as Store['assessment_refs'])
+      : [],
   };
 
   // Additive migration: legacy stores predate per-session durations.

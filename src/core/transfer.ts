@@ -124,6 +124,7 @@ export function importBundle(input: string): ImportResult {
   // them verbatim so the round-trip is identity-preserving (E8-S1). Absent in
   // ≤3.2.0 bundles → [].
   draft.error_patterns = Array.isArray(src.error_patterns) ? src.error_patterns : [];
+  draft.assessment_refs = Array.isArray(src.assessment_refs) ? src.assessment_refs : [];
 
   if (errors.length > 0) return { ok: false, errors };
 

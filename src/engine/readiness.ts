@@ -1,5 +1,5 @@
 import { CONFIG } from '@/config/constants';
-import type { Store, Topic } from '@/domain/types';
+import type { AssessmentRef, Store, Topic } from '@/domain/types';
 import { allTopics } from '@/domain/types';
 import { calibrationError, coldPerformance, independentPerformance } from './performance';
 import { errorUrgency } from './errors';
@@ -163,4 +163,14 @@ export function assessReadiness(
     : 'ready';
 
   return { target, verdict, criteria, blocking };
+}
+
+/** Readiness for a specific assessment (design §K/§19). A past paper is a
+ *  benchmark (needs cold-independent evidence); anything else is formative. */
+export function readinessForAssessment(ref: AssessmentRef, store: Store, now: Date = new Date()): ReadinessReport {
+  return assessReadiness(
+    { topic_ids: ref.topic_ids, benchmark: ref.provenance === 'past_paper', title: ref.title },
+    store,
+    now,
+  );
 }
