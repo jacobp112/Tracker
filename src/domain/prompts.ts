@@ -55,9 +55,9 @@ Schema (v3.2.0):
   - cards: always 0.
   - last_reviewed: always null.
   - drift_history, review_history, error_log: always empty arrays [].
-  - prerequisites: OPTIONAL array of topic_id values this topic depends on — the upstream concepts to master first. Reference topic_ids you define in THIS course, and/or any id from the EXISTING topics listed below when this course builds on already-tracked material. Use [] or omit if none. This lets the tracker trace whether errors in a topic stem from shaky foundations upstream.
+  - prerequisites: OPTIONAL array of topic_id values this topic depends on — the upstream concepts to master first. Reference topic_ids you define in THIS course; when this course builds on material from another already-tracked course, you may also cite that course's topic_id. Use [] or omit if none. This lets the tracker trace whether errors in a topic stem from shaky foundations upstream.
 
-Break the syllabus into sections matching its natural structure (chapters/weeks/units), and topics matching individual concepts/skills within each section — granular enough that a topic represents something masterable in a single study session, not an entire chapter. Where the syllabus implies a dependency (B builds on A), record it in B's prerequisites — including when A is an already-tracked topic listed below.${crossCourseBlock}
+Break the syllabus into sections matching its natural structure (chapters/weeks/units), and topics matching individual concepts/skills within each section — granular enough that a topic represents something masterable in a single study session, not an entire chapter. Where the syllabus implies a dependency (B builds on A), record it in B's prerequisites.${crossCourseBlock}
 
 Here is the syllabus: [PASTE SYLLABUS HERE]`;
 }
