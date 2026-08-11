@@ -267,6 +267,89 @@ export const EXAM_SCHEMA: SchemaObject = {
   },
 };
 
+/* ── Assessment definition (design §C/§E/§F, Phase 7) ───────────────
+ * NOT registered in SCHEMAS/SchemaName: assessment definitions persist to
+ * IndexedDB, not the localStorage Store, so they run through their own parallel
+ * ingestion pipeline (core/assessment-ingest.ts) rather than mergeInto. The shape
+ * still obeys the house rules: additionalProperties:false, closed enums. */
+
+const PROVENANCE_ENUM = { type: 'string', enum: ['past_paper', 'ai_generated', 'diagnostic', 'custom'] };
+
+const MARK_CRITERION: SchemaObject = {
+  type: 'object', additionalProperties: false,
+  required: ['criterion_id', 'marks', 'kind', 'label', 'descriptor'],
+  properties: {
+    criterion_id: ID_PATTERN('criterion'),
+    marks: { type: 'number', minimum: 0 },
+    kind: { type: 'string', enum: ['point', 'method', 'accuracy', 'follow_through', 'rubric_band', 'quality', 'alternative'] },
+    label: { type: 'string', minLength: 1, maxLength: 120 },
+    descriptor: { type: 'string', maxLength: 2000 },
+    conditions: { type: 'string', maxLength: 500 },
+    alternatives: { type: 'array', items: { type: 'string', maxLength: 500 } },
+    band: {
+      type: 'object', additionalProperties: false,
+      required: ['level', 'min_marks', 'max_marks'],
+      properties: { level: { type: 'integer', minimum: 0 }, min_marks: { type: 'number', minimum: 0 }, max_marks: { type: 'number', minimum: 0 } },
+    },
+  },
+};
+
+const MARK_SCHEME: SchemaObject = {
+  type: 'object', additionalProperties: false,
+  required: ['total_marks', 'criteria'],
+  properties: {
+    total_marks: { type: 'number', minimum: 0 },
+    criteria: { type: 'array', items: MARK_CRITERION },
+    guidance: { type: 'string', maxLength: 2000 },
+  },
+};
+
+const TOPIC_MAPPING: SchemaObject = {
+  type: 'object', additionalProperties: false,
+  required: ['topic_id', 'role', 'weight', 'proposed_by', 'confirmed'],
+  properties: {
+    topic_id: ID_PATTERN('topic'),
+    role: { type: 'string', enum: ['primary', 'secondary'] },
+    weight: { type: 'number', minimum: 0, maximum: 1 },
+    proposed_by: { type: 'string', enum: ['ai', 'user'] },
+    confirmed: { type: 'boolean' },
+  },
+};
+
+const QUESTION: SchemaObject = {
+  type: 'object', additionalProperties: false,
+  required: ['question_id', 'assessment_id', 'label', 'order', 'marks_available', 'topic_mappings', 'mark_scheme', 'provenance'],
+  properties: {
+    question_id: ID_PATTERN('question'),
+    assessment_id: ID_PATTERN('assessment'),
+    label: { type: 'string', minLength: 1, maxLength: 20 },
+    parent_question_id: ID_PATTERN('question'),
+    order: { type: 'integer', minimum: 0 },
+    marks_available: { type: 'number', minimum: 0 },
+    stem_ref: { type: 'string', maxLength: 1000 },
+    topic_mappings: { type: 'array', items: TOPIC_MAPPING },
+    mark_scheme: MARK_SCHEME,
+    difficulty: { type: 'integer', minimum: 0, maximum: 5 },
+    learning_objective_ids: { type: 'array', items: { type: 'string', maxLength: 100 } },
+    provenance: PROVENANCE_ENUM,
+  },
+};
+
+export const ASSESSMENT_DEF_SCHEMA: SchemaObject = {
+  type: 'object', additionalProperties: false,
+  required: ['schema_version', 'assessment_id', 'title', 'provenance', 'created_at', 'max_marks', 'questions'],
+  properties: {
+    schema_version: { type: 'string' },
+    assessment_id: ID_PATTERN('assessment'),
+    title: { type: 'string', minLength: 1, maxLength: 200 },
+    provenance: PROVENANCE_ENUM,
+    created_at: ISO_DATETIME,
+    max_marks: { type: 'number', exclusiveMinimum: 0 },
+    questions: { type: 'array', minItems: 1, items: QUESTION },
+    source_note: { type: 'string', maxLength: 1000 },
+  },
+};
+
 export type SchemaName = 'course' | 'session' | 'exam';
 
 export const SCHEMAS: Record<SchemaName, SchemaObject> = {
