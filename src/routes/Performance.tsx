@@ -7,10 +7,7 @@ import {
   performanceByNovelty, performanceHealth, performanceQuality, transferAbility,
   type DimensionBucket,
 } from '@/engine/performance';
-import {
-  allReviewEvents, courseReviewEvents, metricTrend, performanceSummary,
-  unstablePrerequisites, type UnstableUpstream,
-} from '@/engine/performance-view';
+import { allReviewEvents, courseReviewEvents, sectionReviewEvents, metricTrend, performanceSummary, unstablePrerequisites, type UnstableUpstream } from '@/engine/performance-view';
 
 const SERIF = "'EB Garamond', var(--font-display)";
 const SANS = 'var(--font-sans)';
@@ -52,20 +49,27 @@ export function Performance({ store }: { store: Store }) {
   const { theme: mode } = useTheme();
   const theme = getCairnTheme(mode === 'dark');
   const [now] = useState(() => new Date());
-  const [scope, setScope] = useState<string>('all');
+  const [courseScope, setCourseScope] = useState<string>('all');
+  const [sectionScope, setSectionScope] = useState<string>('all');
+  const selectCourse = (v: string) => { setCourseScope(v); setSectionScope('all'); };
+
+  const soleCourse = store.courses.length === 1 ? store.courses[0] : null;
+  const effectiveCourseId = soleCourse ? soleCourse.course_id : (courseScope === 'all' ? null : courseScope);
+  const effectiveCourse = effectiveCourseId ? store.courses.find((c) => c.course_id === effectiveCourseId) ?? null : null;
 
   const anyAssessments = useMemo(() => allReviewEvents(store).some((e) => e.assessment), [store]);
 
-  const events = useMemo(
-    () => (scope === 'all' ? allReviewEvents(store) : courseReviewEvents(store, scope)),
-    [store, scope],
-  );
+  const events = useMemo(() => {
+    if (sectionScope !== 'all' && effectiveCourseId) return sectionReviewEvents(store, effectiveCourseId, sectionScope);
+    if (courseScope !== 'all') return courseReviewEvents(store, courseScope);
+    return allReviewEvents(store);
+  }, [store, courseScope, sectionScope, effectiveCourseId]);
   const summary = useMemo(() => performanceSummary(events), [events]);
   const byDifficulty = useMemo(() => performanceByDifficulty(events), [events]);
   const byNovelty = useMemo(() => performanceByNovelty(events), [events]);
   const unstable = useMemo(
-    () => unstablePrerequisites(store, now, scope === 'all' ? undefined : scope),
-    [store, now, scope],
+    () => unstablePrerequisites(store, now, effectiveCourseId ?? undefined),
+    [store, now, effectiveCourseId],
   );
 
   if (!anyAssessments) {
@@ -111,12 +115,24 @@ export function Performance({ store }: { store: Store }) {
       </p>
 
       {store.courses.length > 1 && (
-        <ScopeSelector options={scopeOptions} value={scope} onChange={setScope} theme={theme} />
+        <ScopeSelector label="Course scope" options={scopeOptions} value={courseScope} onChange={selectCourse} theme={theme} />
+      )}
+      {effectiveCourse && effectiveCourse.sections.length > 1 && (
+        <ScopeSelector
+          label="Section scope"
+          options={[
+            { value: 'all', label: 'Whole course' },
+            ...[...effectiveCourse.sections].sort((a, b) => a.order - b.order).map((s) => ({ value: s.section_id, label: s.title })),
+          ]}
+          value={sectionScope}
+          onChange={setSectionScope}
+          theme={theme}
+        />
       )}
 
       {!hasAssessments ? (
         <p style={{ fontSize: '14px', color: theme.muted, maxWidth: '520px' }}>
-          No performance data for this course yet.
+          No performance data for this selection yet.
         </p>
       ) : (
         <>
@@ -142,11 +158,12 @@ export function Performance({ store }: { store: Store }) {
   );
 }
 
-function ScopeSelector({ options, value, onChange, theme }: {
+function ScopeSelector({ options, value, onChange, theme, label }: {
   options: Array<{ value: string; label: string }>;
   value: string;
   onChange: (v: string) => void;
   theme: CairnTheme;
+  label: string;
 }) {
   const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const move = (dir: 1 | -1) => {
@@ -158,7 +175,7 @@ function ScopeSelector({ options, value, onChange, theme }: {
     }
   };
   return (
-    <div role="radiogroup" aria-label="Course scope" style={scopeBar(theme)}>
+    <div role="radiogroup" aria-label={label} style={scopeBar(theme)}>
       {options.map((o) => {
         const active = o.value === value;
         return (
