@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { useToast, type ToastAction } from '@/components/feedback';
 import { detectSchema } from '@/core/detect';
 import { COMMIT_VERB, ingest, SCHEMA_LABEL, type Preview } from '@/core/pipeline';
-import { COURSE_PROMPT, examPrompt, sessionPrompt } from '@/domain/prompts';
+import { coldAssessmentPrompt, COURSE_PROMPT, examPrompt, sessionPrompt } from '@/domain/prompts';
 import { courseTopics } from '@/engine/course';
 import type { SchemaName } from '@/domain/schemas';
 import type { Course, Store } from '@/domain/types';
@@ -68,6 +68,9 @@ export function AddFlow({
   const [text, setText] = useState('');
   const [step, setStep] = useState<Step>({ name: 'editing' });
   const [done, setDone] = useState<{ summary: string; dest: string } | null>(null);
+  // Cold checks are reported as exams (cold: true), so they ride the exam kind
+  // with a different copy-out prompt — run cold, unaided, on unfamiliar items.
+  const [examCold, setExamCold] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -82,7 +85,7 @@ export function AddFlow({
   const promptFor = (): string => {
     if (promptOverride) return promptOverride;
     if (kind === 'course') return COURSE_PROMPT;
-    if (kind === 'exam') return examPrompt(store);
+    if (kind === 'exam') return examCold ? coldAssessmentPrompt(store) : examPrompt(store);
     if (kind === 'session') {
       const course = store.courses.find((c) => c.course_id === courseId) ?? store.courses[0];
       if (!course) return COURSE_PROMPT;
@@ -200,6 +203,34 @@ export function AddFlow({
         ) : (
           showEditing && (
             <>
+              {kind === 'exam' && (
+                <div role="group" aria-label="Exam type" style={modeToggle(theme)}>
+                  <button
+                    type="button"
+                    data-press
+                    aria-pressed={!examCold}
+                    onClick={() => setExamCold(false)}
+                    style={modeSeg(theme, !examCold)}
+                  >
+                    Exam result
+                  </button>
+                  <button
+                    type="button"
+                    data-press
+                    aria-pressed={examCold}
+                    onClick={() => setExamCold(true)}
+                    style={modeSeg(theme, examCold)}
+                  >
+                    Cold check
+                  </button>
+                </div>
+              )}
+              {kind === 'exam' && examCold && (
+                <p style={{ margin: '0 0 14px', fontSize: '12.5px', color: theme.muted }}>
+                  Run this cold — unfamiliar items, no hints or notes, an independent attempt —
+                  then paste the result. It’s stored as an exam marked cold.
+                </p>
+              )}
               {kind !== 'quick' && (
                 <div style={{ background: theme.surfaceAlt, border: `2px dashed ${theme.border}`, borderRadius: '16px 6px 16px 6px', padding: '16px', marginBottom: '18px' }}>
                   <p style={{ margin: '0 0 10px', fontSize: '13px', color: theme.ink }}>
@@ -241,6 +272,12 @@ function card(t: CairnTheme): CSSProperties {
 }
 function closeBtn(t: CairnTheme): CSSProperties {
   return { background: t.bg, border: `2px solid ${t.border}`, borderRadius: '9999px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '15px', color: t.ink, boxShadow: `2px 2px 0 ${t.shadow}` };
+}
+function modeToggle(t: CairnTheme): CSSProperties {
+  return { display: 'inline-flex', gap: '4px', padding: '4px', marginBottom: '16px', background: t.bg, border: `2px solid ${t.border}`, borderRadius: '9999px', boxShadow: `2px 2px 0 ${t.shadow}` };
+}
+function modeSeg(t: CairnTheme, active: boolean): CSSProperties {
+  return { border: 'none', borderRadius: '9999px', padding: '7px 16px', fontFamily: SANS, fontSize: '13px', fontWeight: 700, cursor: 'pointer', background: active ? t.pine : 'transparent', color: active ? t.onAccent : t.muted };
 }
 function stepBadge(t: CairnTheme): CSSProperties {
   return { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '9999px', background: t.orange, color: '#1a1a1a', fontSize: '11px', fontWeight: 700, marginRight: '8px' };
