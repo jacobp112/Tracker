@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
 import App from '@/App';
-import { emptyStore, type Store } from '@/domain/types';
+import type { Store } from '@/domain/types';
 import type { AssessmentDefinition } from '@/domain/assessment';
 import { getAssessmentRepo } from '@/core/assessment-store';
 import { saveStore } from '@/core/storage';
@@ -72,7 +71,8 @@ const mockCourse: Store = {
       severity: 'medium',
       topic_ids: ['topic_quadratics'],
       occurrence_ids: ['err_1'],
-      created_at: '2026-08-05T00:00:00Z',
+      first_seen: '2026-08-05T00:00:00Z',
+      last_seen: '2026-08-05T00:00:00Z',
     },
   ],
   assessment_refs: [
