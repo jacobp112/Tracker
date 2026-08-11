@@ -124,10 +124,10 @@ describe('PasteValidateInput — Document 3 §5.6 / E2-S4', () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
-  it('shows the copy-the-prompt panel with the current v2.0.0 prompt', () => {
+  it('shows the copy-the-prompt panel with the current v3.2.0 prompt', () => {
     setup();
     expect(screen.getByRole('button', { name: /copy prompt/i })).toBeInTheDocument();
     // The prompt and the schema must ship in lockstep (Doc 4 v0.3 changelog).
-    expect(screen.getByText(/schema \(v2\.0\.0\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/schema \(v3\.2\.0\)/i)).toBeInTheDocument();
   });
 });
