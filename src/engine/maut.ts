@@ -167,6 +167,37 @@ export function deriveMAUTWeights(store: Store, ctx: MAUTContext, now: Date = ne
   return { mem: floored[0]! / total, found: floored[1]! / total, vel: floored[2]! / total, feas: floored[3]! / total };
 }
 
+/* ── Anti-starvation: aging + domain interleaving (§24–26) ── */
+
+/**
+ * Queue residence in days — a derive-don't-store proxy for how long a candidate
+ * has been eligible without being acted upon (§24): days since its last review
+ * event, or since its course was created if never touched.
+ */
+export function queueResidenceDays(topic: Topic, store: Store, now: Date = new Date()): number {
+  const last = topic.review_history.at(-1)?.date;
+  let ref: number;
+  if (last) {
+    ref = new Date(last).getTime();
+  } else {
+    const course = store.courses.find((c) =>
+      c.sections.some((s) => s.topics.some((t) => t.topic_id === topic.topic_id)),
+    );
+    ref = course ? new Date(course.created_at).getTime() : now.getTime();
+  }
+  return Math.max(0, (now.getTime() - ref) / MS_PER_DAY);
+}
+
+/**
+ * Bounded aging boost (§24): `α_age·(1 − e^(−φ·Δt))` with `α_age = AGING_MAX_FRACTION·maxU`.
+ * Rises with residence toward — but never past — its cap, so aging mitigates
+ * starvation without overwhelming urgent memory/exam work (§36, §54.8).
+ */
+export function agingBoost(residenceDays: number, maxUtility: number): number {
+  const max = CONFIG.RECO.AGING_MAX_FRACTION * maxUtility;
+  return max * (1 - Math.exp(-CONFIG.RECO.AGING_ACCELERATION * residenceDays));
+}
+
 /**
  * Composite utility `U = Σ w_k·u_k` for a candidate topic (§13, §23), with the
  * sub-utility breakdown, applied weights, and the dominant driver for the
