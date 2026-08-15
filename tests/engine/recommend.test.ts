@@ -52,9 +52,9 @@ describe('recommend — the "what should I do next?" cascade', () => {
     expect(recs[0]!.evidence.length).toBeGreaterThan(0);
   });
 
-  it('recommends prerequisite remediation when an upstream topic is unstable', () => {
+  it('recommends prerequisite remediation when an upstream topic is unstable and downstream fails', () => {
     const upstream = topic('topic_up', { status: 'learning' }); // learning ⇒ unstable prerequisite
-    const downstream = topic('topic_dn', { status: 'practising', prerequisites: ['topic_up'] });
+    const downstream = topic('topic_dn', { status: 'practising', prerequisites: ['topic_up'], review_history: [{ event_id: 'ed_fail', date: NOW.toISOString(), kind: 'test_fail', source: 'session', source_id: 'sd', confidence_reported: 2, test: { score: 2, out_of: 10, actual_retention: 0.2 } }] });
     const recs = recommend(storeWith([upstream, downstream]), NOW);
     const pre = recs.find((r) => r.action === 'prerequisite');
     expect(pre).toBeDefined();
@@ -74,8 +74,11 @@ describe('recommend — the "what should I do next?" cascade', () => {
     expect(recs.some((r) => r.action === 'learn' && r.target.id === 'topic_b')).toBe(true);
   });
 
-  it('does NOT recommend learning a not_started topic with an unsatisfied prerequisite', () => {
-    const weakPrereq = topic('topic_a', { status: 'learning' });
+  it('does NOT recommend learning a not_started topic with an unsatisfied (low-mastery) direct prerequisite', () => {
+    // Bounded gating (workflow §6): "unsatisfied" is now mastery-based, not
+    // status-based. topic_a is genuinely weak — reviewed long ago at low
+    // confidence → health well under 70 → L < τ_crit → hard-blocks topic_b.
+    const weakPrereq = topic('topic_a', { status: 'learning', conf: 1, last_reviewed: '2026-07-01T00:00:00.000Z' });
     const blocked = topic('topic_b', { status: 'not_started', last_reviewed: null, prerequisites: ['topic_a'] });
     const recs = recommend(storeWith([weakPrereq, blocked]), NOW);
     expect(recs.some((r) => r.action === 'learn' && r.target.id === 'topic_b')).toBe(false);

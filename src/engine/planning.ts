@@ -1,6 +1,7 @@
-import type { Store } from '@/domain/types';
+import type { Store, Topic } from '@/domain/types';
 import { allTopics } from '@/domain/types';
-import { downstreamDependents, prerequisiteInstability, type PrerequisiteBlockingGap } from './prerequisites';
+import { downstreamDependents, prerequisiteInstability, mastery, type PrerequisiteBlockingGap } from './prerequisites';
+import { curriculumIndex } from './graph';
 import { CONFIG } from '@/config/constants';
 
 export interface TimeBudget {
@@ -80,14 +81,21 @@ export function curriculumPosition(store: Store, now: Date = new Date()): Curric
 
   const eligibleTopics: EligibleTopicInfo[] = [];
   const blockedTopics: BlockedTopicInfo[] = [];
+  const cIndex = curriculumIndex(store);
+  const byId = new Map(allTopics(store).map(({ topic }) => [topic.topic_id, topic]));
 
   for (const { topic } of unstarted) {
     const report = prerequisiteInstability(topic, store, now);
-    const hardBlockers = report.upstream.filter(
-      (u) => u.unstable && (u.blockingGap === 'unconsolidated_status' || u.blockingGap === 'unresolved_error'),
-    );
 
-    if (hardBlockers.length === 0) {
+    // Bounded gating (workflow §6, D4): ONLY a DIRECT (d=1) prerequisite whose
+    // mastery is below τ_crit hard-blocks. Transitive ancestry never blocks
+    // eligibility — that removes the deep-chain deadlock class (workflow §5–9, §53).
+    const directBlockers = (topic.prerequisites ?? [])
+      .map((pid) => byId.get(pid))
+      .filter((p): p is Topic => !!p)
+      .filter((p) => mastery(p, now) < CONFIG.RECO.TAU_CRIT);
+
+    if (directBlockers.length === 0) {
       const dependents = downstreamDependents(topic.topic_id, store);
       const maxDepth = report.upstream.length > 0 ? Math.max(...report.upstream.map((u) => u.depth)) : 0;
 
@@ -98,20 +106,11 @@ export function curriculumPosition(store: Store, now: Date = new Date()): Curric
         depth: maxDepth,
       });
     } else {
-      const blockingPrerequisites = Array.from(new Set(hardBlockers.map((u) => u.topic_id)));
-      const blockingGaps = Array.from(
-        new Set(
-          hardBlockers
-            .map((u) => u.blockingGap)
-            .filter((g): g is PrerequisiteBlockingGap => g !== undefined),
-        ),
-      );
-
       blockedTopics.push({
         topicId: topic.topic_id,
         title: topic.title,
-        blockingPrerequisites,
-        blockingGaps,
+        blockingPrerequisites: Array.from(new Set(directBlockers.map((p) => p.topic_id))),
+        blockingGaps: ['unconsolidated_status'] as PrerequisiteBlockingGap[],
       });
     }
   }
@@ -119,7 +118,8 @@ export function curriculumPosition(store: Store, now: Date = new Date()): Curric
   // Sort eligible topics deterministically:
   // 1. downstreamValue descending (foundation topics underpinning more future work first)
   // 2. depth ascending (shallowest prerequisites first)
-  // 3. title / topicId ascending (alphabetical tiebreaker)
+  // 3. curriculum order ascending (authored syllabus sequence — D9a; replaces the
+  //    old alphabetical tiebreak that surfaced "Algebra" before "Number")
   const sortedEligible = [...eligibleTopics].sort((a, b) => {
     if (b.downstreamValue !== a.downstreamValue) {
       return b.downstreamValue - a.downstreamValue;
@@ -127,7 +127,7 @@ export function curriculumPosition(store: Store, now: Date = new Date()): Curric
     if (a.depth !== b.depth) {
       return a.depth - b.depth;
     }
-    return a.title.localeCompare(b.title);
+    return (cIndex.get(a.topicId) ?? 0) - (cIndex.get(b.topicId) ?? 0);
   });
 
   const suggestedOrder = sortedEligible.map((t) => t.topicId);

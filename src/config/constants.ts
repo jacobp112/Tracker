@@ -109,6 +109,21 @@ export const CONFIG = {
   DEFAULT_SESSIONS_PER_DAY: 2,
 
   /**
+   * Adaptive recommendation engine (docs/workflow.md). Introduced by the Phase 1
+   * bounded-gating + curriculum-ordering work.
+   */
+  RECO: {
+    /** Direct-prerequisite hard-gate threshold (workflow §6; D3 = prose 0.70,
+     *  stricter than the reference impl's 0.50). */
+    TAU_CRIT: 0.7,
+    /** Transitive attenuation base γ, α(d)=γ^(d-1) (workflow §7). Consumed in Phase 2. */
+    GAMMA_DEPTH: 0.5,
+    /** Soft-gating aggregation bound (workflow §54.4, D10). Consumed in Phase 2. */
+    SOFT_GATE_TOP_K: 3,
+    SOFT_GATE_FLOOR: 0.1,
+  },
+
+  /**
    * Per-topic leveling (engine/leveling.ts). Levels are a live view of genuine
    * progress, never stored. This is the one tunable table the banding reads;
    * `topicLevel` inlines no thresholds of its own.
