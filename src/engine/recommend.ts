@@ -1,11 +1,15 @@
-import type { Store, Topic } from '@/domain/types';
+import { CONFIG } from '@/config/constants';
+import type { Store } from '@/domain/types';
 import { allTopics } from '@/domain/types';
 import { errorUrgency, patternStatus, type UrgencyLevel, type UrgencyWhen } from './errors';
 import { dueQueue, type TopicRef } from './course';
 import { prerequisiteInstability } from './prerequisites';
 import { readinessForAssessment } from './readiness';
-import { isDue, projectedDue } from './retention';
+import { isDue, predictRetention } from './retention';
 import { evidenceTier } from './performance';
+import { topicEvidenceProfile, type ConfidenceLevel } from './evidence-confidence';
+import { deriveTimeBudget, curriculumPosition, type TimeBudget } from './planning';
+import { calculateActionValue, type ActionValue } from './action-value';
 
 /**
  * Recommendation engine — "what should I do next?" (design §J). A hierarchical,
@@ -14,9 +18,10 @@ import { evidenceTier } from './performance';
  * recommendation carries the concrete evidence that produced it, so the UI can
  * always answer "why?" (§20).
  *
- * Assessment-aware branches (sit/progress/reassess) arrive with the assessment
- * domain in a later phase; this cascade covers the pre-assessment guards:
- * remediate → prerequisite → verify → review → retrieve → learn.
+ * Tier 3 integration: Consumes Evidence Confidence (#16), Time Budget (#18),
+ * Curriculum Position (#20), and Action Value (#17+#19) to refine relative
+ * candidate ordering within priority bands while strictly preserving the
+ * decision authority and priority cascade.
  */
 
 export type RecommendationAction = 'remediate' | 'prerequisite' | 'retrieve' | 'review' | 'learn' | 'assess';
@@ -24,6 +29,16 @@ export type RecommendationAction = 'remediate' | 'prerequisite' | 'retrieve' | '
 export interface EvidenceRef {
   kind: 'occurrence' | 'topic' | 'pattern' | 'event' | 'assessment';
   id: string;
+  role?: 'prerequisite' | 'dependent' | 'target' | 'unresolved_error' | 'retention' | 'urgency';
+}
+
+export interface DecisionTrace {
+  /** The stage that produced this recommendation. */
+  sourceStage: string;
+  /** Any alternative candidates that were discarded before this was picked. */
+  discardedCandidates?: string[];
+  /** State of the time budget at the moment of evaluation. */
+  timeBudget?: TimeBudget;
 }
 
 export interface Recommendation {
@@ -34,10 +49,21 @@ export interface Recommendation {
   priority: UrgencyLevel;
   when: UrgencyWhen;
   est_duration_minutes: number;
+  actionValue?: ActionValue;
+  evidenceConfidence?: ConfidenceLevel;
+  trace?: DecisionTrace;
 }
 
 const PRIORITY_RANK: Record<UrgencyLevel, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 const WHEN_RANK: Record<UrgencyWhen, number> = { today: 0, within_48h: 1, this_week: 2, next_cycle: 3 };
+const ACTION_RANK: Record<RecommendationAction, number> = {
+  remediate: 0,
+  prerequisite: 1,
+  review: 2,
+  retrieve: 3,
+  assess: 4,
+  learn: 5,
+};
 
 const EST_MINUTES: Record<RecommendationAction, number> = {
   remediate: 25, prerequisite: 25, retrieve: 15, review: 15, learn: 30, assess: 60,
@@ -57,7 +83,7 @@ function errorGuards(store: Store, now: Date): Recommendation[] {
     if (status === 'verified_resolved') continue; // nothing to do
 
     const target = { kind: 'pattern' as const, id: pattern.pattern_id, title: pattern.signature };
-    const evidence: EvidenceRef[] = pattern.occurrence_ids.map((id) => ({ kind: 'occurrence' as const, id }));
+    const evidence: EvidenceRef[] = pattern.occurrence_ids.map((id) => ({ kind: 'occurrence' as const, id, role: 'unresolved_error' }));
 
     if (status === 'verification_pending') {
       // Remediation happened; the outstanding action is to PROVE it independently.
@@ -86,17 +112,46 @@ function prerequisiteGuards(store: Store, now: Date): Recommendation[] {
   for (const { topic } of allTopics(store)) {
     if (topic.status === 'not_started') continue;
     const report = prerequisiteInstability(topic, store, now);
-    if (report.unstableCount === 0) continue;
-    // Shallowest unstable ancestor first — fix the nearest foundation.
-    const unstable = report.upstream.filter((u) => u.unstable).sort((a, b) => a.depth - b.depth)[0];
+    const blocking = report.upstream.filter((u) => u.unstable && u.isBlocking);
+    if (blocking.length === 0) continue;
+    // Shallowest blocking ancestor first — fix the nearest foundation.
+    const unstable = blocking.sort((a, b) => a.depth - b.depth)[0];
     if (!unstable || targeted.has(unstable.topic_id)) continue;
     targeted.add(unstable.topic_id);
+
+    const activePatterns = store.error_patterns.filter(
+      (p) => p.topic_ids.includes(unstable.topic_id) && patternStatus(p, store, now).status !== 'verified_resolved',
+    );
+
+    const evidence: EvidenceRef[] = [
+      { kind: 'topic', id: unstable.topic_id, role: 'prerequisite' },
+      { kind: 'topic', id: topic.topic_id, role: 'dependent' },
+    ];
+    for (const p of activePatterns) {
+      evidence.push({ kind: 'pattern', id: p.pattern_id, role: 'unresolved_error' });
+    }
+
+    const retPct = unstable.retention !== null ? Math.round(unstable.retention * 100) : null;
+    let reason = `"${unstable.title}" underpins "${topic.title}" but is currently unstable (${unstable.status}).`;
+    if (retPct !== null && retPct >= 80 && activePatterns.length > 0) {
+      reason = `Your overall retention is strong (${retPct}%), but you still have an unresolved error in this foundational topic. Because it underpins "${topic.title}", fixing this foundational topic takes precedence over ordinary review.`;
+    } else if (unstable.blockingGap === 'application' || unstable.blockingGap === 'independence') {
+      reason = `"${unstable.title}" underpins "${topic.title}" but requires independent problem-solving practice (its retrieval is solid, but application/independence is uncertified).`;
+    } else if (unstable.blockingGap === 'retrieval') {
+      reason = `"${unstable.title}" underpins "${topic.title}" but its retrieval has decayed. Active recall review needed.`;
+    } else if (unstable.blockingGap === 'unresolved_error') {
+      reason = `"${unstable.title}" underpins "${topic.title}" but carries an unresolved misconception that takes precedence.`;
+    } else if (retPct !== null && retPct >= 80) {
+      const errClause = activePatterns.length > 0 ? 'an unresolved error' : `unconsolidated status ("${unstable.status}")`;
+      reason = `Your overall retention is strong (${retPct}%), but you still have ${errClause} in this foundational topic. Because it underpins "${topic.title}", fixing this foundational topic takes precedence over ordinary review.`;
+    }
+
     out.push({
       action: 'prerequisite',
       target: { kind: 'topic', id: unstable.topic_id, title: unstable.title },
-      evidence: [{ kind: 'topic', id: unstable.topic_id }, { kind: 'topic', id: topic.topic_id }],
+      evidence,
       priority: 'high', when: 'within_48h', est_duration_minutes: EST_MINUTES.prerequisite,
-      reason: `"${unstable.title}" underpins "${topic.title}" but is currently unstable (${unstable.status}).`,
+      reason,
     });
   }
   return out;
@@ -105,15 +160,21 @@ function prerequisiteGuards(store: Store, now: Date): Recommendation[] {
 function reviewGuards(store: Store, now: Date): Recommendation[] {
   const refs: TopicRef[] = allTopics(store).map(({ topic, section }) => ({ topic, section }));
   return dueQueue(refs, refs.length, now).map((r) => {
-    const overdue = projectedDue(r.topic, now)?.overdue ?? false;
+    // `dueQueue` already gated on `isDue` (R < DUE_THRESHOLD). We escalate only
+    // once retention has fallen a further OVERDUE_MARGIN below that — otherwise a
+    // topic that is merely due would always read as "overdue" (its projected due
+    // date is by construction in the past), collapsing the medium tier (V2).
+    const retention = predictRetention(r.topic, now);
+    const severelyOverdue =
+      retention !== null && retention < CONFIG.DUE_THRESHOLD - CONFIG.OVERDUE_MARGIN;
     return {
       action: 'review' as const,
       target: { kind: 'topic' as const, id: r.topic.topic_id, title: r.topic.title },
       evidence: [{ kind: 'topic' as const, id: r.topic.topic_id }],
-      priority: overdue ? ('high' as const) : ('medium' as const),
-      when: overdue ? ('within_48h' as const) : ('this_week' as const),
+      priority: severelyOverdue ? ('high' as const) : ('medium' as const),
+      when: severelyOverdue ? ('within_48h' as const) : ('this_week' as const),
       est_duration_minutes: EST_MINUTES.review,
-      reason: `"${r.topic.title}" has decayed below the review threshold${overdue ? ' (overdue)' : ''}.`,
+      reason: `"${r.topic.title}" has decayed below the review threshold${severelyOverdue ? ' (severely overdue)' : ''}.`,
     };
   });
 }
@@ -122,7 +183,6 @@ function retrieveGuards(store: Store, now: Date): Recommendation[] {
   const out: Recommendation[] = [];
   for (const { topic } of allTopics(store)) {
     if (topic.status !== 'learning' && topic.status !== 'practising') continue;
-    if (topic.review_history.length === 0) continue;
     if (isDue(topic, now)) continue; // the review guard already covers a due topic
     const hasIndependent = topic.review_history.some((e) => evidenceTier(e) >= INDEPENDENT_TIER);
     if (hasIndependent) continue;
@@ -137,17 +197,14 @@ function retrieveGuards(store: Store, now: Date): Recommendation[] {
   return out;
 }
 
-function learnGuards(store: Store): Recommendation[] {
+function learnGuards(store: Store, now: Date): Recommendation[] {
+  const position = curriculumPosition(store, now);
   const byId = new Map(allTopics(store).map(({ topic }) => [topic.topic_id, topic]));
-  const satisfied = (t: Topic) =>
-    (t.prerequisites ?? []).every((pid) => {
-      const p = byId.get(pid);
-      return p !== undefined && (p.status === 'practising' || p.status === 'mastered');
-    });
+
   const out: Recommendation[] = [];
-  for (const { topic } of allTopics(store)) {
-    if (topic.status !== 'not_started') continue;
-    if (!satisfied(topic)) continue; // don't start on shaky foundations
+  for (const topicId of position.suggestedOrder) {
+    const topic = byId.get(topicId);
+    if (!topic || topic.status !== 'not_started') continue;
     out.push({
       action: 'learn',
       target: { kind: 'topic', id: topic.topic_id, title: topic.title },
@@ -188,27 +245,86 @@ function rankKey(r: Recommendation): number {
 }
 
 /**
- * The ranked next-action list. Guards are unioned; when several fire on one
- * target the highest-priority survives, then everything sorts by priority then
- * temporal band. The dashboard shows the top; the whole list stays explainable.
+ * The ranked next-action list — single learner-action decision authority.
+ * Guards are unioned; when several fire on one target the highest-priority survives.
+ * Recommendations are enriched with Evidence Confidence, Time Budget feasibility,
+ * and Action Value, then sorted strictly within priority bands.
  */
-export function recommend(store: Store, now: Date = new Date()): Recommendation[] {
-  const all = [
+export function recommend(
+  store: Store,
+  now: Date = new Date(),
+  timeBudget?: TimeBudget | null,
+): Recommendation[] {
+  const activeBudget = timeBudget ?? deriveTimeBudget(store, undefined, now);
+
+  const rawCandidates = [
     ...errorGuards(store, now),
     ...prerequisiteGuards(store, now),
     ...reviewGuards(store, now),
     ...retrieveGuards(store, now),
     ...assessGuards(store, now),
-    ...learnGuards(store),
+    ...learnGuards(store, now),
   ];
 
   // Dedupe by target — keep the strongest signal per thing to act on.
   const best = new Map<string, Recommendation>();
-  for (const r of all) {
+  for (const r of rawCandidates) {
     const key = `${r.target.kind}:${r.target.id}`;
     const prev = best.get(key);
     if (!prev || rankKey(r) < rankKey(prev)) best.set(key, r);
   }
 
-  return [...best.values()].sort((a, b) => rankKey(a) - rankKey(b));
+  const candidates = [...best.values()];
+
+  // Enrich with Evidence Confidence and Action Value
+  const enriched = candidates.map((r) => {
+    let evidenceConfidence: ConfidenceLevel | undefined;
+    if (r.target.kind === 'topic') {
+      const topicObj = allTopics(store).find(({ topic }) => topic.topic_id === r.target.id)?.topic;
+      if (topicObj) {
+        evidenceConfidence = topicEvidenceProfile(topicObj, store, now).overall;
+      }
+    }
+
+    const actionVal = calculateActionValue(r, candidates, store, activeBudget, now);
+
+    return {
+      ...r,
+      evidenceConfidence,
+      actionValue: actionVal,
+      trace: {
+        sourceStage: `${r.action}Guards`,
+        timeBudget: activeBudget,
+        discardedCandidates: [], // Could be populated if we tracked rawCandidates vs best
+      },
+    };
+  });
+
+  // Sort: Priority cascade is major key (rankKey).
+  // Within the same priority band:
+  // 1. Feasibility (feasible > marginal > infeasible)
+  // 2. Action cascade precedence (remediate > prerequisite > review > retrieve > assess > learn)
+  // 3. Downstream value descending
+  // 4. Alphabetical by target title
+  return enriched.sort((a, b) => {
+    const majorDiff = rankKey(a) - rankKey(b);
+    if (majorDiff !== 0) return majorDiff;
+
+    // Feasibility sorting
+    const feasibilityOrder: Record<string, number> = { feasible: 0, marginal: 1, infeasible: 2 };
+    const feasA = feasibilityOrder[a.actionValue?.feasibility ?? 'feasible'] ?? 0;
+    const feasB = feasibilityOrder[b.actionValue?.feasibility ?? 'feasible'] ?? 0;
+    if (feasA !== feasB) return feasA - feasB;
+
+    const actionDiff = ACTION_RANK[a.action] - ACTION_RANK[b.action];
+    if (actionDiff !== 0) return actionDiff;
+
+    // Downstream value sorting
+    const downA = a.actionValue?.downstreamValue ?? 0;
+    const downB = b.actionValue?.downstreamValue ?? 0;
+    if (downA !== downB) return downB - downA;
+
+    // Alphabetical tie-breaker
+    return a.target.title.localeCompare(b.target.title);
+  });
 }

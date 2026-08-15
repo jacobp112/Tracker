@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { commit } from '@/core/pipeline';
+import { commit, validateValue } from '@/core/pipeline';
 import { mergeInto } from '@/core/merge';
-import { cloneStore, loadStore, saveStore, StorageError } from '@/core/storage';
+import { cloneStore, loadStore, mutateStore, saveStore, StorageError, STORE_KEY } from '@/core/storage';
 import type { SchemaName } from '@/domain/schemas';
 import {
   allTopics,
@@ -21,6 +21,14 @@ import { applyEvent, promote } from '@/engine/recalculate';
  * (Document 4 E2-S4): the draft is only adopted once the merge and the write
  * have both succeeded, so a throw anywhere leaves state untouched.
  */
+/** Thrown inside a `mutateStore` updater to abort the write (no save) and
+ *  surface a specific message — e.g. a target the mutation couldn't find. */
+class AbortMutation extends Error {
+  constructor(public friendly: string) {
+    super(friendly);
+  }
+}
+
 export function useStore() {
   const [store, setStore] = useState<Store>(emptyStore);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,24 +45,51 @@ export function useStore() {
     }
   }, []);
 
+  // V1 — adopt another tab's write. The `storage` event fires in every OTHER
+  // tab when one tab writes localStorage, so this keeps detached instances
+  // converged rather than drifting until the next local commit.
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORE_KEY && e.newValue) {
+        try {
+          setStore(loadStore());
+        } catch {
+          /* a peer tab wrote something unreadable; keep our own state */
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   /** Returns null on success, or a plain-English message on failure. */
   const commitValue = useCallback(
     (schemaName: SchemaName, value: unknown, onLevelUps?: (ups: LevelUp[]) => void): string | null => {
       try {
-        const next = commit(schemaName, value, store, mergeInto);
-        saveStore(next); // throws before we adopt the draft
-        setUndoSnapshot(store); // the pre-commit state, for the toast's Undo
+        // Atomic read-modify-write: the draft derives from the freshly persisted
+        // store, not this closure's snapshot, so a peer tab's write is never lost.
+        let before: Store = store;
+        const next = mutateStore((current) => {
+          // Same schema + integrity boundary as pasted JSON — a form-built value
+          // is never committed unvalidated (V3).
+          const errors = validateValue(schemaName, value, current);
+          if (errors.length > 0) throw new AbortMutation(errors[0]!.message);
+          before = current;
+          return commit(schemaName, value, current, mergeInto);
+        });
+        setUndoSnapshot(before); // the pre-commit state, for the toast's Undo
         setStore(next);
         // Level-up detection is cosmetic: it runs only after the commit has
         // persisted and been adopted, and its own failure must never surface as a
         // save error (the save already succeeded).
         try {
-          onLevelUps?.(levelUps(store, next, new Date()));
+          onLevelUps?.(levelUps(before, next, new Date()));
         } catch {
           /* a failed celebratory toast is not a failed commit */
         }
         return null;
       } catch (e) {
+        if (e instanceof AbortMutation) return e.friendly;
         if (e instanceof StorageError) return e.message;
         return e instanceof Error
           ? `That couldn't be saved: ${e.message}. Your existing data is unchanged.`
@@ -80,26 +115,32 @@ export function useStore() {
       },
     ): string | null => {
       try {
-        const committed = commit('session', value, store, mergeInto);
         const v = value as { session_id: string; course_id: string };
-        const record: SessionRecord = {
-          session_id: v.session_id,
-          topic_id: meta.topic_id,
-          course_id: v.course_id,
-          created_at: meta.created_at,
-          completed_at: new Date().toISOString(),
-          duration_minutes: meta.measured_minutes,
-          intent: meta.intent,
-          scope: meta.scope,
-          timer_mode: meta.timer_mode,
-          pomodoro_config: meta.pomodoro_config,
-        };
-        const next: Store = { ...committed, sessions: [...committed.sessions, record] };
-        saveStore(next); // throws before we adopt the draft
-        setUndoSnapshot(store); // the pre-commit state, for the toast's Undo
+        let before: Store = store;
+        const next = mutateStore((current) => {
+          const errors = validateValue('session', value, current);
+          if (errors.length > 0) throw new AbortMutation(errors[0]!.message);
+          before = current;
+          const committed = commit('session', value, current, mergeInto);
+          const record: SessionRecord = {
+            session_id: v.session_id,
+            topic_id: meta.topic_id,
+            course_id: v.course_id,
+            created_at: meta.created_at,
+            completed_at: new Date().toISOString(),
+            duration_minutes: meta.measured_minutes,
+            intent: meta.intent,
+            scope: meta.scope,
+            timer_mode: meta.timer_mode,
+            pomodoro_config: meta.pomodoro_config,
+          };
+          return { ...committed, sessions: [...committed.sessions, record] };
+        });
+        setUndoSnapshot(before); // the pre-commit state, for the toast's Undo
         setStore(next);
         return null;
       } catch (e) {
+        if (e instanceof AbortMutation) return e.friendly;
         if (e instanceof StorageError) return e.message;
         return e instanceof Error
           ? `That couldn't be saved: ${e.message}. Your existing data is unchanged.`
@@ -118,18 +159,20 @@ export function useStore() {
   const toggleError = useCallback(
     (topicId: string, errorId: string): string | null => {
       try {
-        const draft = cloneStore(store);
-        const topic = allTopics(draft).find((t) => t.topic.topic_id === topicId)?.topic;
-        const entry = topic?.error_log.find((e) => e.error_id === errorId);
-        if (!entry) return "That error couldn't be found — nothing was changed.";
+        const next = mutateStore((current) => {
+          const draft = cloneStore(current);
+          const topic = allTopics(draft).find((t) => t.topic.topic_id === topicId)?.topic;
+          const entry = topic?.error_log.find((e) => e.error_id === errorId);
+          if (!entry) throw new AbortMutation("That error couldn't be found — nothing was changed.");
 
-        entry.resolved = !entry.resolved;
-        entry.resolved_date = entry.resolved ? new Date().toISOString() : null;
-
-        saveStore(draft);
-        setStore(draft);
+          entry.resolved = !entry.resolved;
+          entry.resolved_date = entry.resolved ? new Date().toISOString() : null;
+          return draft;
+        });
+        setStore(next);
         return null;
       } catch (e) {
+        if (e instanceof AbortMutation) return e.friendly;
         if (e instanceof StorageError) return e.message;
         return "That couldn't be saved. Your existing data is unchanged.";
       }
@@ -160,17 +203,22 @@ export function useStore() {
   const promoteTopic = useCallback(
     (topicId: string, status: TopicStatus): string | null => {
       try {
-        const draft = cloneStore(store);
-        const topic = allTopics(draft).find((t) => t.topic.topic_id === topicId)?.topic;
-        if (!topic) return "That topic couldn't be found — nothing was changed.";
-        if (topic.status === status) return null;
-
-        Object.assign(topic, promote(topic, status));
-
-        saveStore(draft);
-        setStore(draft);
+        let noop = false;
+        const next = mutateStore((current) => {
+          const draft = cloneStore(current);
+          const topic = allTopics(draft).find((t) => t.topic.topic_id === topicId)?.topic;
+          if (!topic) throw new AbortMutation("That topic couldn't be found — nothing was changed.");
+          if (topic.status === status) {
+            noop = true;
+            return current; // no change; save is a harmless no-op rewrite
+          }
+          Object.assign(topic, promote(topic, status));
+          return draft;
+        });
+        if (!noop) setStore(next);
         return null;
       } catch (e) {
+        if (e instanceof AbortMutation) return e.friendly;
         if (e instanceof StorageError) return e.message;
         return "That couldn't be saved. Your existing data is unchanged.";
       }
@@ -186,24 +234,26 @@ export function useStore() {
   const logManualReview = useCallback(
     (topicId: string, confidence: Confidence): string | null => {
       try {
-        const draft = cloneStore(store);
-        const topic = allTopics(draft).find((t) => t.topic.topic_id === topicId)?.topic;
-        if (!topic) return "That topic couldn't be found — nothing was changed.";
+        const next = mutateStore((current) => {
+          const draft = cloneStore(current);
+          const topic = allTopics(draft).find((t) => t.topic.topic_id === topicId)?.topic;
+          if (!topic) throw new AbortMutation("That topic couldn't be found — nothing was changed.");
 
-        const event: ReviewEvent = {
-          event_id: makeId('event'),
-          date: new Date().toISOString(),
-          kind: 'study_review',
-          source: 'manual_review',
-          source_id: makeId('manual'),
-          confidence_reported: confidence,
-        };
-        Object.assign(topic, applyEvent(topic, event));
-
-        saveStore(draft);
-        setStore(draft);
+          const event: ReviewEvent = {
+            event_id: makeId('event'),
+            date: new Date().toISOString(),
+            kind: 'study_review',
+            source: 'manual_review',
+            source_id: makeId('manual'),
+            confidence_reported: confidence,
+          };
+          Object.assign(topic, applyEvent(topic, event));
+          return draft;
+        });
+        setStore(next);
         return null;
       } catch (e) {
+        if (e instanceof AbortMutation) return e.friendly;
         if (e instanceof StorageError) return e.message;
         return "That couldn't be saved. Your existing data is unchanged.";
       }

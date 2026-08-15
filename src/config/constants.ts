@@ -14,6 +14,14 @@ export const CONFIG = {
   /** A topic is "due for review" when predicted retention drops below this. */
   DUE_THRESHOLD: 0.7,
 
+  /**
+   * How far below `DUE_THRESHOLD` retention must fall before a due review is
+   * treated as *severely* overdue and escalated from medium/this_week to
+   * high/within_48h (V2). Keeps the two review tiers distinguishable instead of
+   * collapsing every due topic into the high band.
+   */
+  OVERDUE_MARGIN: 0.15,
+
   /** kFactor clamps — slowest / fastest a topic's decay constant may be tuned. */
   K_MIN: 8.4 * 0.5, // 4.2
   K_MAX: 8.4 * 2.0, // 16.8

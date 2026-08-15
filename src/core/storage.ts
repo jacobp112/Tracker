@@ -87,6 +87,23 @@ function migrate(parsed: unknown): Store {
 }
 
 /**
+ * Atomic read-modify-write against the *persisted* store (V1).
+ *
+ * Re-reads the latest store from localStorage immediately before applying the
+ * updater, so a mutation never derives from a stale in-memory snapshot. This is
+ * what makes concurrent writers — a second browser tab, or two rapid commits
+ * before React re-renders — compose instead of silently clobbering each other.
+ * The write goes through `saveStore`, so a mid-way throw leaves state untouched.
+ * Returns the freshly persisted store for the caller to adopt.
+ */
+export function mutateStore(updater: (current: Store) => Store): Store {
+  const current = loadStore();
+  const next = updater(current);
+  saveStore(next);
+  return next;
+}
+
+/**
  * Atomic write: one `setItem` of the whole store. Either the new state lands
  * whole or the previous state survives untouched — there is no partial write
  * (Document 4 E2-S4).
