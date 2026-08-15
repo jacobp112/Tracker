@@ -104,6 +104,10 @@ export const CONFIG = {
   /** Default number of topics in the review queue (§11). */
   REVIEW_QUEUE_SIZE: 5,
 
+  /** Assumed study sessions per day, used to convert a deadline's day-distance
+   *  into a session budget (V4) so `sessionsRemaining` is always in sessions. */
+  DEFAULT_SESSIONS_PER_DAY: 2,
+
   /**
    * Per-topic leveling (engine/leveling.ts). Levels are a live view of genuine
    * progress, never stored. This is the one tunable table the banding reads;

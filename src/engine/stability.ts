@@ -30,22 +30,15 @@ export function lapseFactor(events: readonly ReviewEvent[]): number {
   return P;
 }
 
-const memo = new WeakMap<ReviewEvent[], number>();
-
-/** s_eff = max(S_EFF_MIN, strength · P). Memoised on the review_history array
- *  reference (a fresh array on every immutable topic update).
+/** s_eff = max(S_EFF_MIN, strength · P).
  *
- *  Invariant: anything that mutates event fields the fold reads (`kind`, `test`,
- *  `smeared`) IN PLACE — e.g. the v3.1.0 migration backfilling `smeared` — must
- *  run before the first effectiveStrength read, or a memo entry keyed on that
- *  same array would return a stale P. Safe today (migration runs on load/import
- *  before any render; and `smeared` is a no-op at SMEAR_PENALTY_WEIGHT = 1.0),
- *  but tightening SMEAR_PENALTY_WEIGHT below 1.0 makes this coupling load-bearing. */
+ *  The fold is recomputed on every call. It was previously memoised on the
+ *  `review_history` array *reference*, but that coupled correctness to array
+ *  identity: any in-place mutation of the events (e.g. a migration backfilling
+ *  `smeared`) occurring after a first read would serve a stale P (V5). The fold
+ *  is O(events) and cheap, so the cache bought little and risked silent
+ *  staleness — recomputing is the honest, order-independent choice. */
 export function effectiveStrength(topic: Topic): number {
-  let P = memo.get(topic.review_history);
-  if (P === undefined) {
-    P = lapseFactor(topic.review_history);
-    memo.set(topic.review_history, P);
-  }
+  const P = lapseFactor(topic.review_history);
   return Math.max(CONFIG.S_EFF_MIN, topic.strength * P);
 }
