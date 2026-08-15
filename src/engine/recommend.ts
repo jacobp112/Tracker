@@ -10,6 +10,7 @@ import { evidenceTier } from './performance';
 import { topicEvidenceProfile, type ConfidenceLevel } from './evidence-confidence';
 import { deriveTimeBudget, curriculumPosition, type TimeBudget } from './planning';
 import { calculateActionValue, type ActionValue } from './action-value';
+import { curriculumIndex } from './graph';
 
 /**
  * Recommendation engine — "what should I do next?" (design §J). A hierarchical,
@@ -256,6 +257,7 @@ export function recommend(
   timeBudget?: TimeBudget | null,
 ): Recommendation[] {
   const activeBudget = timeBudget ?? deriveTimeBudget(store, undefined, now);
+  const cIndex = curriculumIndex(store);
 
   const rawCandidates = [
     ...errorGuards(store, now),
@@ -324,7 +326,12 @@ export function recommend(
     const downB = b.actionValue?.downstreamValue ?? 0;
     if (downA !== downB) return downB - downA;
 
-    // Alphabetical tie-breaker
+    // Syllabus-order tie-breaker (D9a): follow the authored curriculum sequence,
+    // not the alphabet, so same-band topic candidates order by where they sit in
+    // the course. Non-topic targets (patterns/assessments) fall back to title.
+    const ai = cIndex.get(a.target.id);
+    const bi = cIndex.get(b.target.id);
+    if (ai !== undefined && bi !== undefined && ai !== bi) return ai - bi;
     return a.target.title.localeCompare(b.target.title);
   });
 }
