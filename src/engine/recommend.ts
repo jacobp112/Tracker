@@ -147,11 +147,16 @@ function prerequisiteGuards(store: Store, now: Date): Recommendation[] {
       reason = `Your overall retention is strong (${retPct}%), but you still have ${errClause} in this foundational topic. Because it underpins "${topic.title}", fixing this foundational topic takes precedence over ordinary review.`;
     }
 
+    // A DIRECT (d=1) foundation gap is urgent; a transitive causal blocker (d>1)
+    // is a this-week nudge that must not preempt active decaying reviews (§5–9).
+    const isDirect = unstable.depth === 1;
     out.push({
       action: 'prerequisite',
       target: { kind: 'topic', id: unstable.topic_id, title: unstable.title },
       evidence,
-      priority: 'high', when: 'within_48h', est_duration_minutes: EST_MINUTES.prerequisite,
+      priority: isDirect ? 'high' : 'medium',
+      when: isDirect ? 'within_48h' : 'this_week',
+      est_duration_minutes: EST_MINUTES.prerequisite,
       reason,
     });
   }

@@ -192,6 +192,14 @@ export function prerequisiteInstability(topic: Topic, store: Store, now: Date = 
       isBlocking = preHasFailures;
     }
 
+    // Phase 2 (workflow §5–9): a TRANSITIVE ancestor (d>1) never hard-blocks on
+    // status/capability alone — only a matching HIGH-severity error keeps it
+    // blocking. This removes the deep-chain workflow-deadlock class while
+    // preserving genuine causal gating; direct (d=1) blocking is untouched.
+    if (depth > 1 && isBlocking) {
+      isBlocking = activeErrors.some((p) => p.severity === 'high');
+    }
+
     return {
       topic_id: pre.topic_id,
       title: pre.title,
