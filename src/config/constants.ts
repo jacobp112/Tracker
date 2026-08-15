@@ -14,6 +14,14 @@ export const CONFIG = {
   /** A topic is "due for review" when predicted retention drops below this. */
   DUE_THRESHOLD: 0.7,
 
+  /**
+   * How far below `DUE_THRESHOLD` retention must fall before a due review is
+   * treated as *severely* overdue and escalated from medium/this_week to
+   * high/within_48h (V2). Keeps the two review tiers distinguishable instead of
+   * collapsing every due topic into the high band.
+   */
+  OVERDUE_MARGIN: 0.15,
+
   /** kFactor clamps — slowest / fastest a topic's decay constant may be tuned. */
   K_MIN: 8.4 * 0.5, // 4.2
   K_MAX: 8.4 * 2.0, // 16.8
@@ -95,6 +103,67 @@ export const CONFIG = {
 
   /** Default number of topics in the review queue (§11). */
   REVIEW_QUEUE_SIZE: 5,
+
+  /** Assumed study sessions per day, used to convert a deadline's day-distance
+   *  into a session budget (V4) so `sessionsRemaining` is always in sessions. */
+  DEFAULT_SESSIONS_PER_DAY: 2,
+
+  /**
+   * Adaptive recommendation engine (docs/workflow.md). Introduced by the Phase 1
+   * bounded-gating + curriculum-ordering work.
+   */
+  RECO: {
+    /** Direct-prerequisite hard-gate threshold (workflow §6; D3 = prose 0.70,
+     *  stricter than the reference impl's 0.50). */
+    TAU_CRIT: 0.7,
+    /** Transitive attenuation base γ, α(d)=γ^(d-1) (workflow §7). Consumed in Phase 2. */
+    GAMMA_DEPTH: 0.5,
+    /** Soft-gating aggregation bound (workflow §54.4, D10). */
+    SOFT_GATE_TOP_K: 3,
+    SOFT_GATE_FLOOR: 0.1,
+    /** S_err when either topic has no active error patterns (workflow §54.4, P2-D1):
+     *  0 = evidence-driven soft gating (an ancestor dampens only on real misconception
+     *  overlap). Raise toward 1 to attenuate on distance + mastery alone. */
+    S_ERR_UNEVIDENCED: 0,
+
+    /* ── MAUT continuous arbitration (Phase 3, workflow §13–23) ── */
+    /** Memory-urgency target retention R_target (§15). */
+    R_TARGET_MEM: 0.9,
+    /** λ_vel — weight on the decay-velocity term of u_mem (§15). Tunable. */
+    MEM_VELOCITY_LAMBDA: 1.0,
+    /** σ_t (minutes) for the asymmetric feasibility fit (D5, §18). */
+    FEASIBILITY_SIGMA: 15,
+    /** η — preference for unmastered content in u_vel (§17). */
+    VELOCITY_ETA: 1.2,
+    /**
+     * Gentler u_vel mastery exponent for an active, not-yet-mastered topic
+     * WITHOUT an unresolved error (objective §2.10 — momentum). Below VELOCITY_ETA
+     * so an in-progress topic stays "worth finishing" longer than a fresh one,
+     * decaying to 0 only as evidence-mastery reaches full competency (L→1). Lives
+     * inside u_vel so it respects the [0,1] bound and can never overpower error
+     * urgency (w_vel·1 = 0.20 < w_found·1 = 0.30). */
+    MOMENTUM_ETA: 0.3,
+    /** Novelty multiplier when a topic was recently studied (§17). */
+    VELOCITY_RECENT_NOVELTY: 0.1,
+    /** Default per-topic syllabus weight when unauthored (§16). */
+    SYLLABUS_WEIGHT_DEFAULT: 1.0,
+    /** Own-error urgency mass added to u_found by severity, so an unresolved
+     *  misconception raises foundational risk continuously (§8 within §16). A
+     *  high-severity error alone saturates u_found toward 1. */
+    ERROR_URGENCY: { low: 0.25, medium: 0.5, high: 1.0 } as Record<'low' | 'medium' | 'high', number>,
+    /** Default exam horizon (days) for u_found when no exam is linked (§16). */
+    DEFAULT_EXAM_HORIZON_DAYS: 30,
+    /** Sessions feeding `recentHistory` for u_vel novelty. */
+    RECENT_HISTORY_SIZE: 5,
+    /** Base MAUT weights (§19); must sum to 1. */
+    MAUT_BASE_WEIGHTS: { mem: 0.35, found: 0.3, vel: 0.2, feas: 0.15 },
+    /** Exam-horizon context window (days) that raises w_found (§20). */
+    EXAM_HORIZON_DAYS: 7,
+    /** Session-exhaustion threshold (minutes) that raises w_feas (§22). */
+    EXHAUSTION_MINUTES: 15,
+    /** Non-negative weight floor before L1 normalization (§54.6). */
+    WEIGHT_FLOOR: 0.01,
+  },
 
   /**
    * Per-topic leveling (engine/leveling.ts). Levels are a live view of genuine
@@ -198,5 +267,14 @@ for (const [name, table] of [
   const sum = Object.values(table).reduce((a, b) => a + b, 0);
   if (Math.abs(sum - 1) > 1e-9) {
     throw new Error(`CONFIG.PERFORMANCE.${name} must sum to 1, got ${sum}`);
+  }
+}
+
+/** MAUT base weights must sum to 1, or the composite is no longer 0–1 (§19). */
+{
+  const w = CONFIG.RECO.MAUT_BASE_WEIGHTS;
+  const sum = w.mem + w.found + w.vel + w.feas;
+  if (Math.abs(sum - 1) > 1e-9) {
+    throw new Error(`CONFIG.RECO.MAUT_BASE_WEIGHTS must sum to 1, got ${sum}`);
   }
 }

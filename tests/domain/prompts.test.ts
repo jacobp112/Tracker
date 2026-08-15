@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COURSE_PROMPT, sessionPrompt, examPrompt, coldAssessmentPrompt } from '@/domain/prompts';
+import { coursePrompt, sessionPrompt, examPrompt, coldAssessmentPrompt } from '@/domain/prompts';
 import { emptyStore, type Store } from '@/domain/types';
 
 function storeWithTopic(): Store {
@@ -42,8 +42,18 @@ describe('prompts carry the assessment contract', () => {
     for (const d of DIMENSIONS) expect(p).toContain(d);
   });
 
-  it('the course prompt asks for optional prerequisites (so the dependency graph is reachable)', () => {
-    expect(COURSE_PROMPT).toContain('prerequisites');
+  it('the course prompt asks for prerequisites and lists existing topics for cross-course dependencies', () => {
+    const p = coursePrompt(storeWithTopic());
+    expect(p).toContain('prerequisites');
+    expect(p).toContain('topic_1'); // existing topic injected so it can be cited as a prerequisite
+    expect(p).toContain('EXISTING topics');
+  });
+
+  it('the course prompt still works when no other courses exist', () => {
+    const p = coursePrompt(emptyStore());
+    expect(p).toContain('prerequisites');
+    expect(p).not.toContain('EXISTING topics');
+    expect(p).not.toContain('you may also cite');
   });
 
   it('a cold-assessment prompt exists, marks the result cold, and states the cold protocol', () => {

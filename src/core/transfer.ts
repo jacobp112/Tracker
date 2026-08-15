@@ -1,5 +1,7 @@
 import { type SchemaName } from '@/domain/schemas';
 import { type Course, type Exam, emptyStore, SCHEMA_VERSION, type Store } from '@/domain/types';
+import type { AssessmentAttempt, AssessmentDefinition } from '@/domain/assessment';
+import type { AssessmentRepo } from './assessment-store';
 import type { FriendlyError } from './errorTranslation';
 import { checkIntegrity } from './integrity';
 import { recomputeLapseContamination } from './migrations';
@@ -28,6 +30,10 @@ export interface Bundle {
   schema_version: string;
   exported_at: string;
   store: Store;
+  /** Assessment domain (design §O). Optional so ≤3.3.0 bundles (which never had
+   *  it) round-trip unchanged, and the sync localStorage-only path still works. */
+  assessments?: AssessmentDefinition[];
+  attempts?: AssessmentAttempt[];
 }
 
 export function exportBundle(store: Store): string {
@@ -114,6 +120,12 @@ export function importBundle(input: string): ImportResult {
     else errors.push(...prefix(`Exam "${exam.title ?? exam.exam_id}"`, errs));
   }
 
+  // Error patterns are app-owned domain objects (no ingestion schema); restore
+  // them verbatim so the round-trip is identity-preserving (E8-S1). Absent in
+  // ≤3.2.0 bundles → [].
+  draft.error_patterns = Array.isArray(src.error_patterns) ? src.error_patterns : [];
+  draft.assessment_refs = Array.isArray(src.assessment_refs) ? src.assessment_refs : [];
+
   if (errors.length > 0) return { ok: false, errors };
 
   // Import must run the same v3.1.0 migration as the load path (design §4): a
@@ -127,6 +139,82 @@ export function importBundle(input: string): ImportResult {
     counts: {
       courses: draft.courses.length,
       exams: draft.exams.length,
+    },
+  };
+}
+
+/* ── Both-stores backup/restore (design §O) ────────────────────────
+ * The async variants add the IndexedDB assessment domain to the same bundle.
+ * They compose the sync study-store path so its validation/migration guarantees
+ * are untouched, and only reach IndexedDB once the study store has validated —
+ * so a failure never leaves the two stores in a partial cross-store state. */
+
+/** Export the whole app: study store (localStorage) + assessment domain (IndexedDB). */
+export async function exportBundleAsync(store: Store, repo: AssessmentRepo): Promise<string> {
+  const snap = await repo.dump();
+  const bundle: Bundle = {
+    kind: BUNDLE_KIND,
+    schema_version: SCHEMA_VERSION,
+    exported_at: new Date().toISOString(),
+    store,
+    assessments: snap.assessments,
+    attempts: snap.attempts,
+  };
+  return JSON.stringify(bundle, null, 2);
+}
+
+/**
+ * Import both stores, in the ONLY safe order (design review Fix 2):
+ *   validate study store → persist study store (localStorage) → restore repo (IDB).
+ * localStorage is the failure-prone step (quota), so it goes first: if it throws,
+ * IndexedDB is never touched, so there is no partial two-store restore. If the
+ * later IDB restore fails, the study store is already consistent and re-import
+ * recovers the assessment domain.
+ *
+ * `saveStudyStore` persists the validated study store synchronously and must throw
+ * on failure. When omitted (e.g. some tests), the study store is left for the
+ * caller to adopt and only the repo is restored.
+ */
+export async function importBundleAsync(
+  input: string,
+  repo: AssessmentRepo,
+  saveStudyStore?: (store: Store) => void,
+): Promise<ImportResult> {
+  const res = importBundle(input);
+  if (!res.ok) return res; // study store invalid → nothing written anywhere
+
+  let parsed: Bundle;
+  try {
+    parsed = JSON.parse(input.trim()) as Bundle;
+  } catch {
+    return { ok: false, errors: [{ path: '', message: "That file isn't valid JSON." }] };
+  }
+
+  // 1) Persist the study store FIRST — fail fast before touching IndexedDB.
+  if (saveStudyStore) {
+    try {
+      saveStudyStore(res.store);
+    } catch (e) {
+      return { ok: false, errors: [{ path: '', message: `${e instanceof Error ? e.message : "Your data couldn't be saved"}. Nothing was changed.` }] };
+    }
+  }
+
+  // 2) Then restore the assessment domain (atomic within IndexedDB).
+  try {
+    await repo.restore({ assessments: parsed.assessments ?? [], attempts: parsed.attempts ?? [] });
+  } catch (e) {
+    return {
+      ok: false,
+      errors: [{ path: '/assessments', message: `The assessment data couldn't be restored: ${e instanceof Error ? e.message : 'unknown error'}.` }],
+    };
+  }
+
+  return {
+    ...res,
+    counts: {
+      ...res.counts,
+      assessments: parsed.assessments?.length ?? 0,
+      attempts: parsed.attempts?.length ?? 0,
     },
   };
 }

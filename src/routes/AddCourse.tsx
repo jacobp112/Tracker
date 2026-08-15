@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import { useToast } from '@/components/feedback';
 import { PasteValidateInput } from '@/components/PasteValidateInput';
 import { Card } from '@/components/primitives';
 import { COMMIT_VERB } from '@/core/pipeline';
-import { COURSE_PROMPT } from '@/domain/prompts';
+import { coursePrompt } from '@/domain/prompts';
 import type { Course, Store } from '@/domain/types';
 import { navigate } from '@/router';
 
@@ -21,6 +22,7 @@ export function AddCourse({
   undoLast: () => string | null;
 }) {
   const { toast } = useToast();
+  const prompt = useMemo(() => coursePrompt(store), [store]);
 
   return (
     <div className="content">
@@ -43,7 +45,7 @@ export function AddCourse({
           <PasteValidateInput
             schemaName="course"
             store={store}
-            prompt={COURSE_PROMPT}
+            prompt={prompt}
             confirmLabel="Add course"
             onCommit={(value) => {
               const error = commitValue('course', value);

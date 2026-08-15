@@ -60,6 +60,15 @@ function migrate(parsed: unknown): Store {
     courses: Array.isArray(p.courses) ? (p.courses as Store['courses']) : [],
     exams: Array.isArray(p.exams) ? (p.exams as Store['exams']) : [],
     sessions: [] as SessionRecord[],
+    // Additive (v3.3.0): legacy stores predate error-recurrence patterns. Absent →
+    // []; never fabricated from old occurrences (never invent recurrence, §24).
+    error_patterns: Array.isArray((p as { error_patterns?: unknown }).error_patterns)
+      ? (p.error_patterns as Store['error_patterns'])
+      : [],
+    // Additive (v4.0.0): compact assessment references (design §O). Absent → [].
+    assessment_refs: Array.isArray((p as { assessment_refs?: unknown }).assessment_refs)
+      ? (p.assessment_refs as Store['assessment_refs'])
+      : [],
   };
 
   // Additive migration: legacy stores predate per-session durations.
@@ -75,6 +84,23 @@ function migrate(parsed: unknown): Store {
   if (savedVersion < '3.1.0') recomputeLapseContamination(result);
 
   return result;
+}
+
+/**
+ * Atomic read-modify-write against the *persisted* store (V1).
+ *
+ * Re-reads the latest store from localStorage immediately before applying the
+ * updater, so a mutation never derives from a stale in-memory snapshot. This is
+ * what makes concurrent writers — a second browser tab, or two rapid commits
+ * before React re-renders — compose instead of silently clobbering each other.
+ * The write goes through `saveStore`, so a mid-way throw leaves state untouched.
+ * Returns the freshly persisted store for the caller to adopt.
+ */
+export function mutateStore(updater: (current: Store) => Store): Store {
+  const current = loadStore();
+  const next = updater(current);
+  saveStore(next);
+  return next;
 }
 
 /**

@@ -1,9 +1,18 @@
-import { type CSSProperties } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import type { Store } from '@/domain/types';
+import type { AssessmentDefinition, AssessmentAttempt } from '@/domain/assessment';
 import { examViews } from '@/engine/exams';
+import { readinessForAssessment } from '@/engine/readiness';
+import { getAssessmentRepo } from '@/core/assessment-store';
+import { mergeAttempt } from '@/core/assessment-merge';
+import { cloneStore } from '@/core/storage';
+import { useToast } from '@/components/feedback';
 import { navigate } from '@/router';
 import { useTheme } from '@/theme/useTheme';
 import { errorTypeColor, errorTypeLabel, getCairnTheme, scoreColor, type CairnTheme } from '@/theme/cairnMock';
+import { AssessmentSittingModal } from '@/components/AssessmentSittingModal';
+import { ReadinessCard } from '@/components/ReadinessCard';
+import { ErrorIntelligencePanel } from '@/components/ErrorIntelligencePanel';
 
 const SERIF = "'EB Garamond', var(--font-display)";
 const SANS = 'var(--font-sans)';
@@ -16,20 +25,58 @@ function fmtDate(iso: string): string {
 
 export interface ExamsProps {
   store: Store;
+  replaceStore?: (next: Store) => string | null;
 }
 
 /**
  * Exams — rebuilt to the approved mockup: rotated graded-paper cards with a
  * rotated score chip, a pass-mark track, and per-part rows (name + track,
- * marks, error-type tag, boosted / flagged-weak). Real examViews data.
+ * marks, error-type tag, boosted / flagged-weak). Real examViews data + Assessment Repo.
  */
-export function Exams({ store }: ExamsProps) {
+export function Exams({ store, replaceStore }: ExamsProps) {
   const { theme: mode } = useTheme();
   const isDark = mode === 'dark';
   const theme = getCairnTheme(isDark);
+  const { toast } = useToast();
   const views = examViews(store);
 
-  if (views.length === 0) {
+  const [definitions, setDefinitions] = useState<AssessmentDefinition[]>([]);
+  const [activeDefForSitting, setActiveDefForSitting] = useState<AssessmentDefinition | null>(null);
+
+  useEffect(() => {
+    getAssessmentRepo()
+      .allDefinitions()
+      .then(setDefinitions)
+      .catch(() => {});
+  }, []);
+
+  const handleStartSitting = (assessmentId: string) => {
+    const def = definitions.find((d) => d.assessment_id === assessmentId);
+    if (def) {
+      setActiveDefForSitting(def);
+    } else {
+      toast('Assessment definition is loading or unavailable.', 'error');
+    }
+  };
+
+  const handleSubmitAttempt = async (attempt: AssessmentAttempt) => {
+    if (!activeDefForSitting) return;
+    try {
+      const repo = getAssessmentRepo();
+      await repo.putAttempt(attempt);
+      const draft = cloneStore(store);
+      mergeAttempt(draft, activeDefForSitting, attempt);
+      if (replaceStore) {
+        replaceStore(draft);
+      }
+      setActiveDefForSitting(null);
+      toast('Assessment attempt submitted! Question evidence recorded and un-smeared.', 'success');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Failed to record attempt.', 'error');
+    }
+  };
+
+  if (views.length === 0 && store.assessment_refs.length === 0) {
     return (
       <div style={contentStyle()}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '60px 20px', maxWidth: '420px', margin: '0 auto' }}>
@@ -55,16 +102,76 @@ export function Exams({ store }: ExamsProps) {
     <div style={contentStyle()}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
         <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: theme.muted }}>
-          {views.length} {views.length === 1 ? 'paper' : 'papers'} logged
+          {views.length} {views.length === 1 ? 'paper' : 'papers'} logged · {store.assessment_refs.length} assessment definitions
         </span>
         <button type="button" data-press onClick={() => navigate('/exams/add')} style={addBtn(theme)}>
-          ＋ Add paper
+          ＋ Add paper / assessment
         </button>
       </div>
 
-      {views.map((view, i) => (
-        <ExamCard key={view.exam.exam_id} view={view} i={i} theme={theme} />
-      ))}
+      {/* ── Past Paper Assessments & Readiness ──────────────────── */}
+      {store.assessment_refs.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <h3 style={{ fontFamily: SERIF, fontSize: '24px', margin: '0 0 16px 0', color: theme.ink }}>
+            Past Paper Assessments &amp; Readiness
+          </h3>
+          {store.assessment_refs.map((ref) => {
+            const report = readinessForAssessment(ref, store, new Date());
+            return (
+              <div key={ref.assessment_id} style={{ marginBottom: '20px' }}>
+                <ReadinessCard report={report} title={ref.title} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-8px', marginBottom: '16px' }}>
+                  <button
+                    type="button"
+                    data-press
+                    onClick={() => handleStartSitting(ref.assessment_id)}
+                    style={{
+                      background: theme.orange,
+                      border: `2px solid ${theme.border}`,
+                      borderRadius: '9999px',
+                      padding: '10px 22px',
+                      fontFamily: SANS,
+                      fontSize: '13.5px',
+                      fontWeight: 700,
+                      color: '#1a1a1a',
+                      cursor: 'pointer',
+                      boxShadow: `3px 3px 0 ${theme.shadow}`,
+                    }}
+                  >
+                    Sit &amp; Mark Assessment →
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Legacy Aggregate Exams ──────────────────────────────── */}
+      {views.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <h3 style={{ fontFamily: SERIF, fontSize: '24px', margin: '0 0 16px 0', color: theme.ink }}>
+            Exam Results History
+          </h3>
+          {views.map((view, i) => (
+            <ExamCard key={view.exam.exam_id} view={view} i={i} theme={theme} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Error Intelligence Section ──────────────────────────── */}
+      <div style={{ marginTop: '40px' }}>
+        <ErrorIntelligencePanel store={store} />
+      </div>
+
+      {/* ── Sitting Modal ────────────────────────────────────────── */}
+      {activeDefForSitting && (
+        <AssessmentSittingModal
+          definition={activeDefForSitting}
+          onSubmitAttempt={handleSubmitAttempt}
+          onClose={() => setActiveDefForSitting(null)}
+        />
+      )}
     </div>
   );
 }

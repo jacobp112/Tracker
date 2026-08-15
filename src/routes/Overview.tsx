@@ -14,6 +14,8 @@ import {
 import { weakTopics } from '@/engine/course';
 import { retrievable, expTrend, workLogged } from '@/engine/progress';
 import { retentionPct } from '@/engine/retention';
+import { recommend, type Recommendation } from '@/engine/recommend';
+import { RecommendationCard } from '@/components/RecommendationCard';
 import { navigate } from '@/router';
 import { useTheme } from '@/theme/useTheme';
 import { getCairnTheme, retentionColor } from '@/theme/cairnMock';
@@ -52,12 +54,15 @@ function dailyCounts(store: Store): Map<string, number> {
 export function Overview({
   store,
   onStartSession,
+  onStartRecommendation,
 }: {
   store: Store;
   /** Starts the timed session flow for a due topic (the per-row "Review"
    *  shortcut). Optional so existing callers/tests that only read Overview
    *  are unaffected — the row falls back to a plain navigate. */
   onStartSession?: (courseId: string, topicId: string) => void;
+  /** Handles starting a recommended action. */
+  onStartRecommendation?: (rec: Recommendation) => void;
 }) {
   const { theme: mode } = useTheme();
   const isDark = mode === 'dark';
@@ -74,6 +79,7 @@ export function Overview({
   const work = workLogged(store);
   const due = useMemo(() => globalDueQueue(store, 6, now), [store, now]);
   const feed = useMemo(() => activityFeed(store, 4), [store]);
+  const recommendations = useMemo(() => recommend(store, now), [store, now]);
 
   const weak = useMemo(() => {
     const titleOf = new Map(allTopics(store).map(({ topic, course }) => [topic.topic_id, course.title]));
@@ -150,8 +156,6 @@ export function Overview({
     };
   });
   const maxWeek = Math.max(1, ...weekCells.map((c) => c.value));
-
-  const nextBest = due[0];
 
   const stats: Array<{
     label: string;
@@ -343,37 +347,70 @@ export function Overview({
         ))}
       </div>
 
-      {/* ── Next-best-action banner ─────────────────────────────── */}
-      {nextBest && (
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap', background: theme.pine,
-            border: `2px solid ${theme.border}`, borderRadius: '10px 30px 10px 30px', padding: '20px 26px',
-            marginBottom: '28px', transform: 'rotate(0.3deg)', boxShadow: `6px 7px 0 ${theme.shadow}`,
-          }}
-        >
-          <p style={{ flex: 1, minWidth: '220px', margin: 0, fontSize: '15px', fontWeight: 500, color: theme.onAccent, lineHeight: 1.4 }}>
-            <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: isDark ? '#0d1512' : theme.orange, marginBottom: '4px', opacity: 0.9 }}>
-              Next best action
-            </span>
-            {nextBest.topic.title} would recover the most retention right now.
-          </p>
-          <button
-            type="button"
-            data-press
-            onClick={() => {
-              const courseId = cIndex.get(nextBest.topic.topic_id) ?? '';
-              if (onStartSession && courseId) onStartSession(courseId, nextBest.topic.topic_id);
-              else navigate(`/course/${courseId}`);
+      {/* ── Recommendation Dashboard ─────────────────────────────── */}
+      {recommendations.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          {/* Primary Recommendation */}
+          <RecommendationCard
+            recommendation={recommendations[0]!}
+            store={store}
+            isPrimary={true}
+            onAction={(rec) => {
+              if (onStartRecommendation) onStartRecommendation(rec);
+              else {
+                if (rec.action === 'assess') {
+                  navigate('/exams');
+                  return;
+                }
+                let targetTopicId = rec.target.kind === 'topic' ? rec.target.id : undefined;
+                if (rec.target.kind === 'pattern') {
+                  const pat = store.error_patterns.find((p) => p.pattern_id === rec.target.id);
+                  if (pat && pat.topic_ids.length > 0) targetTopicId = pat.topic_ids[0];
+                }
+                if (targetTopicId) {
+                  const courseId = cIndex.get(targetTopicId) ?? '';
+                  if (onStartSession && courseId) onStartSession(courseId, targetTopicId);
+                  else if (courseId) navigate(`/course/${courseId}`);
+                }
+              }
             }}
-            style={{
-              background: theme.orange, border: `2px solid ${theme.border}`, borderRadius: '9999px',
-              padding: '13px 22px', fontFamily: SANS, fontSize: '14px', fontWeight: 700, color: '#1a1a1a',
-              cursor: 'pointer', boxShadow: '3px 3px 0 rgba(0,0,0,0.35)', flexShrink: 0,
-            }}
-          >
-            Start today’s review
-          </button>
+          />
+
+          {/* Secondary Recommendations */}
+          {recommendations.length > 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h4 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 700, color: theme.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Next Recommendations
+              </h4>
+              {recommendations.slice(1, 4).map((rec) => (
+                <RecommendationCard
+                  key={`${rec.target.kind}:${rec.target.id}`}
+                  recommendation={rec}
+                  store={store}
+                  isPrimary={false}
+                  onAction={(r) => {
+                    if (onStartRecommendation) onStartRecommendation(r);
+                    else {
+                      if (r.action === 'assess') {
+                        navigate('/exams');
+                        return;
+                      }
+                      let targetTopicId = r.target.kind === 'topic' ? r.target.id : undefined;
+                      if (r.target.kind === 'pattern') {
+                        const pat = store.error_patterns.find((p) => p.pattern_id === r.target.id);
+                        if (pat && pat.topic_ids.length > 0) targetTopicId = pat.topic_ids[0];
+                      }
+                      if (targetTopicId) {
+                        const courseId = cIndex.get(targetTopicId) ?? '';
+                        if (onStartSession && courseId) onStartSession(courseId, targetTopicId);
+                        else if (courseId) navigate(`/course/${courseId}`);
+                      }
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

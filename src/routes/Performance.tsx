@@ -1,11 +1,16 @@
-import { useMemo, useState, type CSSProperties } from 'react';
-import type { Store } from '@/domain/types';
+import { Fragment, useMemo, useRef, useState, type CSSProperties } from 'react';
+import type { Store, ReviewEvent } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { getCairnTheme, type CairnTheme } from '@/theme/cairnMock';
-import { performanceByDifficulty, performanceByNovelty, type DimensionBucket } from '@/engine/performance';
-import { allReviewEvents, performanceSummary, unstablePrerequisites, type UnstableUpstream } from '@/engine/performance-view';
+import {
+  coldPerformance, independentPerformance, novelTaskSuccess, performanceByDifficulty,
+  performanceByNovelty, performanceHealth, performanceQuality, transferAbility,
+  type DimensionBucket,
+} from '@/engine/performance';
+import { allReviewEvents, courseReviewEvents, sectionReviewEvents, metricTrend, performanceSummary, unstablePrerequisites, type UnstableUpstream } from '@/engine/performance-view';
 
 const SERIF = "'EB Garamond', var(--font-display)";
+const SANS = 'var(--font-sans)';
 const round = (x: number) => String(Math.round(x));
 
 /** A metric value or an honest em dash when it's null (below its min-data guard). */
@@ -13,19 +18,62 @@ function dash(x: number | null | undefined): string {
   return x === null || x === undefined ? '—' : round(x);
 }
 
+const TREND_METRICS: Array<{
+  label: string;
+  compute: (evs: ReviewEvent[]) => number | null;
+  format: (v: number) => string;
+}> = [
+  { label: 'Performance Health', compute: (evs) => performanceHealth(evs), format: round },
+  { label: 'Cold Performance', compute: (evs) => coldPerformance(evs)?.score ?? null, format: round },
+  {
+    label: 'Independent Performance',
+    compute: (evs) => {
+      const i = independentPerformance(evs);
+      return i && i.sufficient && i.independent.accuracy !== null ? i.independent.accuracy * 100 : null;
+    },
+    format: (v) => `${round(v)}%`,
+  },
+  { label: 'Transfer Ability', compute: (evs) => transferAbility(evs)?.score ?? null, format: round },
+  { label: 'Performance Quality', compute: (evs) => performanceQuality(evs)?.score ?? null, format: round },
+  {
+    label: 'Novel-Task Success',
+    compute: (evs) => {
+      const n = novelTaskSuccess(evs);
+      return n ? n.rate * 100 : null;
+    },
+    format: (v) => `${round(v)}%`,
+  },
+];
+
 export function Performance({ store }: { store: Store }) {
   const { theme: mode } = useTheme();
   const theme = getCairnTheme(mode === 'dark');
   const [now] = useState(() => new Date());
+  const [courseScope, setCourseScope] = useState<string>('all');
+  const [sectionScope, setSectionScope] = useState<string>('all');
+  const selectCourse = (v: string) => { setCourseScope(v); setSectionScope('all'); };
 
-  const events = useMemo(() => allReviewEvents(store), [store]);
+  const soleCourse = store.courses.length === 1 ? store.courses[0] : null;
+  const effectiveCourseId = soleCourse ? soleCourse.course_id : (courseScope === 'all' ? null : courseScope);
+  const effectiveCourse = effectiveCourseId ? store.courses.find((c) => c.course_id === effectiveCourseId) ?? null : null;
+
+  const allEvents = useMemo(() => allReviewEvents(store), [store]);
+  const anyAssessments = useMemo(() => allEvents.some((e) => e.assessment), [allEvents]);
+
+  const events = useMemo(() => {
+    if (sectionScope !== 'all' && effectiveCourseId) return sectionReviewEvents(store, effectiveCourseId, sectionScope);
+    if (courseScope !== 'all') return courseReviewEvents(store, courseScope);
+    return allEvents;
+  }, [store, courseScope, sectionScope, effectiveCourseId, allEvents]);
   const summary = useMemo(() => performanceSummary(events), [events]);
   const byDifficulty = useMemo(() => performanceByDifficulty(events), [events]);
   const byNovelty = useMemo(() => performanceByNovelty(events), [events]);
-  const unstable = useMemo(() => unstablePrerequisites(store, now), [store, now]);
+  const unstable = useMemo(
+    () => unstablePrerequisites(store, now, effectiveCourseId ?? undefined),
+    [store, now, effectiveCourseId],
+  );
 
-  const hasAssessments = events.some((e) => e.assessment);
-  if (!hasAssessments) {
+  if (!anyAssessments) {
     return (
       <div style={content()}>
         <h1 style={pageTitle(theme)}>Performance</h1>
@@ -37,6 +85,12 @@ export function Performance({ store }: { store: Store }) {
       </div>
     );
   }
+
+  const scopeOptions = [
+    { value: 'all', label: 'All courses' },
+    ...store.courses.map((c) => ({ value: c.course_id, label: c.title })),
+  ];
+  const hasAssessments = events.some((e) => e.assessment);
 
   const indep = summary.independent;
   const indepValue =
@@ -56,25 +110,127 @@ export function Performance({ store }: { store: Store }) {
   return (
     <div style={content()}>
       <h1 style={pageTitle(theme)}>Performance</h1>
-      <p style={{ fontSize: '15px', color: theme.muted, maxWidth: '560px', margin: '0 0 28px' }}>
+      <p style={{ fontSize: '15px', color: theme.muted, maxWidth: '560px', margin: '0 0 20px' }}>
         How effectively you can use what you know — independent application, transfer, and
         performance at rising difficulty and novelty. Separate from retention.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        {cards.map((c) => (
-          <div key={c.label} style={card(theme)}>
-            <span style={cardLabel(theme)}>{c.label}</span>
-            <span style={{ fontFamily: SERIF, fontSize: '34px', lineHeight: 1.05, color: theme.ink }}>{c.value}</span>
-            <span style={{ fontSize: '11.5px', fontWeight: 600, color: theme.muted }}>{c.sub}</span>
+      {store.courses.length > 1 && (
+        <ScopeSelector label="Course scope" options={scopeOptions} value={courseScope} onChange={selectCourse} theme={theme} />
+      )}
+      {effectiveCourse && effectiveCourse.sections.length > 1 && (
+        <ScopeSelector
+          label="Section scope"
+          options={[
+            { value: 'all', label: 'Whole course' },
+            ...[...effectiveCourse.sections].sort((a, b) => a.order - b.order).map((s) => ({ value: s.section_id, label: s.title })),
+          ]}
+          value={sectionScope}
+          onChange={setSectionScope}
+          theme={theme}
+        />
+      )}
+
+      {!hasAssessments ? (
+        <p style={{ fontSize: '14px', color: theme.muted, maxWidth: '520px' }}>
+          No performance data for this selection yet.
+        </p>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+            {cards.map((c) => (
+              <div key={c.label} style={card(theme)}>
+                <span style={cardLabel(theme)}>{c.label}</span>
+                <span style={{ fontFamily: SERIF, fontSize: '34px', lineHeight: 1.05, color: theme.ink }}>{c.value}</span>
+                <span style={{ fontSize: '11.5px', fontWeight: 600, color: theme.muted }}>{c.sub}</span>
+              </div>
+            ))}
           </div>
-        ))}
+
+          <TrendsPanel events={events} now={now} theme={theme} />
+
+          <DimensionSection title="Performance by difficulty" unit="Difficulty" buckets={byDifficulty} theme={theme} />
+          <DimensionSection title="Performance by novelty" unit="Novelty" buckets={byNovelty} theme={theme} />
+
+          {unstable.length > 0 && <PrereqSection items={unstable} theme={theme} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ScopeSelector({ options, value, onChange, theme, label }: {
+  options: Array<{ value: string; label: string }>;
+  value: string;
+  onChange: (v: string) => void;
+  theme: CairnTheme;
+  label: string;
+}) {
+  const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const move = (dir: 1 | -1) => {
+    const i = options.findIndex((o) => o.value === value);
+    const next = options[(i + dir + options.length) % options.length];
+    if (next) {
+      onChange(next.value);
+      btnRefs.current[next.value]?.focus();
+    }
+  };
+  return (
+    <div role="radiogroup" aria-label={label} style={scopeBar(theme)}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            ref={(el) => { btnRefs.current[o.value] = el; }}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onChange(o.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
+              else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); }
+            }}
+            style={scopeSeg(theme, active)}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrendsPanel({ events, now, theme }: { events: ReviewEvent[]; now: Date; theme: CairnTheme }) {
+  const cell: CSSProperties = { fontSize: '14px', textAlign: 'right', color: theme.muted };
+  const head: CSSProperties = { ...cell, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' };
+  return (
+    <div style={panel(theme)}>
+      <h2 style={panelTitle(theme)}>Trends</h2>
+      <p style={{ fontSize: '12px', color: theme.muted, margin: '-6px 0 12px' }}>
+        Recent activity compared with your overall record — a window reads “—” until it has enough attempts.
+      </p>
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) repeat(3, minmax(56px, 88px))', rowGap: '10px', columnGap: '16px', minWidth: '360px' }}>
+          <span style={{ ...head, textAlign: 'left' }}>Metric</span>
+          <span style={head}>7d</span>
+          <span style={head}>30d</span>
+          <span style={head}>Lifetime</span>
+          {TREND_METRICS.map((m) => {
+            const w = metricTrend(events, now, m.compute);
+            const fmt = (v: number | null) => (v === null ? '—' : m.format(v));
+            return (
+              <Fragment key={m.label}>
+                <span style={{ fontSize: '14px', color: theme.ink }}>{m.label}</span>
+                <span style={cell}>{fmt(w.d7)}</span>
+                <span style={cell}>{fmt(w.d30)}</span>
+                <span style={cell}>{fmt(w.lifetime)}</span>
+              </Fragment>
+            );
+          })}
+        </div>
       </div>
-
-      <DimensionSection title="Performance by difficulty" unit="Difficulty" buckets={byDifficulty} theme={theme} />
-      <DimensionSection title="Performance by novelty" unit="Novelty" buckets={byNovelty} theme={theme} />
-
-      {unstable.length > 0 && <PrereqSection items={unstable} theme={theme} />}
     </div>
   );
 }
@@ -142,4 +298,10 @@ function panel(t: CairnTheme): CSSProperties {
 }
 function panelTitle(t: CairnTheme): CSSProperties {
   return { fontFamily: SERIF, fontWeight: 400, fontSize: '20px', color: t.ink, margin: '0 0 14px' };
+}
+function scopeBar(t: CairnTheme): CSSProperties {
+  return { display: 'inline-flex', flexWrap: 'wrap', gap: '4px', padding: '4px', marginBottom: '28px', background: t.bg, border: `2px solid ${t.border}`, borderRadius: '9999px', boxShadow: `2px 2px 0 ${t.shadow}` };
+}
+function scopeSeg(t: CairnTheme, active: boolean): CSSProperties {
+  return { border: 'none', borderRadius: '9999px', padding: '7px 16px', fontFamily: SANS, fontSize: '13px', fontWeight: 700, cursor: 'pointer', background: active ? t.pine : 'transparent', color: active ? t.onAccent : t.muted };
 }

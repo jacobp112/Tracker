@@ -50,6 +50,6 @@ describe('loadStore — forward migration from v2 (study-only)', () => {
 
   it('returns an empty study-only store when nothing is saved', () => {
     const store = loadStore();
-    expect(store).toEqual({ schema_version: SCHEMA_VERSION, courses: [], exams: [], sessions: [] });
+    expect(store).toEqual({ schema_version: SCHEMA_VERSION, courses: [], exams: [], sessions: [], error_patterns: [], assessment_refs: [] });
   });
 });

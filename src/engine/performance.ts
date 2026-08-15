@@ -31,6 +31,36 @@ export function independenceTier(e: ReviewEvent): IndependenceTier | undefined {
   return 'assisted'; // 0 | 1
 }
 
+/**
+ * Evidence tier for a single event, 0–6 (design §H). The evidence hierarchy that
+ * downstream engines GATE on (readiness certification, verified error resolution)
+ * — never a multiplier on retention/health. Independence is THE gate for the
+ * certifying tiers (≥4): an attempt with no independence rating can never reach
+ * them, and `smeared` collapses everything to 0 (provenance-unverifiable). `cold`
+ * and `provenance` only elevate an already-independent attempt; they never lift
+ * one that carries no independence signal.
+ *
+ * NOTE: the top tier (6) also implies timed/closed-book sitting conditions in the
+ * full model; those live on the AssessmentAttempt (later phases), so until an
+ * attempt exists this reads past-paper + cold + independent as the gold benchmark.
+ */
+export function evidenceTier(e: ReviewEvent): number {
+  if (e.smeared === true) return 0;
+  const i = e.assessment?.independence;
+  const cold = e.assessment?.cold === true;
+  if (i === 3) {
+    if (cold && e.provenance === 'past_paper') return 6;
+    if (cold) return 5;
+    return 4;
+  }
+  if (i === 2) return 3;
+  if (i === 0 || i === 1) return 2;
+  // No independence signal — cannot certify independence. A real test outcome
+  // floors at 2 (unverifiable assistance); a bare study review at 1.
+  if (e.kind === 'test_pass' || e.kind === 'test_fail') return 2;
+  return 1;
+}
+
 /** Arithmetic mean, or null for an empty set (never a false zero). */
 export function mean(xs: number[]): number | null {
   return xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -59,6 +89,22 @@ export function successGatedMean(
       })
       .filter((x): x is number => x !== undefined),
   );
+}
+
+/**
+ * Mean of each present `pick` value normalised to [0,1] by `max`. The
+ * non-success-gated sibling of {@link successGatedMean}: used for dimensions
+ * whose own scale already encodes correctness (quality) or that aren't
+ * correctness claims (independence/transfer), so no outcome-gating applies.
+ * Shared by Cold Performance and Performance Health. Null when no event
+ * carries a value.
+ */
+export function normalizedPresentMean(
+  events: ReviewEvent[],
+  pick: (e: ReviewEvent) => number | undefined,
+  max: number,
+): number | null {
+  return mean(events.map(pick).filter((x): x is number => x !== undefined).map((x) => x / max));
 }
 
 /**
@@ -163,11 +209,8 @@ export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
   if (coldEvents.length < P.MIN_COLD_N) return null;
 
   const w = P.COLD_WEIGHTS;
-  // Direct present-value mean (correctness claims not gated: independence/transfer
-  // aren't correctness, quality encodes it via rubric).
-  const dim = (pick: (e: ReviewEvent) => number | undefined, max: number): number | null =>
-    mean(coldEvents.map(pick).filter((x): x is number => x !== undefined).map((x) => x / max));
-
+  // Direct present-value means (normalizedPresentMean) for correctness claims not
+  // gated: independence/transfer aren't correctness, quality encodes it via rubric.
   const correctness = mean(
     coldEvents.map(observedSuccess).filter((x): x is number => x !== undefined),
   );
@@ -178,9 +221,9 @@ export function coldPerformance(events: ReviewEvent[]): ColdPerformance | null {
     // banks no credit (same mechanism as Performance Health).
     { weight: w.difficulty, score: successGatedMean(coldEvents, (e) => e.assessment?.difficulty, P.DIFFICULTY_MAX) },
     { weight: w.novelty, score: successGatedMean(coldEvents, (e) => e.assessment?.novelty, P.NOVELTY_MAX) },
-    { weight: w.independence, score: dim((e) => e.assessment?.independence, P.INDEPENDENCE_MAX) },
-    { weight: w.transfer, score: dim((e) => e.assessment?.transfer_level, P.TRANSFER_MAX) },
-    { weight: w.quality, score: dim((e) => e.assessment?.performance_quality, P.QUALITY_MAX) },
+    { weight: w.independence, score: normalizedPresentMean(coldEvents, (e) => e.assessment?.independence, P.INDEPENDENCE_MAX) },
+    { weight: w.transfer, score: normalizedPresentMean(coldEvents, (e) => e.assessment?.transfer_level, P.TRANSFER_MAX) },
+    { weight: w.quality, score: normalizedPresentMean(coldEvents, (e) => e.assessment?.performance_quality, P.QUALITY_MAX) },
   ]);
 
   return composite === null ? null : { score: composite * 100, n: coldEvents.length };
@@ -281,18 +324,15 @@ export function performanceHealth(events: ReviewEvent[]): number | null {
 
   const accuracy = mean(indep.map(observedSuccess).filter((x): x is number => x !== undefined));
 
-  // transfer/quality are direct present-value means over ALL attempts (their own
-  // scales already encode success; transfer is independent of `independence`).
-  const dimAll = (max: number, pick: (e: ReviewEvent) => number | undefined): number | null =>
-    mean(events.map(pick).filter((x): x is number => x !== undefined).map((x) => x / max));
-
   const parts = [
     { weight: w.accuracy, score: accuracy },
     // Success-gated over independent attempts (shared with Cold Performance).
     { weight: w.difficulty, score: successGatedMean(indep, (e) => e.assessment?.difficulty, P.DIFFICULTY_MAX) },
     { weight: w.novelty, score: successGatedMean(indep, (e) => e.assessment?.novelty, P.NOVELTY_MAX) },
-    { weight: w.transfer, score: dimAll(P.TRANSFER_MAX, (e) => e.assessment?.transfer_level) },
-    { weight: w.quality, score: dimAll(P.QUALITY_MAX, (e) => e.assessment?.performance_quality) },
+    // transfer/quality are direct present-value means over ALL attempts (their own
+    // scales already encode success; transfer is independent of `independence`).
+    { weight: w.transfer, score: normalizedPresentMean(events, (e) => e.assessment?.transfer_level, P.TRANSFER_MAX) },
+    { weight: w.quality, score: normalizedPresentMean(events, (e) => e.assessment?.performance_quality, P.QUALITY_MAX) },
   ];
 
   if (parts.filter((p) => p.score !== null).length < P.MIN_HEALTH_INPUTS) return null;
