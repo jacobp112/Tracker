@@ -1,5 +1,5 @@
 import { CONFIG } from '@/config/constants';
-import type { Store } from '@/domain/types';
+import type { Store, SessionIntent } from '@/domain/types';
 import { allTopics } from '@/domain/types';
 import { errorUrgency, patternStatus, type UrgencyLevel, type UrgencyWhen } from './errors';
 import { dueQueue, type TopicRef } from './course';
@@ -26,6 +26,26 @@ import { curriculumIndex } from './graph';
  */
 
 export type RecommendationAction = 'remediate' | 'prerequisite' | 'retrieve' | 'review' | 'learn' | 'assess';
+
+/**
+ * Deterministic action → SessionIntent map (Part H). MAUT changes ranking, not
+ * the pedagogical action, so every recommendation still resolves to a concrete
+ * tutor intent (`session.ts` `intentConfig` / `startSessionPrompt`).
+ */
+export function intentForAction(action: RecommendationAction): SessionIntent {
+  switch (action) {
+    case 'remediate':
+    case 'prerequisite':
+      return 'remediate';
+    case 'review':
+      return 'retention';
+    case 'learn':
+      return 'new_content';
+    case 'retrieve':
+    case 'assess':
+      return 'adaptive';
+  }
+}
 
 export interface EvidenceRef {
   kind: 'occurrence' | 'topic' | 'pattern' | 'event' | 'assessment';
