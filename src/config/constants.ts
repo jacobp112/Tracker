@@ -125,6 +125,32 @@ export const CONFIG = {
      *  0 = evidence-driven soft gating (an ancestor dampens only on real misconception
      *  overlap). Raise toward 1 to attenuate on distance + mastery alone. */
     S_ERR_UNEVIDENCED: 0,
+
+    /* ── MAUT continuous arbitration (Phase 3, workflow §13–23) ── */
+    /** Memory-urgency target retention R_target (§15). */
+    R_TARGET_MEM: 0.9,
+    /** λ_vel — weight on the decay-velocity term of u_mem (§15). Tunable. */
+    MEM_VELOCITY_LAMBDA: 1.0,
+    /** σ_t (minutes) for the asymmetric feasibility fit (D5, §18). */
+    FEASIBILITY_SIGMA: 15,
+    /** η — preference for unmastered content in u_vel (§17). */
+    VELOCITY_ETA: 1.2,
+    /** Novelty multiplier when a topic was recently studied (§17). */
+    VELOCITY_RECENT_NOVELTY: 0.1,
+    /** Default per-topic syllabus weight when unauthored (§16). */
+    SYLLABUS_WEIGHT_DEFAULT: 1.0,
+    /** Default exam horizon (days) for u_found when no exam is linked (§16). */
+    DEFAULT_EXAM_HORIZON_DAYS: 30,
+    /** Sessions feeding `recentHistory` for u_vel novelty. */
+    RECENT_HISTORY_SIZE: 5,
+    /** Base MAUT weights (§19); must sum to 1. */
+    MAUT_BASE_WEIGHTS: { mem: 0.35, found: 0.3, vel: 0.2, feas: 0.15 },
+    /** Exam-horizon context window (days) that raises w_found (§20). */
+    EXAM_HORIZON_DAYS: 7,
+    /** Session-exhaustion threshold (minutes) that raises w_feas (§22). */
+    EXHAUSTION_MINUTES: 15,
+    /** Non-negative weight floor before L1 normalization (§54.6). */
+    WEIGHT_FLOOR: 0.01,
   },
 
   /**
@@ -229,5 +255,14 @@ for (const [name, table] of [
   const sum = Object.values(table).reduce((a, b) => a + b, 0);
   if (Math.abs(sum - 1) > 1e-9) {
     throw new Error(`CONFIG.PERFORMANCE.${name} must sum to 1, got ${sum}`);
+  }
+}
+
+/** MAUT base weights must sum to 1, or the composite is no longer 0–1 (§19). */
+{
+  const w = CONFIG.RECO.MAUT_BASE_WEIGHTS;
+  const sum = w.mem + w.found + w.vel + w.feas;
+  if (Math.abs(sum - 1) > 1e-9) {
+    throw new Error(`CONFIG.RECO.MAUT_BASE_WEIGHTS must sum to 1, got ${sum}`);
   }
 }
