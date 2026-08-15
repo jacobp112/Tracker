@@ -47,16 +47,26 @@ describe('sessionFeasibility (D5)', () => {
   });
 });
 
-describe('curriculumVelocity (§17)', () => {
+describe('curriculumVelocity (§17 + momentum §2.10)', () => {
+  const s = storeOf([]);
   it('is within [0,1], lower for higher mastery and for recently-studied topics', () => {
     const fresh = t('n', [], { status: 'not_started', last_reviewed: null });
     const mastered = t('m', [], { status: 'mastered', strength: 6, conf: 5, last_reviewed: '2026-08-19T00:00:00.000Z' });
-    const uf = curriculumVelocity(fresh, [], NOW);
-    const um = curriculumVelocity(mastered, [], NOW);
-    const uRecent = curriculumVelocity(fresh, ['n'], NOW);
+    const uf = curriculumVelocity(fresh, [], s, NOW);
+    const um = curriculumVelocity(mastered, [], s, NOW);
+    const uRecent = curriculumVelocity(fresh, ['n'], s, NOW);
     for (const u of [uf, um, uRecent]) { expect(u).toBeGreaterThanOrEqual(0); expect(u).toBeLessThanOrEqual(1); }
     expect(uf).toBeGreaterThan(um);
     expect(uRecent).toBeLessThan(uf);
+  });
+
+  it('momentum: an in-progress topic outranks an equally-mastered not_started peer', () => {
+    // Same mastery inputs; only status differs. The in-progress one should score
+    // higher on velocity (objective §2.10 — finish what you started).
+    const opts: Partial<Topic> = { conf: 3, strength: 1, last_reviewed: '2026-08-18T00:00:00.000Z' };
+    const inProgress = t('ip', [], { ...opts, status: 'learning' });
+    const notStarted = t('ns', [], { ...opts, status: 'not_started' });
+    expect(curriculumVelocity(inProgress, [], s, NOW)).toBeGreaterThan(curriculumVelocity(notStarted, [], s, NOW));
   });
 });
 

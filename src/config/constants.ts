@@ -135,10 +135,22 @@ export const CONFIG = {
     FEASIBILITY_SIGMA: 15,
     /** η — preference for unmastered content in u_vel (§17). */
     VELOCITY_ETA: 1.2,
+    /**
+     * Gentler u_vel mastery exponent for an active, not-yet-mastered topic
+     * WITHOUT an unresolved error (objective §2.10 — momentum). Below VELOCITY_ETA
+     * so an in-progress topic stays "worth finishing" longer than a fresh one,
+     * decaying to 0 only as evidence-mastery reaches full competency (L→1). Lives
+     * inside u_vel so it respects the [0,1] bound and can never overpower error
+     * urgency (w_vel·1 = 0.20 < w_found·1 = 0.30). */
+    MOMENTUM_ETA: 0.3,
     /** Novelty multiplier when a topic was recently studied (§17). */
     VELOCITY_RECENT_NOVELTY: 0.1,
     /** Default per-topic syllabus weight when unauthored (§16). */
     SYLLABUS_WEIGHT_DEFAULT: 1.0,
+    /** Own-error urgency mass added to u_found by severity, so an unresolved
+     *  misconception raises foundational risk continuously (§8 within §16). A
+     *  high-severity error alone saturates u_found toward 1. */
+    ERROR_URGENCY: { low: 0.25, medium: 0.5, high: 1.0 } as Record<'low' | 'medium' | 'high', number>,
     /** Default exam horizon (days) for u_found when no exam is linked (§16). */
     DEFAULT_EXAM_HORIZON_DAYS: 30,
     /** Sessions feeding `recentHistory` for u_vel novelty. */

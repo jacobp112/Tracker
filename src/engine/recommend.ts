@@ -1,6 +1,7 @@
 import { CONFIG } from '@/config/constants';
-import type { Store, SessionIntent } from '@/domain/types';
+import type { Store, SessionIntent, Topic } from '@/domain/types';
 import { allTopics } from '@/domain/types';
+import { compositeUtility, deriveMAUTWeights, type MAUTContext, type UtilityBreakdown } from './maut';
 import { errorUrgency, patternStatus, type UrgencyLevel, type UrgencyWhen } from './errors';
 import { dueQueue, type TopicRef } from './course';
 import { prerequisiteInstability } from './prerequisites';
@@ -73,21 +74,19 @@ export interface Recommendation {
   actionValue?: ActionValue;
   evidenceConfidence?: ConfidenceLevel;
   trace?: DecisionTrace;
+  /** Continuous MAUT score + breakdown + derived session intent (workflow §13, §49). */
+  maut?: UtilityBreakdown & { intent: SessionIntent };
 }
-
-const PRIORITY_RANK: Record<UrgencyLevel, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-const WHEN_RANK: Record<UrgencyWhen, number> = { today: 0, within_48h: 1, this_week: 2, next_cycle: 3 };
-const ACTION_RANK: Record<RecommendationAction, number> = {
-  remediate: 0,
-  prerequisite: 1,
-  review: 2,
-  retrieve: 3,
-  assess: 4,
-  learn: 5,
-};
 
 const EST_MINUTES: Record<RecommendationAction, number> = {
   remediate: 25, prerequisite: 25, retrieve: 15, review: 15, learn: 30, assess: 60,
+};
+
+/** Last-resort tiebreak among candidates of EQUAL utility (not the old cascade —
+ *  utility is the primary key). Prefers the more directly corrective action so
+ *  a same-root remediation edges out an equivalent prerequisite nudge. */
+const ACTION_ORDER: Record<RecommendationAction, number> = {
+  remediate: 0, prerequisite: 1, review: 2, retrieve: 3, assess: 4, learn: 5,
 };
 
 /** The verifying tier from §H — an independent attempt is what settles an
@@ -266,15 +265,12 @@ function assessGuards(store: Store, now: Date): Recommendation[] {
 
 /* ── Compose, dedupe, rank ────────────────────────────────────────── */
 
-function rankKey(r: Recommendation): number {
-  return PRIORITY_RANK[r.priority] * 10 + WHEN_RANK[r.when];
-}
-
 /**
  * The ranked next-action list — single learner-action decision authority.
- * Guards are unioned; when several fire on one target the highest-priority survives.
- * Recommendations are enriched with Evidence Confidence, Time Budget feasibility,
- * and Action Value, then sorted strictly within priority bands.
+ * Guards union into candidates; each is scored by continuous MAUT utility
+ * (workflow §13, §23). Candidates dedupe per target by highest utility, then
+ * sort by utility — the static priority/action cascade is gone. Every survivor
+ * keeps its `action`/`priority`/`when` as metadata plus a derived `intent`.
  */
 export function recommend(
   store: Store,
@@ -283,6 +279,40 @@ export function recommend(
 ): Recommendation[] {
   const activeBudget = timeBudget ?? deriveTimeBudget(store, undefined, now);
   const cIndex = curriculumIndex(store);
+  const topicById = new Map(allTopics(store).map(({ topic }) => [topic.topic_id, topic]));
+
+  const ctx: MAUTContext = {
+    timeRemainingMinutes: activeBudget.availableMinutes,
+    recentHistory: [...store.sessions]
+      .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+      .slice(0, CONFIG.RECO.RECENT_HISTORY_SIZE)
+      .map((s) => s.topic_id),
+  };
+
+  // The topic a candidate ultimately concerns — lets pattern/assessment targets
+  // be scored by the utility of the topic they attach to.
+  const representativeTopic = (r: Recommendation): Topic | undefined => {
+    if (r.target.kind === 'topic') return topicById.get(r.target.id);
+    if (r.target.kind === 'pattern') {
+      const p = store.error_patterns.find((x) => x.pattern_id === r.target.id);
+      return p ? topicById.get(p.topic_ids[0] ?? '') : undefined;
+    }
+    const ref = store.assessment_refs.find((x) => x.assessment_id === r.target.id);
+    return ref ? topicById.get(ref.topic_ids[0] ?? '') : undefined;
+  };
+
+  const scoreMaut = (r: Recommendation): UtilityBreakdown & { intent: SessionIntent } => {
+    const topic = representativeTopic(r);
+    const breakdown: UtilityBreakdown = topic
+      ? compositeUtility(topic, r.est_duration_minutes, store, ctx, now)
+      : {
+          utility: 0,
+          subUtilities: { memoryUrgency: 0, foundationalRisk: 0, curriculumVelocity: 0, sessionFeasibility: 1 },
+          weights: deriveMAUTWeights(store, ctx, now),
+          dominantUtility: 'feas',
+        };
+    return { ...breakdown, intent: intentForAction(r.action) };
+  };
 
   const rawCandidates = [
     ...errorGuards(store, now),
@@ -291,72 +321,43 @@ export function recommend(
     ...retrieveGuards(store, now),
     ...assessGuards(store, now),
     ...learnGuards(store, now),
-  ];
+  ].map((r) => ({ ...r, maut: scoreMaut(r) }));
 
-  // Dedupe by target — keep the strongest signal per thing to act on.
-  const best = new Map<string, Recommendation>();
+  // Dedupe by target — keep the highest-utility signal per thing to act on
+  // (continuous arbitration replaces the static action hierarchy, workflow §13).
+  const best = new Map<string, (typeof rawCandidates)[number]>();
   for (const r of rawCandidates) {
     const key = `${r.target.kind}:${r.target.id}`;
     const prev = best.get(key);
-    if (!prev || rankKey(r) < rankKey(prev)) best.set(key, r);
+    if (!prev || r.maut.utility > prev.maut.utility) best.set(key, r);
   }
-
   const candidates = [...best.values()];
 
-  // Enrich with Evidence Confidence and Action Value
+  // Enrich with Evidence Confidence and Action Value (feasibility display).
   const enriched = candidates.map((r) => {
     let evidenceConfidence: ConfidenceLevel | undefined;
     if (r.target.kind === 'topic') {
-      const topicObj = allTopics(store).find(({ topic }) => topic.topic_id === r.target.id)?.topic;
-      if (topicObj) {
-        evidenceConfidence = topicEvidenceProfile(topicObj, store, now).overall;
-      }
+      const topicObj = topicById.get(r.target.id);
+      if (topicObj) evidenceConfidence = topicEvidenceProfile(topicObj, store, now).overall;
     }
-
     const actionVal = calculateActionValue(r, candidates, store, activeBudget, now);
-
     return {
       ...r,
       evidenceConfidence,
       actionValue: actionVal,
-      trace: {
-        sourceStage: `${r.action}Guards`,
-        timeBudget: activeBudget,
-        discardedCandidates: [], // Could be populated if we tracked rawCandidates vs best
-      },
+      trace: { sourceStage: `${r.action}Guards`, timeBudget: activeBudget, discardedCandidates: [] },
     };
   });
 
-  // Sort: Priority cascade is major key (rankKey).
-  // Within the same priority band:
-  // 1. Feasibility (feasible > marginal > infeasible)
-  // 2. Action cascade precedence (remediate > prerequisite > review > retrieve > assess > learn)
-  // 3. Downstream value descending
-  // 4. Alphabetical by target title
+  // Continuous MAUT ranking: utility descending, with a deterministic tiebreak
+  // by curriculum order then title.
   return enriched.sort((a, b) => {
-    const majorDiff = rankKey(a) - rankKey(b);
-    if (majorDiff !== 0) return majorDiff;
-
-    // Feasibility sorting
-    const feasibilityOrder: Record<string, number> = { feasible: 0, marginal: 1, infeasible: 2 };
-    const feasA = feasibilityOrder[a.actionValue?.feasibility ?? 'feasible'] ?? 0;
-    const feasB = feasibilityOrder[b.actionValue?.feasibility ?? 'feasible'] ?? 0;
-    if (feasA !== feasB) return feasA - feasB;
-
-    const actionDiff = ACTION_RANK[a.action] - ACTION_RANK[b.action];
-    if (actionDiff !== 0) return actionDiff;
-
-    // Downstream value sorting
-    const downA = a.actionValue?.downstreamValue ?? 0;
-    const downB = b.actionValue?.downstreamValue ?? 0;
-    if (downA !== downB) return downB - downA;
-
-    // Syllabus-order tie-breaker (D9a): follow the authored curriculum sequence,
-    // not the alphabet, so same-band topic candidates order by where they sit in
-    // the course. Non-topic targets (patterns/assessments) fall back to title.
+    if (b.maut.utility !== a.maut.utility) return b.maut.utility - a.maut.utility;
     const ai = cIndex.get(a.target.id);
     const bi = cIndex.get(b.target.id);
     if (ai !== undefined && bi !== undefined && ai !== bi) return ai - bi;
+    const actDiff = ACTION_ORDER[a.action] - ACTION_ORDER[b.action];
+    if (actDiff !== 0) return actDiff;
     return a.target.title.localeCompare(b.target.title);
   });
 }

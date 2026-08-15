@@ -5,6 +5,7 @@ import { effectiveStrength } from './stability';
 import { mastery } from './prerequisites';
 import { calculateSoftGating } from './gating';
 import { downstreamWithDistance } from './graph';
+import { patternStatus } from './errors';
 
 /**
  * Multi-Attribute Utility Theory scorer — workflow.md §13–23. Replaces static
@@ -64,10 +65,24 @@ function examDaysRemaining(topicId: string, store: Store, now: Date): number {
   return best === Infinity ? CONFIG.RECO.DEFAULT_EXAM_HORIZON_DAYS : best;
 }
 
+/** The topic's OWN unresolved-error urgency mass, by highest active severity
+ *  (§8 within §16). 0 when the topic has no active error patterns. */
+function ownErrorUrgency(topic: Topic, store: Store, now: Date): number {
+  let max = 0;
+  for (const p of store.error_patterns) {
+    if (!p.topic_ids.includes(topic.topic_id)) continue;
+    if (patternStatus(p, store, now).status === 'verified_resolved') continue;
+    max = Math.max(max, CONFIG.RECO.ERROR_URGENCY[p.severity] ?? 0);
+  }
+  return max;
+}
+
 /**
  * u_found — foundational causal risk (§16, D3). The distance-discounted, exam-
- * weighted mass of weak downstream dependents, scaled by the soft-gating factor
- * and clamped to [0,1].
+ * weighted mass of weak downstream dependents PLUS the topic's own unresolved-
+ * error urgency (§8), scaled by the soft-gating factor and clamped to [0,1]. The
+ * error term lets an unresolved misconception compete strongly on utility without
+ * a hard priority pin (workflow §13 + §8).
  */
 export function foundationalRisk(topic: Topic, store: Store, now: Date = new Date()): number {
   const g = calculateSoftGating(topic, store, now).score;
@@ -77,17 +92,30 @@ export function foundationalRisk(topic: Topic, store: Store, now: Date = new Dat
     const examDays = Math.max(1, examDaysRemaining(dep.topic_id, store, now));
     sum += (weight * (1 - mastery(dep, now))) / (distance * examDays);
   }
-  return g * Math.min(1, sum);
+  return g * Math.min(1, sum + ownErrorUrgency(topic, store, now));
 }
 
 /**
- * u_vel — curriculum velocity (§17). Rewards unmastered content, damped when the
- * topic was studied recently (interleaving nudge toward novelty).
+ * u_vel — curriculum velocity (§17) with learner momentum (objective §2.10).
+ * Rewards unmastered content, damped when studied recently (novelty). An active,
+ * not-yet-mastered topic WITHOUT an unresolved error stays worth finishing: it
+ * decays on the gentler MOMENTUM_ETA curve, so the learner completes an in-flight
+ * topic before wandering to a freshly-unlocked one. Errored in-progress topics
+ * are excluded — that is a remediation concern owned by u_found, not momentum.
  */
-export function curriculumVelocity(topic: Topic, recentHistory: string[], now: Date = new Date()): number {
+export function curriculumVelocity(
+  topic: Topic,
+  recentHistory: string[],
+  store: Store,
+  now: Date = new Date(),
+): number {
   const L = mastery(topic, now);
   const novelty = recentHistory.includes(topic.topic_id) ? CONFIG.RECO.VELOCITY_RECENT_NOVELTY : 1;
-  return Math.min(1, Math.max(0, Math.pow(1 - L, CONFIG.RECO.VELOCITY_ETA) * novelty));
+  const inFrontier =
+    (topic.status === 'learning' || topic.status === 'practising') &&
+    ownErrorUrgency(topic, store, now) === 0;
+  const eta = inFrontier ? CONFIG.RECO.MOMENTUM_ETA : CONFIG.RECO.VELOCITY_ETA;
+  return Math.min(1, Math.max(0, Math.pow(1 - L, eta) * novelty));
 }
 
 /**
@@ -154,7 +182,7 @@ export function compositeUtility(
   const subUtilities = {
     memoryUrgency: memoryUrgency(topic, now),
     foundationalRisk: foundationalRisk(topic, store, now),
-    curriculumVelocity: curriculumVelocity(topic, ctx.recentHistory, now),
+    curriculumVelocity: curriculumVelocity(topic, ctx.recentHistory, store, now),
     sessionFeasibility: sessionFeasibility(estMinutes, ctx.timeRemainingMinutes),
   };
   const weights = deriveMAUTWeights(store, ctx, now);
