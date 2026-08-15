@@ -118,9 +118,13 @@ export const CONFIG = {
     TAU_CRIT: 0.7,
     /** Transitive attenuation base γ, α(d)=γ^(d-1) (workflow §7). Consumed in Phase 2. */
     GAMMA_DEPTH: 0.5,
-    /** Soft-gating aggregation bound (workflow §54.4, D10). Consumed in Phase 2. */
+    /** Soft-gating aggregation bound (workflow §54.4, D10). */
     SOFT_GATE_TOP_K: 3,
     SOFT_GATE_FLOOR: 0.1,
+    /** S_err when either topic has no active error patterns (workflow §54.4, P2-D1):
+     *  0 = evidence-driven soft gating (an ancestor dampens only on real misconception
+     *  overlap). Raise toward 1 to attenuate on distance + mastery alone. */
+    S_ERR_UNEVIDENCED: 0,
   },
 
   /**
