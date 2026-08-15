@@ -188,6 +188,32 @@ export function queueResidenceDays(topic: Topic, store: Store, now: Date = new D
   return Math.max(0, (now.getTime() - ref) / MS_PER_DAY);
 }
 
+/** The section a topic belongs to — `domainId = section_id` (D6). */
+export function sectionOf(topicId: string, store: Store): string | undefined {
+  for (const c of store.courses) {
+    for (const s of c.sections) {
+      if (s.topics.some((t) => t.topic_id === topicId)) return s.section_id;
+    }
+  }
+  return undefined;
+}
+
+/** How many of the last K studied topics belong to `sectionId` (§25). Drawn from
+ *  `store.sessions` — a derive-don't-store window on what was recently worked. */
+export function domainRecencyCount(sectionId: string, store: Store): number {
+  const recent = [...store.sessions]
+    .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+    .slice(0, CONFIG.RECO.INTERLEAVE_WINDOW_K);
+  return recent.filter((s) => sectionOf(s.topic_id, store) === sectionId).length;
+}
+
+/** Interleaving multiplier `β^min(count, K)` (§25). Capped at K so suppression
+ *  saturates at `β^K > 0` — a domain is never permanently excluded (§37). */
+export function interleavingMultiplier(count: number): number {
+  const capped = Math.min(count, CONFIG.RECO.INTERLEAVE_WINDOW_K);
+  return Math.pow(CONFIG.RECO.INTERLEAVE_BETA, capped);
+}
+
 /**
  * Bounded aging boost (§24): `α_age·(1 − e^(−φ·Δt))` with `α_age = AGING_MAX_FRACTION·maxU`.
  * Rises with residence toward — but never past — its cap, so aging mitigates
