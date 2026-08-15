@@ -167,6 +167,58 @@ export function deriveMAUTWeights(store: Store, ctx: MAUTContext, now: Date = ne
   return { mem: floored[0]! / total, found: floored[1]! / total, vel: floored[2]! / total, feas: floored[3]! / total };
 }
 
+/* ── Anti-starvation: aging + domain interleaving (§24–26) ── */
+
+/**
+ * Queue residence in days — a derive-don't-store proxy for how long a *reviewed*
+ * candidate has gone without being acted upon (§24): days since its last review
+ * event. A never-reviewed topic returns 0: anti-starvation targets decaying
+ * reviewed items (the §43 starvation population is retention-based), not unstarted
+ * material — that is momentum/velocity's job, so aging must not inflate it. `store`
+ * is accepted for interface symmetry with the other Phase 4 helpers.
+ */
+export function queueResidenceDays(topic: Topic, _store: Store, now: Date = new Date()): number {
+  const last = topic.review_history.at(-1)?.date;
+  if (!last) return 0;
+  return Math.max(0, (now.getTime() - new Date(last).getTime()) / MS_PER_DAY);
+}
+
+/** The section a topic belongs to — `domainId = section_id` (D6). */
+export function sectionOf(topicId: string, store: Store): string | undefined {
+  for (const c of store.courses) {
+    for (const s of c.sections) {
+      if (s.topics.some((t) => t.topic_id === topicId)) return s.section_id;
+    }
+  }
+  return undefined;
+}
+
+/** How many of the last K studied topics belong to `sectionId` (§25). Drawn from
+ *  `store.sessions` — a derive-don't-store window on what was recently worked. */
+export function domainRecencyCount(sectionId: string, store: Store): number {
+  const recent = [...store.sessions]
+    .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+    .slice(0, CONFIG.RECO.INTERLEAVE_WINDOW_K);
+  return recent.filter((s) => sectionOf(s.topic_id, store) === sectionId).length;
+}
+
+/** Interleaving multiplier `β^min(count, K)` (§25). Capped at K so suppression
+ *  saturates at `β^K > 0` — a domain is never permanently excluded (§37). */
+export function interleavingMultiplier(count: number): number {
+  const capped = Math.min(count, CONFIG.RECO.INTERLEAVE_WINDOW_K);
+  return Math.pow(CONFIG.RECO.INTERLEAVE_BETA, capped);
+}
+
+/**
+ * Bounded aging boost (§24): `α_age·(1 − e^(−φ·Δt))` with `α_age = AGING_MAX_FRACTION·maxU`.
+ * Rises with residence toward — but never past — its cap, so aging mitigates
+ * starvation without overwhelming urgent memory/exam work (§36, §54.8).
+ */
+export function agingBoost(residenceDays: number, maxUtility: number): number {
+  const max = CONFIG.RECO.AGING_MAX_FRACTION * maxUtility;
+  return max * (1 - Math.exp(-CONFIG.RECO.AGING_ACCELERATION * residenceDays));
+}
+
 /**
  * Composite utility `U = Σ w_k·u_k` for a candidate topic (§13, §23), with the
  * sub-utility breakdown, applied weights, and the dominant driver for the

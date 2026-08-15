@@ -163,6 +163,22 @@ export const CONFIG = {
     EXHAUSTION_MINUTES: 15,
     /** Non-negative weight floor before L1 normalization (§54.6). */
     WEIGHT_FLOOR: 0.01,
+
+    /* ── Anti-starvation: aging + domain interleaving (Phase 4, §24–26, §36–37) ── */
+    /** α_age as a fraction of max(U): the largest possible aging boost (§24). */
+    AGING_MAX_FRACTION: 0.25,
+    /** φ per DAY of queue residence; Δt≈14d → ~75% of the max boost (tunable). */
+    AGING_ACCELERATION: 0.1,
+    /** β interleaving suppression base (§25). */
+    INTERLEAVE_BETA: 0.65,
+    /** K — recency window; suppression saturates at β^K so a domain is never
+     *  permanently excluded (§25, §37). domainId = section_id (D6). */
+    INTERLEAVE_WINDOW_K: 5,
+    /** Urgent-exemption (P4-D1 = b): a candidate whose predicted retention is
+     *  below this is exempt from interleaving suppression, so urgent forgetting
+     *  always surfaces (§37 "urgent review must override"). Matches the critical
+     *  overdue band (DUE_THRESHOLD − OVERDUE_MARGIN = 0.55). */
+    INTERLEAVE_EXEMPT_RETENTION: 0.55,
   },
 
   /**
