@@ -83,11 +83,19 @@ function ownErrorUrgency(topic: Topic, store: Store, now: Date): number {
  * error urgency (§8), scaled by the soft-gating factor and clamped to [0,1]. The
  * error term lets an unresolved misconception compete strongly on utility without
  * a hard priority pin (workflow §13 + §8).
+ *
+ * Only STARTED downstream topics count toward the reach sum: §16 protects
+ * downstream *progression*, not raw graph centrality. Counting not_started
+ * dependents turned a fresh multi-section course into "most-depended-upon first"
+ * (a later-section hub outranking Section One); the fix makes u_found ~0 at
+ * cold-start so gating + syllabus order governs, while still shielding the
+ * foundations under a learner's active, at-risk work.
  */
 export function foundationalRisk(topic: Topic, store: Store, now: Date = new Date()): number {
   const g = calculateSoftGating(topic, store, now).score;
   let sum = 0;
   for (const { topic: dep, distance } of downstreamWithDistance(topic.topic_id, store)) {
+    if (dep.status === 'not_started') continue; // protect started progression, not centrality
     const weight = CONFIG.RECO.SYLLABUS_WEIGHT_DEFAULT; // no authored per-topic weight yet
     const examDays = Math.max(1, examDaysRemaining(dep.topic_id, store, now));
     sum += (weight * (1 - mastery(dep, now))) / (distance * examDays);

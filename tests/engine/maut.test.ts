@@ -71,9 +71,11 @@ describe('curriculumVelocity (§17 + momentum §2.10)', () => {
 });
 
 describe('foundationalRisk (§16)', () => {
-  it('is within [0,1] and higher when many weak downstream dependents exist', () => {
+  it('is within [0,1] and higher when many weak STARTED downstream dependents exist', () => {
     const foundation = t('f');
-    const deps = ['d1', 'd2', 'd3'].map((id) => t(id, ['f'], { status: 'not_started', last_reviewed: null }));
+    // Started + decayed downstream = active progression at risk (not_started
+    // dependents are excluded — u_found protects progression, not centrality).
+    const deps = ['d1', 'd2', 'd3'].map((id) => t(id, ['f'], { status: 'learning', strength: 1, last_reviewed: '2026-07-10T00:00:00.000Z' }));
     const s = storeOf([foundation, ...deps]);
     const withDeps = foundationalRisk(foundation, s, NOW);
     const leaf = foundationalRisk(t('leaf'), storeOf([t('leaf')]), NOW);
