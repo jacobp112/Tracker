@@ -1,7 +1,11 @@
 import { CONFIG } from '@/config/constants';
 import type { Store, SessionIntent, Topic } from '@/domain/types';
 import { allTopics } from '@/domain/types';
-import { compositeUtility, deriveMAUTWeights, type MAUTContext, type UtilityBreakdown } from './maut';
+import {
+  compositeUtility, deriveMAUTWeights, queueResidenceDays, agingBoost,
+  sectionOf, domainRecencyCount, interleavingMultiplier,
+  type MAUTContext, type UtilityBreakdown,
+} from './maut';
 import { errorUrgency, patternStatus, type UrgencyLevel, type UrgencyWhen } from './errors';
 import { dueQueue, type TopicRef } from './course';
 import { prerequisiteInstability } from './prerequisites';
@@ -74,8 +78,14 @@ export interface Recommendation {
   actionValue?: ActionValue;
   evidenceConfidence?: ConfidenceLevel;
   trace?: DecisionTrace;
-  /** Continuous MAUT score + breakdown + derived session intent (workflow §13, §49). */
-  maut?: UtilityBreakdown & { intent: SessionIntent };
+  /** Continuous MAUT score + breakdown + derived session intent, plus the Phase 4
+   *  anti-starvation terms and the final ranked utility (workflow §13, §24–26, §49). */
+  maut?: UtilityBreakdown & {
+    intent: SessionIntent;
+    agingBoost: number;
+    interleavingMultiplier: number;
+    finalUtility: number;
+  };
 }
 
 const EST_MINUTES: Record<RecommendationAction, number> = {
@@ -291,7 +301,7 @@ export function recommend(
 
   // The topic a candidate ultimately concerns — lets pattern/assessment targets
   // be scored by the utility of the topic they attach to.
-  const representativeTopic = (r: Recommendation): Topic | undefined => {
+  const representativeTopic = (r: Pick<Recommendation, 'target'>): Topic | undefined => {
     if (r.target.kind === 'topic') return topicById.get(r.target.id);
     if (r.target.kind === 'pattern') {
       const p = store.error_patterns.find((x) => x.pattern_id === r.target.id);
@@ -314,7 +324,8 @@ export function recommend(
     return { ...breakdown, intent: intentForAction(r.action) };
   };
 
-  const rawCandidates = [
+  // Pass 1 — base MAUT utility per candidate.
+  const baseScored = [
     ...errorGuards(store, now),
     ...prerequisiteGuards(store, now),
     ...reviewGuards(store, now),
@@ -323,13 +334,33 @@ export function recommend(
     ...learnGuards(store, now),
   ].map((r) => ({ ...r, maut: scoreMaut(r) }));
 
-  // Dedupe by target — keep the highest-utility signal per thing to act on
+  // Pass 2 — anti-starvation (workflow §23–26): U_aged = U + bounded aging;
+  // U_final = U_aged · β^f domain interleaving, EXCEPT urgent memory (R below the
+  // exemption threshold) which is never suppressed (§37, P4-D1=b). maxU scales
+  // the aging cap across the current candidate set.
+  const maxU = baseScored.reduce((m, c) => Math.max(m, c.maut.utility), 0);
+  const rawCandidates = baseScored.map((r) => {
+    const topic = representativeTopic(r);
+    const aging = agingBoost(topic ? queueResidenceDays(topic, store, now) : 0, maxU);
+    const aged = r.maut.utility + aging;
+    const section = topic ? sectionOf(topic.topic_id, store) : undefined;
+    const domainCount = section ? domainRecencyCount(section, store) : 0;
+    const retention = topic ? predictRetention(topic, now) : null;
+    const exempt = retention !== null && retention < CONFIG.RECO.INTERLEAVE_EXEMPT_RETENTION;
+    const interleave = exempt ? 1 : interleavingMultiplier(domainCount);
+    return {
+      ...r,
+      maut: { ...r.maut, agingBoost: aging, interleavingMultiplier: interleave, finalUtility: aged * interleave },
+    };
+  });
+
+  // Dedupe by target — keep the highest FINAL-utility signal per thing to act on
   // (continuous arbitration replaces the static action hierarchy, workflow §13).
   const best = new Map<string, (typeof rawCandidates)[number]>();
   for (const r of rawCandidates) {
     const key = `${r.target.kind}:${r.target.id}`;
     const prev = best.get(key);
-    if (!prev || r.maut.utility > prev.maut.utility) best.set(key, r);
+    if (!prev || r.maut.finalUtility > prev.maut.finalUtility) best.set(key, r);
   }
   const candidates = [...best.values()];
 
@@ -352,7 +383,7 @@ export function recommend(
   // Continuous MAUT ranking: utility descending, with a deterministic tiebreak
   // by curriculum order then title.
   return enriched.sort((a, b) => {
-    if (b.maut.utility !== a.maut.utility) return b.maut.utility - a.maut.utility;
+    if (b.maut.finalUtility !== a.maut.finalUtility) return b.maut.finalUtility - a.maut.finalUtility;
     const ai = cIndex.get(a.target.id);
     const bi = cIndex.get(b.target.id);
     if (ai !== undefined && bi !== undefined && ai !== bi) return ai - bi;

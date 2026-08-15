@@ -26,9 +26,9 @@ describe('queueResidenceDays (§24)', () => {
     const topic = t('x', { review_history: [ev('2026-08-13T00:00:00.000Z')] });
     expect(queueResidenceDays(topic, storeOf([topic]), NOW)).toBeCloseTo(7, 5);
   });
-  it('falls back to days since course creation for a never-reviewed topic', () => {
+  it('is 0 for a never-reviewed topic (not part of the retention-based starvation population)', () => {
     const topic = t('x', { status: 'not_started' });
-    expect(queueResidenceDays(topic, storeOf([topic], '2026-08-10T00:00:00.000Z'), NOW)).toBeCloseTo(10, 5);
+    expect(queueResidenceDays(topic, storeOf([topic], '2026-01-01T00:00:00.000Z'), NOW)).toBe(0);
   });
   it('is never negative', () => {
     const topic = t('x', { review_history: [ev('2026-08-25T00:00:00.000Z')] }); // future

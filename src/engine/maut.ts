@@ -170,22 +170,17 @@ export function deriveMAUTWeights(store: Store, ctx: MAUTContext, now: Date = ne
 /* ── Anti-starvation: aging + domain interleaving (§24–26) ── */
 
 /**
- * Queue residence in days — a derive-don't-store proxy for how long a candidate
- * has been eligible without being acted upon (§24): days since its last review
- * event, or since its course was created if never touched.
+ * Queue residence in days — a derive-don't-store proxy for how long a *reviewed*
+ * candidate has gone without being acted upon (§24): days since its last review
+ * event. A never-reviewed topic returns 0: anti-starvation targets decaying
+ * reviewed items (the §43 starvation population is retention-based), not unstarted
+ * material — that is momentum/velocity's job, so aging must not inflate it. `store`
+ * is accepted for interface symmetry with the other Phase 4 helpers.
  */
-export function queueResidenceDays(topic: Topic, store: Store, now: Date = new Date()): number {
+export function queueResidenceDays(topic: Topic, _store: Store, now: Date = new Date()): number {
   const last = topic.review_history.at(-1)?.date;
-  let ref: number;
-  if (last) {
-    ref = new Date(last).getTime();
-  } else {
-    const course = store.courses.find((c) =>
-      c.sections.some((s) => s.topics.some((t) => t.topic_id === topic.topic_id)),
-    );
-    ref = course ? new Date(course.created_at).getTime() : now.getTime();
-  }
-  return Math.max(0, (now.getTime() - ref) / MS_PER_DAY);
+  if (!last) return 0;
+  return Math.max(0, (now.getTime() - new Date(last).getTime()) / MS_PER_DAY);
 }
 
 /** The section a topic belongs to — `domainId = section_id` (D6). */
